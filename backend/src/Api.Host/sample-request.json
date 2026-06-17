@@ -1,0 +1,10 @@
+{
+  "applicantName": "Jane Doe",
+  "email": "jane@example.com",
+  "requestedAmount": 250000,
+  "termMonths": 360,
+  "annualIncome": 95000,
+  "employmentStatus": "Employed",
+  "propertyAddress": "123 Main St",
+  "notes": "First-time buyer"
+}
