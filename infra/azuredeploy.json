@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.34.1.0",
+      "templateHash": "demo-reference-implementation"
+    },
+    "description": "Deploy Azure infrastructure for the Cohere Loan and Mortgage demo."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "baseName": {
+      "type": "string",
+      "defaultValue": "cohereloan",
+      "metadata": {
+        "description": "Base name used for deployed resources."
+      }
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "defaultValue": "cohere-command-a",
+      "metadata": {
+        "description": "Foundry model deployment name used by all agents."
+      }
+    },
+    "cohereModelName": {
+      "type": "string",
+      "defaultValue": "Cohere-command-a"
+    },
+    "cohereModelVersion": {
+      "type": "string",
+      "defaultValue": "1"
+    },
+    "documentsContainerName": {
+      "type": "string",
+      "defaultValue": "loan-documents"
+    },
+    "memoryStoreName": {
+      "type": "string",
+      "defaultValue": "loan-mortgage-agent-memory"
+    }
+  },
+  "variables": {
+    "uniqueSuffix": "[uniqueString(resourceGroup().id)]",
+    "storageAccountName": "[toLower(take(replace(concat(parameters('baseName'), 'st', variables('uniqueSuffix')), '-', ''), 24))]",
+    "foundryAccountName": "[toLower(take(replace(concat(parameters('baseName'), 'foundry', variables('uniqueSuffix')), '-', ''), 24))]",
+    "projectName": "[concat(parameters('baseName'), '-project')]"
+  },
+  "resources": [],
+  "outputs": {
+    "deploymentNote": {
+      "type": "string",
+      "value": "Use infra/main.bicep for deployment. This file exists to support Deploy to Azure metadata."
+    }
+  }
+}

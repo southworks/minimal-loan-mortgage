@@ -4,5 +4,7 @@ obj/
 *.user
 *.swp
 appsettings.*.local.json
+agent-provisioning/config/provisioning.local.json
+deployment-outputs.json
 .cursor/
 .vscode/

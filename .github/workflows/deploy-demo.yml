@@ -1,0 +1,76 @@
+name: Deploy Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      resourceGroupName:
+        description: Azure resource group name
+        required: true
+        default: cohereloan-demo-rg
+      location:
+        description: Azure region
+        required: true
+        default: eastus2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Deploy infrastructure
+        id: infra
+        shell: bash
+        run: |
+          az group create --name "${{ github.event.inputs.resourceGroupName }}" --location "${{ github.event.inputs.location }}"
+          DEPLOYMENT=$(az deployment group create \
+            --resource-group "${{ github.event.inputs.resourceGroupName }}" \
+            --template-file infra/main.bicep \
+            --parameters @infra/main.parameters.json \
+            --query "properties.outputs" \
+            -o json)
+
+          echo "$DEPLOYMENT" > deployment-outputs.json
+          PROJECT_ENDPOINT=$(echo "$DEPLOYMENT" | jq -r '.foundryProjectEndpoint.value')
+          PROJECT_RESOURCE_ID=$(echo "$DEPLOYMENT" | jq -r '.foundryProjectResourceId.value')
+          MODEL_DEPLOYMENT=$(echo "$DEPLOYMENT" | jq -r '.modelDeploymentName.value')
+          MEMORY_STORE=$(echo "$DEPLOYMENT" | jq -r '.memoryStoreName.value')
+
+          cat > agent-provisioning/config/provisioning.local.json <<EOF
+          {
+            "ProjectEndpoint": "$PROJECT_ENDPOINT",
+            "FoundryProjectResourceId": "$PROJECT_RESOURCE_ID",
+            "ModelDeploymentName": "$MODEL_DEPLOYMENT",
+            "MemoryStoreName": "$MEMORY_STORE"
+          }
+          EOF
+
+      - name: Provision Foundry agents
+        shell: bash
+        run: |
+          dotnet run --project agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning -- \
+            --config agent-provisioning/config/provisioning.local.json \
+            --agents agent-provisioning/agents
+
+      - name: Publish deployment outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-outputs
+          path: deployment-outputs.json
