@@ -8,6 +8,7 @@ public static class LoanCaseMapper
     public static LoanCaseResponse ToResponse(LoanCaseState state) => new()
     {
         CaseId = state.CaseId,
+        ExecutionId = state.ExecutionId,
         Status = state.Status.ToString(),
         CurrentStep = state.CurrentStep.ToString(),
         PendingApproval = state.PendingApproval is null
@@ -29,6 +30,7 @@ public static class LoanCaseMapper
     public static LoanProgressResponse ToProgressResponse(LoanCaseState state) => new()
     {
         CaseId = state.CaseId,
+        ExecutionId = state.ExecutionId,
         Status = state.Status.ToString(),
         CurrentStep = state.CurrentStep.ToString(),
         PendingApproval = state.PendingApproval is null
@@ -44,24 +46,20 @@ public static class LoanCaseMapper
         LastUpdatedUtc = state.LastUpdatedUtc
     };
 
-    public static LoanApplicationInput ToApplicationInput(CreateLoanApplicationRequest request) => new()
-    {
-        ApplicantName = request.ApplicantName,
-        Email = request.Email,
-        RequestedAmount = request.RequestedAmount,
-        TermMonths = request.TermMonths,
-        AnnualIncome = request.AnnualIncome,
-        EmploymentStatus = request.EmploymentStatus,
-        PropertyAddress = request.PropertyAddress,
-        Notes = request.Notes
-    };
-
     public static DocumentReferenceResponse ToDocumentReference(StoredDocumentInfo document) => new()
     {
         Reference = document.Reference,
         FileName = document.FileName,
         ContentType = document.ContentType,
         UploadedAtUtc = document.UploadedAtUtc
+    };
+
+    public static StoredDocumentInfo ToStoredDocumentInfo(LoadedCaseDocument document) => new()
+    {
+        Reference = document.Reference,
+        FileName = document.FileName,
+        ContentType = document.ContentType,
+        UploadedAtUtc = document.LastModifiedUtc
     };
 
     private static AgentOutputsResponse ToAgentOutputs(LoanCaseState state) => new()

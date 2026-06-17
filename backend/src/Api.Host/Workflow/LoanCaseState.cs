@@ -4,7 +4,7 @@ public sealed class LoanCaseState
 {
     public required string CaseId { get; init; }
 
-    public required LoanApplicationInput Application { get; set; }
+    public required string ExecutionId { get; init; }
 
     public LoanCaseStatus Status { get; set; } = LoanCaseStatus.Pending;
 
@@ -40,27 +40,6 @@ public sealed class StoredDocumentInfo
     public required string ContentType { get; init; }
 
     public required DateTimeOffset UploadedAtUtc { get; init; }
-}
-
-public sealed class LoanApplicationInput
-{
-    public required string ApplicantName { get; init; }
-
-    public required string Email { get; init; }
-
-    public required decimal RequestedAmount { get; init; }
-
-    public required int TermMonths { get; init; }
-
-    public required decimal AnnualIncome { get; init; }
-
-    public required string EmploymentStatus { get; init; }
-
-    public required string PropertyAddress { get; init; }
-
-    public string? Notes { get; init; }
-
-    public List<string> DocumentReferences { get; } = [];
 }
 
 public sealed class PendingApprovalInfo

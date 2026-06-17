@@ -17,74 +17,25 @@ public sealed class LoanMortgageController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("applications")]
-    public ActionResult<LoanCaseResponse> CreateApplication([FromBody] CreateLoanApplicationRequest request)
-    {
-        try
-        {
-            LoanCaseResponse response = _workflowService.CreateCase(request);
-            return CreatedAtAction(nameof(GetApplicationAsync), new { caseId = response.CaseId }, response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to create loan application.");
-            return Problem(
-                detail: ex.Message,
-                title: "Loan application could not be created.",
-                statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
-    }
-
-    [HttpPost("applications/{caseId}/documents")]
-    [RequestSizeLimit(52_428_800)]
-    public async Task<ActionResult<UploadDocumentsResponse>> UploadDocumentsAsync(
-        string caseId,
-        [FromForm] IFormFileCollection files,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            UploadDocumentsResponse response = await _workflowService.UploadDocumentsAsync(
-                caseId,
-                files.ToArray(),
-                cancellationToken);
-
-            return Ok(response);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new ProblemDetailsResponse
-            {
-                Title = "Loan case not found.",
-                Detail = ex.Message
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new ProblemDetailsResponse
-            {
-                Title = "Documents cannot be uploaded.",
-                Detail = ex.Message
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to upload documents for case {CaseId}.", caseId);
-            return Problem(
-                detail: ex.Message,
-                title: "Document upload failed.",
-                statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
-    }
-
     [HttpPost("applications/{caseId}/workflow/start")]
     public async Task<ActionResult<LoanCaseResponse>> StartWorkflowAsync(
         string caseId,
         CancellationToken cancellationToken)
     {
+        string executionId = Guid.NewGuid().ToString("N");
+
         try
         {
-            LoanCaseResponse response = await _workflowService.StartWorkflowAsync(caseId, cancellationToken);
+            _logger.LogInformation(
+                "Starting workflow for case {CaseId} with execution {ExecutionId}.",
+                caseId,
+                executionId);
+
+            LoanCaseResponse response = await _workflowService.StartWorkflowAsync(
+                caseId,
+                executionId,
+                cancellationToken);
+
             return Ok(response);
         }
         catch (KeyNotFoundException ex)
@@ -105,7 +56,12 @@ public sealed class LoanMortgageController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start loan workflow for case {CaseId}.", caseId);
+            _logger.LogError(
+                ex,
+                "Failed to start loan workflow for case {CaseId} with execution {ExecutionId}.",
+                caseId,
+                executionId);
+
             return Problem(
                 detail: ex.Message,
                 title: "Loan workflow failed to start.",
@@ -113,50 +69,50 @@ public sealed class LoanMortgageController : ControllerBase
         }
     }
 
-    [HttpGet("applications/{caseId}")]
-    public ActionResult<LoanCaseResponse> GetApplicationAsync(string caseId)
+    [HttpGet("executions/{executionId}")]
+    public ActionResult<LoanCaseResponse> GetExecutionAsync(string executionId)
     {
         try
         {
-            return Ok(_workflowService.GetCase(caseId));
+            return Ok(_workflowService.GetExecution(executionId));
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new ProblemDetailsResponse
             {
-                Title = "Loan case not found.",
+                Title = "Workflow execution not found.",
                 Detail = ex.Message
             });
         }
     }
 
-    [HttpGet("applications/{caseId}/progress")]
-    public ActionResult<LoanProgressResponse> GetProgressAsync(string caseId)
+    [HttpGet("executions/{executionId}/progress")]
+    public ActionResult<LoanProgressResponse> GetProgressAsync(string executionId)
     {
         try
         {
-            return Ok(_workflowService.GetProgress(caseId));
+            return Ok(_workflowService.GetProgress(executionId));
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(new ProblemDetailsResponse
             {
-                Title = "Loan case not found.",
+                Title = "Workflow execution not found.",
                 Detail = ex.Message
             });
         }
     }
 
-    [HttpPost("applications/{caseId}/decisions")]
+    [HttpPost("executions/{executionId}/decisions")]
     public async Task<ActionResult<LoanCaseResponse>> SubmitDecisionAsync(
-        string caseId,
+        string executionId,
         [FromBody] HumanDecisionRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             LoanCaseResponse response = await _workflowService.SubmitDecisionAsync(
-                caseId,
+                executionId,
                 request,
                 cancellationToken);
 
@@ -166,7 +122,7 @@ public sealed class LoanMortgageController : ControllerBase
         {
             return NotFound(new ProblemDetailsResponse
             {
-                Title = "Loan case not found.",
+                Title = "Workflow execution not found.",
                 Detail = ex.Message
             });
         }
@@ -180,7 +136,7 @@ public sealed class LoanMortgageController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process human decision for case {CaseId}.", caseId);
+            _logger.LogError(ex, "Failed to process human decision for execution {ExecutionId}.", executionId);
             return Problem(
                 detail: ex.Message,
                 title: "Loan workflow failed after human decision.",

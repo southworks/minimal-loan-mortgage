@@ -5,19 +5,25 @@ using Microsoft.Extensions.Options;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
 
-public sealed class StoredDocumentReference
+public sealed class LoadedCaseDocument
 {
-    public required string Reference { get; init; }
-
     public required string FileName { get; init; }
 
     public required string ContentType { get; init; }
 
-    public required DateTimeOffset UploadedAtUtc { get; init; }
+    public required string BlobName { get; init; }
+
+    public required string Reference { get; init; }
+
+    public required BinaryData Content { get; init; }
+
+    public required DateTimeOffset LastModifiedUtc { get; init; }
 }
 
 public sealed class BlobDocumentStorageService
 {
+    private const string CaseRootPrefix = "cases";
+
     private readonly BlobContainerClient _containerClient;
     private readonly ILogger<BlobDocumentStorageService> _logger;
 
@@ -32,33 +38,53 @@ public sealed class BlobDocumentStorageService
         _containerClient = blobServiceClient.GetBlobContainerClient(storageOptions.ContainerName);
     }
 
-    public async Task<StoredDocumentReference> UploadAsync(
+    public static string GetCasePrefix(string caseId) => $"{CaseRootPrefix}/{caseId.Trim()}/";
+
+    public async Task<IReadOnlyList<LoadedCaseDocument>> LoadCaseDocumentsAsync(
         string caseId,
-        string fileName,
-        string contentType,
-        Stream content,
         CancellationToken cancellationToken)
     {
-        await _containerClient.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        string prefix = GetCasePrefix(caseId);
+        var documents = new List<LoadedCaseDocument>();
 
-        string blobName = $"{caseId}/{Guid.NewGuid():N}/{Path.GetFileName(fileName)}";
-        BlobClient blobClient = _containerClient.GetBlobClient(blobName);
-
-        await blobClient.UploadAsync(
-            content,
-            new BlobHttpHeaders { ContentType = contentType },
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        _logger.LogInformation("Uploaded document {FileName} for case {CaseId} to {BlobUri}.", fileName, caseId, blobClient.Uri);
-
-        return new StoredDocumentReference
+        await foreach (BlobItem blobItem in _containerClient
+                           .GetBlobsAsync(BlobTraits.None, BlobStates.None, prefix, cancellationToken)
+                           .ConfigureAwait(false))
         {
-            Reference = blobClient.Uri.ToString(),
-            FileName = fileName,
-            ContentType = contentType,
-            UploadedAtUtc = DateTimeOffset.UtcNow
-        };
+            if (blobItem.Properties.ContentLength == 0)
+            {
+                continue;
+            }
+
+            BlobClient blobClient = _containerClient.GetBlobClient(blobItem.Name);
+            BlobDownloadResult download = await blobClient
+                .DownloadContentAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            string fileName = Path.GetFileName(blobItem.Name);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                continue;
+            }
+
+            documents.Add(new LoadedCaseDocument
+            {
+                FileName = fileName,
+                ContentType = download.Details.ContentType ?? "application/octet-stream",
+                BlobName = blobItem.Name,
+                Reference = blobClient.Uri.ToString(),
+                Content = download.Content,
+                LastModifiedUtc = blobItem.Properties.LastModified ?? DateTimeOffset.UtcNow
+            });
+        }
+
+        _logger.LogInformation(
+            "Loaded {DocumentCount} document(s) for case {CaseId} from prefix {CasePrefix}.",
+            documents.Count,
+            caseId,
+            prefix);
+
+        return documents;
     }
 
     private static BlobServiceClient CreateBlobServiceClient(AzureBlobStorageOptions options)

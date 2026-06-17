@@ -18,7 +18,7 @@ public static class LoanWorkflowConstants
 
 public sealed class LoanMortgageWorkflowFactory
 {
-    public AgentWorkflow CreateWorkflow(FoundryAgents agents, string caseId)
+    public AgentWorkflow CreateWorkflow(FoundryAgents agents, string caseId, string executionId)
     {
         RequestPort approvalPort = RequestPort.Create<UnderwritingApprovalPrompt, UnderwritingApprovalDecision>(LoanWorkflowConstants.ApprovalPortId);
 
@@ -36,6 +36,7 @@ public sealed class LoanMortgageWorkflowFactory
                 var prompt = new UnderwritingApprovalPrompt
                 {
                     CaseId = caseId,
+                    ExecutionId = executionId,
                     Summary = "Underwriting completed. Review the recommendation before continuing to responsible AI and loan setup.",
                     UnderwritingOutput = underwritingOutput
                 };
@@ -79,7 +80,7 @@ public sealed class LoanMortgageWorkflowFactory
             .AddEdge(decisionExecutor, agents.ResponsibleAi)
             .AddEdge(agents.ResponsibleAi, agents.LoanSetup)
             .WithOutputFrom(agents.LoanSetup)
-            .WithName($"loan-mortgage-{caseId}")
+            .WithName($"loan-mortgage-{executionId}")
             .WithDescription("Loan and mortgage processing workflow with underwriting human approval.")
             .Build();
     }

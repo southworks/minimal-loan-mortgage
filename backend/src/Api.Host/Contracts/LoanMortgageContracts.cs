@@ -1,24 +1,5 @@
 namespace CohereLoanAndMortgage.Api.Host.Contracts;
 
-public sealed class CreateLoanApplicationRequest
-{
-    public required string ApplicantName { get; init; }
-
-    public required string Email { get; init; }
-
-    public required decimal RequestedAmount { get; init; }
-
-    public required int TermMonths { get; init; }
-
-    public required decimal AnnualIncome { get; init; }
-
-    public required string EmploymentStatus { get; init; }
-
-    public required string PropertyAddress { get; init; }
-
-    public string? Notes { get; init; }
-}
-
 public sealed class HumanDecisionRequest
 {
     public required string DecisionType { get; init; }
@@ -31,6 +12,8 @@ public sealed class HumanDecisionRequest
 public sealed class LoanCaseResponse
 {
     public required string CaseId { get; init; }
+
+    public required string ExecutionId { get; init; }
 
     public required string Status { get; init; }
 
@@ -53,6 +36,8 @@ public sealed class LoanProgressResponse
 {
     public required string CaseId { get; init; }
 
+    public required string ExecutionId { get; init; }
+
     public required string Status { get; init; }
 
     public required string CurrentStep { get; init; }
@@ -62,15 +47,6 @@ public sealed class LoanProgressResponse
     public required IReadOnlyList<TimelineEntryResponse> Timeline { get; init; }
 
     public required DateTimeOffset LastUpdatedUtc { get; init; }
-}
-
-public sealed class UploadDocumentsResponse
-{
-    public required string CaseId { get; init; }
-
-    public required IReadOnlyList<DocumentReferenceResponse> UploadedDocuments { get; init; }
-
-    public required IReadOnlyList<DocumentReferenceResponse> AllDocuments { get; init; }
 }
 
 public sealed class DocumentReferenceResponse

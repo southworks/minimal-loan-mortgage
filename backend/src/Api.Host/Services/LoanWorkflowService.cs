@@ -30,127 +30,63 @@ public sealed class LoanWorkflowService
         _logger = logger;
     }
 
-    public LoanCaseResponse CreateCase(CreateLoanApplicationRequest request)
-    {
-        string caseId = Guid.NewGuid().ToString("N");
-        LoanApplicationInput application = LoanCaseMapper.ToApplicationInput(request);
-
-        var state = new LoanCaseState
-        {
-            CaseId = caseId,
-            Application = application,
-            Status = LoanCaseStatus.Pending,
-            CurrentStep = LoanWorkflowStep.Submitted
-        };
-
-        AddTimeline(state, LoanWorkflowStep.Submitted, "Loan application created.");
-
-        var record = new LoanCaseRecord { State = state };
-        _caseStore.Save(record);
-
-        return LoanCaseMapper.ToResponse(state);
-    }
-
-    public async Task<UploadDocumentsResponse> UploadDocumentsAsync(
+    public async Task<LoanCaseResponse> StartWorkflowAsync(
         string caseId,
-        IReadOnlyList<IFormFile> files,
+        string executionId,
         CancellationToken cancellationToken)
     {
-        LoanCaseRecord record = _caseStore.GetRequired(caseId);
-
-        if (record.State.Status != LoanCaseStatus.Pending)
+        if (string.IsNullOrWhiteSpace(caseId))
         {
-            throw new InvalidOperationException(
-                $"Case '{caseId}' cannot accept documents in status '{record.State.Status}'. Documents may only be uploaded before the workflow starts.");
+            throw new InvalidOperationException("CaseId is required.");
         }
 
-        if (files.Count == 0)
+        if (string.IsNullOrWhiteSpace(executionId))
         {
-            throw new InvalidOperationException("At least one document file is required.");
+            throw new InvalidOperationException("ExecutionId is required.");
         }
 
-        var uploaded = new List<DocumentReferenceResponse>();
+        LoanCaseRecord record = CreateBootstrapRecord(caseId, executionId);
 
-        foreach (IFormFile file in files)
+        _logger.LogInformation(
+            "Bootstrapped execution {ExecutionId} for case {CaseId}. Loading documents from prefix {CasePrefix}.",
+            executionId,
+            caseId,
+            BlobDocumentStorageService.GetCasePrefix(caseId));
+
+        IReadOnlyList<LoadedCaseDocument> loadedDocuments =
+            await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
+
+        if (loadedDocuments.Count == 0)
         {
-            if (file.Length == 0)
-            {
-                throw new InvalidOperationException($"File '{file.FileName}' is empty.");
-            }
-
-            await using Stream stream = file.OpenReadStream();
-            StoredDocumentReference stored = await _documentStorage.UploadAsync(
-                caseId,
-                file.FileName,
-                file.ContentType,
-                stream,
-                cancellationToken).ConfigureAwait(false);
-
-            var documentInfo = new StoredDocumentInfo
-            {
-                Reference = stored.Reference,
-                FileName = stored.FileName,
-                ContentType = stored.ContentType,
-                UploadedAtUtc = stored.UploadedAtUtc
-            };
-
-            record.State.Documents.Add(documentInfo);
-            record.State.Application.DocumentReferences.Add(stored.Reference);
-            uploaded.Add(LoanCaseMapper.ToDocumentReference(documentInfo));
+            throw new KeyNotFoundException(
+                $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'.");
         }
 
-        record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
-        AddTimeline(record.State, LoanWorkflowStep.Submitted, $"{uploaded.Count} document(s) uploaded.");
-        _caseStore.Save(record);
-
-        return new UploadDocumentsResponse
-        {
-            CaseId = caseId,
-            UploadedDocuments = uploaded,
-            AllDocuments = record.State.Documents.Select(LoanCaseMapper.ToDocumentReference).ToArray()
-        };
-    }
-
-    public async Task<LoanCaseResponse> StartWorkflowAsync(string caseId, CancellationToken cancellationToken)
-    {
-        LoanCaseRecord record = _caseStore.GetRequired(caseId);
-
-        if (record.State.Status != LoanCaseStatus.Pending)
-        {
-            throw new InvalidOperationException(
-                $"Case '{caseId}' cannot start workflow in status '{record.State.Status}'.");
-        }
-
-        if (record.State.Documents.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"Case '{caseId}' has no uploaded documents. Upload documents before starting the workflow.");
-        }
-
+        RefreshCaseDocuments(record, loadedDocuments);
         record.State.Status = LoanCaseStatus.Running;
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
-        AddTimeline(record.State, LoanWorkflowStep.Submitted, "Workflow started.");
+        AddTimeline(record.State, LoanWorkflowStep.Submitted, $"Workflow started with {loadedDocuments.Count} document(s).");
         _caseStore.Save(record);
 
         FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken);
-        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, caseId);
+        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, caseId, executionId);
         CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
-        List<ChatMessage> input = CreateInitialMessages(record.State);
+        List<ChatMessage> input = CreateInitialMessages(caseId, executionId, loadedDocuments);
 
-        await ProcessRunAsync(record, workflow, checkpointManager, input, caseId, cancellationToken)
+        await ProcessRunAsync(record, workflow, checkpointManager, input, executionId, cancellationToken)
             .ConfigureAwait(false);
 
         return LoanCaseMapper.ToResponse(record.State);
     }
 
-    public LoanCaseResponse GetCase(string caseId) =>
-        LoanCaseMapper.ToResponse(_caseStore.GetRequired(caseId).State);
+    public LoanCaseResponse GetExecution(string executionId) =>
+        LoanCaseMapper.ToResponse(_caseStore.GetRequired(executionId).State);
 
-    public LoanProgressResponse GetProgress(string caseId) =>
-        LoanCaseMapper.ToProgressResponse(_caseStore.GetRequired(caseId).State);
+    public LoanProgressResponse GetProgress(string executionId) =>
+        LoanCaseMapper.ToProgressResponse(_caseStore.GetRequired(executionId).State);
 
     public async Task<LoanCaseResponse> SubmitDecisionAsync(
-        string caseId,
+        string executionId,
         HumanDecisionRequest request,
         CancellationToken cancellationToken)
     {
@@ -160,22 +96,25 @@ public sealed class LoanWorkflowService
                 $"Decision type '{request.DecisionType}' is not supported. Supported types: {ApprovalType.Underwriting}.");
         }
 
-        LoanCaseRecord record = _caseStore.GetRequired(caseId);
+        LoanCaseRecord record = _caseStore.GetRequired(executionId);
 
         if (record.State.Status != LoanCaseStatus.WaitingForHuman)
         {
             throw new InvalidOperationException(
-                $"Case '{caseId}' is not waiting for human approval. Current status: {record.State.Status}.");
+                $"Execution '{executionId}' is not waiting for human approval. Current status: {record.State.Status}.");
         }
 
         if (record.PendingCheckpoint is null)
         {
             throw new InvalidOperationException(
-                $"Case '{caseId}' does not have a saved workflow checkpoint and cannot continue.");
+                $"Execution '{executionId}' does not have a saved workflow checkpoint and cannot continue.");
         }
 
         FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken);
-        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, caseId);
+        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+            agents,
+            record.State.CaseId,
+            record.State.ExecutionId);
         CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
 
         await using StreamingRun run = await InProcessExecution
@@ -248,6 +187,29 @@ public sealed class LoanWorkflowService
         return LoanCaseMapper.ToResponse(record.State);
     }
 
+    private static LoanCaseRecord CreateBootstrapRecord(string caseId, string executionId)
+    {
+        var state = new LoanCaseState
+        {
+            CaseId = caseId.Trim(),
+            ExecutionId = executionId,
+            Status = LoanCaseStatus.Pending,
+            CurrentStep = LoanWorkflowStep.Submitted
+        };
+
+        return new LoanCaseRecord { State = state };
+    }
+
+    private static void RefreshCaseDocuments(LoanCaseRecord record, IReadOnlyList<LoadedCaseDocument> loadedDocuments)
+    {
+        record.State.Documents.Clear();
+
+        foreach (LoadedCaseDocument document in loadedDocuments)
+        {
+            record.State.Documents.Add(LoanCaseMapper.ToStoredDocumentInfo(document));
+        }
+    }
+
     private async Task ProcessRunAsync(
         LoanCaseRecord record,
         AgentWorkflow workflow,
@@ -314,7 +276,10 @@ public sealed class LoanWorkflowService
                     RecommendedAction = "Review the underwriting output and approve or reject to continue."
                 };
                 AddTimeline(record.State, LoanWorkflowStep.WaitingForHumanApproval, "Waiting for human underwriting approval.");
-                _logger.LogInformation("Case {CaseId} paused for underwriting approval.", record.State.CaseId);
+                _logger.LogInformation(
+                    "Case {CaseId} execution {ExecutionId} paused for underwriting approval.",
+                    record.State.CaseId,
+                    record.State.ExecutionId);
                 break;
 
             case WorkflowOutputEvent outputEvent when outputEvent.Data is UnderwritingApprovalDecision decision && !decision.Approved:
@@ -378,27 +343,50 @@ public sealed class LoanWorkflowService
         AddTimeline(record.State, LoanWorkflowStep.Failed, reason);
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         _caseStore.Save(record);
-        _logger.LogError("Case {CaseId} failed: {Reason}", record.State.CaseId, reason);
+        _logger.LogError(
+            "Case {CaseId} execution {ExecutionId} failed: {Reason}",
+            record.State.CaseId,
+            record.State.ExecutionId,
+            reason);
     }
 
-    private static List<ChatMessage> CreateInitialMessages(LoanCaseState state)
+    private static List<ChatMessage> CreateInitialMessages(
+        string caseId,
+        string executionId,
+        IReadOnlyList<LoadedCaseDocument> documents)
     {
         var payload = new
         {
-            caseId = state.CaseId,
-            application = state.Application,
-            documentReferences = state.Application.DocumentReferences
+            caseId,
+            executionId,
+            documents = documents.Select(document => new
+            {
+                fileName = document.FileName,
+                contentType = document.ContentType,
+                blobName = document.BlobName,
+                content = FormatDocumentContent(document)
+            })
         };
 
         string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
         string prompt =
             """
-            Process this loan application using the provided document references. Each agent step must return JSON with summary, decision, evidence, and optional memoryUpdates.
+            Process this loan case using the loaded documents below. Documents were loaded once from Blob Storage at workflow start. Only the document-processing step should consume raw document content. Later steps must use processed outputs only. Each agent step must return JSON with summary, decision, evidence, and optional memoryUpdates. Use executionId for any unique indexing or embedding identity.
 
             Case payload:
             """ + json;
 
         return [new ChatMessage(ChatRole.User, prompt)];
+    }
+
+    private static string FormatDocumentContent(LoadedCaseDocument document)
+    {
+        if (document.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
+        {
+            return document.Content.ToString();
+        }
+
+        return Convert.ToBase64String(document.Content.ToArray());
     }
 
     private static void AddTimeline(LoanCaseState state, LoanWorkflowStep step, string message) =>

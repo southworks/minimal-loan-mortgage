@@ -14,20 +14,20 @@ public sealed class LoanCaseRecord
 
 public sealed class InMemoryLoanCaseStore
 {
-    private readonly Dictionary<string, LoanCaseRecord> _cases = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LoanCaseRecord> _executions = new(StringComparer.OrdinalIgnoreCase);
 
-    public void Save(LoanCaseRecord record) => _cases[record.State.CaseId] = record;
+    public void Save(LoanCaseRecord record) => _executions[record.State.ExecutionId] = record;
 
-    public LoanCaseRecord GetRequired(string caseId)
+    public LoanCaseRecord GetRequired(string executionId)
     {
-        if (_cases.TryGetValue(caseId, out LoanCaseRecord? record))
+        if (_executions.TryGetValue(executionId, out LoanCaseRecord? record))
         {
             return record;
         }
 
-        throw new KeyNotFoundException($"Loan case '{caseId}' was not found.");
+        throw new KeyNotFoundException($"Workflow execution '{executionId}' was not found.");
     }
 
-    public bool TryGet(string caseId, out LoanCaseRecord? record) =>
-        _cases.TryGetValue(caseId, out record);
+    public bool TryGet(string executionId, out LoanCaseRecord? record) =>
+        _executions.TryGetValue(executionId, out record);
 }
