@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "allowedWrites": [
+    "normalized document facts",
+    "recurring document quality observations"
+  ],
+  "readScopes": [
+    "case context",
+    "prior document observations"
+  ],
+  "forbiddenWrites": [
+    "case status",
+    "workflow checkpoints",
+    "approval state",
+    "authoritative case record"
+  ]
+}

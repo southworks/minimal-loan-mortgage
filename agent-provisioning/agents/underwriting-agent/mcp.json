@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    {
+      "connectionName": "underwriting-rules-mcp",
+      "serverLabel": "underwriting-rules",
+      "required": false
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "allowedWrites": [
+    "reusable underwriting observations",
+    "risk pattern observations"
+  ],
+  "readScopes": [
+    "case context",
+    "prior document observations",
+    "prior underwriting observations"
+  ],
+  "forbiddenWrites": [
+    "case status",
+    "workflow checkpoints",
+    "approval state",
+    "authoritative case record"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    {
+      "connectionName": "document-retrieval-mcp",
+      "serverLabel": "document-retrieval",
+      "required": true
+    }
+  ]
+}

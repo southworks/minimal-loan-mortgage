@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "allowedWrites": [
+    "operational summaries",
+    "setup readiness observations"
+  ],
+  "readScopes": [
+    "case context",
+    "prior operational summaries"
+  ],
+  "forbiddenWrites": [
+    "case status",
+    "workflow checkpoints",
+    "approval state",
+    "authoritative case record"
+  ]
+}

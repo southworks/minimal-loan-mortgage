@@ -1,0 +1,13 @@
+{
+  "name": "underwriting-agent",
+  "instructionsFile": "instructions.md",
+  "outputSchemaFile": "../../shared/agent-structured-output.schema.json",
+  "allowedDecisions": [
+    "Approve",
+    "Conditionally Approve",
+    "Refer for Manual Review",
+    "Reject",
+    "High Risk",
+    "Insufficient Information"
+  ]
+}

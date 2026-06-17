@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Concise explanation of the step outcome."
+    },
+    "decision": {
+      "type": "string",
+      "description": "The agent recommendation or outcome."
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Key facts or rationale supporting the decision."
+    },
+    "memoryUpdates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional memory-oriented updates."
+    }
+  },
+  "required": [
+    "summary",
+    "decision",
+    "evidence"
+  ]
+}

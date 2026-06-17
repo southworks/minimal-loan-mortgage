@@ -4,6 +4,8 @@ Educational ASP.NET Core Web API that demonstrates a thin orchestration layer ov
 
 The API does **not** provision agents, configure prompts/models, implement MCP services, or duplicate Foundry capabilities. It assumes those components already exist.
 
+Agent provisioning lives in [agent-provisioning/README.md](agent-provisioning/README.md).
+
 ## Prerequisites
 
 - .NET 9 SDK
