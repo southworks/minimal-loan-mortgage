@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-012",
+    "document_id":  "APP-012-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-02-23",
+    "source_system":  "property_record",
+    "property_address":  "1406 Fremont Ave, Portland, OR 97227",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  690000
+}

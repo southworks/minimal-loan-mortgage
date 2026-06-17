@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Sofia Alvarez
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $28,350.00
+  Total Deposits    : $10,333.33
+  Ending Balance    : $33,383.33
+  Average Balance   : $30,866.66
+
+TRANSACTIONS
+  2025-12-25  Payroll                          +$5,166.66
+  2026-01-06  Payroll                          +$5,166.66
+  2026-01-02  Housing expense                  $-2,200.00
+  2026-01-03  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,32 @@
+﻿{
+    "application_id":  "APP-016",
+    "document_id":  "APP-016-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-03-11",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  558000,
+    "purchase_price":  620000,
+    "down_payment":  62000,
+    "interest_rate_estimate":  6.1,
+    "borrower":  {
+                     "full_name":  "Jacob Miller",
+                     "date_of_birth":  "1986-01-05",
+                     "current_address":  "330 Riverstone Dr, Columbus, OH 43215"
+                 },
+    "co_borrower":  null,
+    "property":  {
+                     "address":  "330 Riverstone Dr, Columbus, OH 43215",
+                     "city":  "Columbus",
+                     "state":  "OH",
+                     "property_type":  "single_family"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  12083,
+                                "existing_monthly_debt":  2600,
+                                "liquid_assets":  100440
+                            }
+}

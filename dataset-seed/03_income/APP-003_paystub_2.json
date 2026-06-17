@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-003",
+    "document_id":  "APP-003-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-04",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Mia Thompson",
+    "employer":  "BlueWave Medical",
+    "pay_date":  "2026-01-04",
+    "gross_pay":  5250,
+    "net_pay":  3780.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2025-12-22",
+    "pay_period_end":  "2026-01-04",
+    "ytd_gross":  21000
+}

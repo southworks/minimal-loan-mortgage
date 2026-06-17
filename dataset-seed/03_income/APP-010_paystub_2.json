@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-010",
+    "document_id":  "APP-010-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-02-01",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Benjamin Flores",
+    "employer":  "Twin Rivers Manufacturing",
+    "pay_date":  "2026-02-01",
+    "gross_pay":  6333.33,
+    "net_pay":  4560.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-19",
+    "pay_period_end":  "2026-02-01",
+    "ytd_gross":  25333.32
+}

@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-003",
+    "document_id":  "APP-003-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-01-08",
+    "source_system":  "appraisal_report",
+    "property_address":  "1209 Palm View Dr, Tampa, FL 33609",
+    "property_type":  "condo",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  460000,
+    "appraised_value":  472000,
+    "calculated_ltv":  73.1,
+    "condition_rating":  "C3"
+}

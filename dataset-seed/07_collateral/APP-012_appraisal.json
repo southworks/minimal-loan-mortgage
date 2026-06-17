@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-012",
+    "document_id":  "APP-012-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-02-13",
+    "source_system":  "appraisal_report",
+    "property_address":  "1406 Fremont Ave, Portland, OR 97227",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  690000,
+    "appraised_value":  705000,
+    "calculated_ltv":  73.4,
+    "condition_rating":  "C3"
+}

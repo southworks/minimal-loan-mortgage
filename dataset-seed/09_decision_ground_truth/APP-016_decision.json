@@ -1,0 +1,24 @@
+﻿{
+    "application_id":  "APP-016",
+    "document_id":  "APP-016-DEC-001",
+    "document_type":  "decision_ground_truth",
+    "document_date":  "2026-03-11",
+    "source_system":  "underwriting_ground_truth",
+    "expected_decision":  "deny",
+    "primary_reason":  "ltv_above_policy_limit",
+    "required_human_review":  false,
+    "risk_flags":  [
+                       "insufficient_appraisal_for_ltv"
+                   ],
+    "top_policy_refs":  [
+                            "UW-100",
+                            "CR-210",
+                            "IN-330",
+                            "CL-125",
+                            "ID-150"
+                        ],
+    "summary_explanation":  "Application breaches a hard policy threshold that the MVP treats as non-approvable.",
+    "secondary_reasons":  [
+                              "appraised_value_below_loan_support_requirement"
+                          ]
+}

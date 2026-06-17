@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-11
+========================
+Account Holder : Noah Rivera
+Statement Date : November 28, 2025
+Period         : 2025-11
+
+SUMMARY
+  Beginning Balance : $35,700.00
+  Total Deposits    : $14,000.00
+  Ending Balance    : $43,700.00
+  Average Balance   : $39,700.00
+
+TRANSACTIONS
+  2025-11-09  Payroll                          +$7,000.00
+  2025-11-21  Payroll                          +$7,000.00
+  2025-11-17  Housing expense                  $-2,200.00
+  2025-11-18  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

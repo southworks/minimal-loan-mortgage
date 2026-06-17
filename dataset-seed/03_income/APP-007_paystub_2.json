@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-007",
+    "document_id":  "APP-007-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-20",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Isabella Nguyen",
+    "employer":  "Northwest Cloud Labs",
+    "pay_date":  "2026-01-20",
+    "gross_pay":  7333.33,
+    "net_pay":  5280.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-07",
+    "pay_period_end":  "2026-01-20",
+    "ytd_gross":  29333.32
+}

@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-001",
+    "document_id":  "APP-001-INC-001",
+    "document_type":  "paystub",
+    "document_date":  "2025-12-13",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Olivia Bennett",
+    "employer":  "Frontier Health Systems",
+    "pay_date":  "2025-12-13",
+    "gross_pay":  5750,
+    "net_pay":  4140.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2025-11-30",
+    "pay_period_end":  "2025-12-13",
+    "ytd_gross":  17250
+}

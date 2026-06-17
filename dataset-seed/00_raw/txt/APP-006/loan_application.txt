@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-006
+Application Date : January 30, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $427,500.00
+  Purchase Price   : $570,000.00
+  Down Payment     : $142,500.00
+  Est. Interest    : 6.1%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Liam Brooks
+  Date of Birth  : July 25, 1987
+  Current Address: 1775 Pinecrest Rd, Charlotte, NC 28207
+
+PROPERTY
+  Address        : 1775 Pinecrest Rd, Charlotte, NC 28207
+  City / State   : Charlotte, NC
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $12,333.00
+  Monthly Debt   : $2,200.00
+  Liquid Assets  : $76,950.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

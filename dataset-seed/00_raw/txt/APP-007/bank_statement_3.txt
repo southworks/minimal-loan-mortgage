@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Isabella Nguyen
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $37,800.00
+  Total Deposits    : $14,666.67
+  Ending Balance    : $46,166.67
+  Average Balance   : $41,983.34
+
+TRANSACTIONS
+  2025-11-20  Payroll                          +$7,333.34
+  2025-12-02  Payroll                          +$7,333.34
+  2025-11-28  Housing expense                  $-2,200.00
+  2025-11-29  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

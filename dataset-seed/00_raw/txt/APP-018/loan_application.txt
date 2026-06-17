@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-018
+Application Date : March 19, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $360,000.00
+  Purchase Price   : $480,000.00
+  Down Payment     : $120,000.00
+  Est. Interest    : 6.3%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : William Cooper
+  Date of Birth  : June 13, 1985
+  Current Address: 1451 Garden Loop, Orlando, FL 32804
+
+PROPERTY
+  Address        : 1451 Garden Loop, Orlando, FL 32804
+  City / State   : Orlando, FL
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $11,167.00
+  Monthly Debt   : $2,300.00
+  Liquid Assets  : $64,800.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

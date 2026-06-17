@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-018",
+    "document_id":  "APP-018-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-03-09",
+    "source_system":  "appraisal_report",
+    "property_address":  "1451 Garden Loop, Orlando, FL 32804",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  480000,
+    "appraised_value":  490000,
+    "calculated_ltv":  73.5,
+    "condition_rating":  "C3"
+}

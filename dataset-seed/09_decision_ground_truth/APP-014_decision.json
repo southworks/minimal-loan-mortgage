@@ -1,0 +1,24 @@
+﻿{
+    "application_id":  "APP-014",
+    "document_id":  "APP-014-DEC-001",
+    "document_type":  "decision_ground_truth",
+    "document_date":  "2026-03-03",
+    "source_system":  "underwriting_ground_truth",
+    "expected_decision":  "deny",
+    "primary_reason":  "dti_above_policy_limit",
+    "required_human_review":  false,
+    "risk_flags":  [
+                       "low_score_or_high_dti"
+                   ],
+    "top_policy_refs":  [
+                            "UW-100",
+                            "CR-210",
+                            "IN-330",
+                            "CL-125",
+                            "ID-150"
+                        ],
+    "summary_explanation":  "Application breaches a hard policy threshold that the MVP treats as non-approvable.",
+    "secondary_reasons":  [
+                              "monthly_debt_overextended"
+                          ]
+}

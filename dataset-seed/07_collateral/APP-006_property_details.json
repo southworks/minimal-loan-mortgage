@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-006",
+    "document_id":  "APP-006-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-01-30",
+    "source_system":  "property_record",
+    "property_address":  "1775 Pinecrest Rd, Charlotte, NC 28207",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  570000
+}

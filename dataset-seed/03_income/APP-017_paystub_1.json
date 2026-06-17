@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-017",
+    "document_id":  "APP-017-INC-001",
+    "document_type":  "paystub",
+    "document_date":  "2026-02-15",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Amelia Price",
+    "employer":  "Triangle Analytics",
+    "pay_date":  "2026-02-15",
+    "gross_pay":  5375,
+    "net_pay":  3870.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-02-02",
+    "pay_period_end":  "2026-02-15",
+    "ytd_gross":  16125
+}

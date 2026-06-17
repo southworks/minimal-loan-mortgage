@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-014
+Application Date : March 03, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $307,500.00
+  Purchase Price   : $410,000.00
+  Down Payment     : $102,500.00
+  Est. Interest    : 6.4%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Michael Torres
+  Date of Birth  : April 09, 1982
+  Current Address: 1810 Ridgeview Ct, Las Vegas, NV 89117
+
+PROPERTY
+  Address        : 1810 Ridgeview Ct, Las Vegas, NV 89117
+  City / State   : Las Vegas, NV
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $8,500.00
+  Monthly Debt   : $4,700.00
+  Liquid Assets  : $55,350.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

@@ -1,0 +1,33 @@
+﻿{
+    "application_id":  "APP-020",
+    "document_id":  "APP-020-CRD-001",
+    "document_type":  "credit_report",
+    "document_date":  "2026-03-27",
+    "source_system":  "credit_bureau",
+    "party_role":  "borrower",
+    "borrower_name":  "Alexander Ward",
+    "credit_score":  684,
+    "credit_utilization":  41,
+    "monthly_debt_obligations":  4300,
+    "delinquencies_12m":  0,
+    "recent_inquiries":  3,
+    "tradelines":  [
+                       {
+                           "type":  "auto_loan",
+                           "status":  "current",
+                           "balance":  12400
+                       },
+                       {
+                           "type":  "credit_card",
+                           "status":  "current",
+                           "balance":  7600
+                       },
+                       {
+                           "type":  "student_loan",
+                           "status":  "current",
+                           "balance":  18400
+                       }
+                   ],
+    "collections_flag":  false,
+    "bankruptcy_flag":  false
+}

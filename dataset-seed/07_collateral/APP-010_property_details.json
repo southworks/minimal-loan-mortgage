@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-010",
+    "document_id":  "APP-010-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-02-15",
+    "source_system":  "property_record",
+    "property_address":  "901 Lakeview Road, Minneapolis, MN 55416",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  530000
+}

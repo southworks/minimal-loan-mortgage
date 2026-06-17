@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-006",
+    "document_id":  "APP-006-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-16",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Liam Brooks",
+    "employer":  "Apex Utility Services",
+    "pay_date":  "2026-01-16",
+    "gross_pay":  6166.67,
+    "net_pay":  4440.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-03",
+    "pay_period_end":  "2026-01-16",
+    "ytd_gross":  24666.68
+}

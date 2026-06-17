@@ -1,0 +1,15 @@
+﻿{
+    "application_id":  "APP-009",
+    "document_id":  "APP-009-EMP-001",
+    "document_type":  "employment_verification",
+    "document_date":  "2026-02-11",
+    "source_system":  "employer_verification",
+    "party_role":  "borrower",
+    "employee_name":  "Charlotte Morgan",
+    "employer":  "Harbor Advisory Partners",
+    "employment_status":  "full_time",
+    "hire_date":  "2022-07-11",
+    "base_salary_annual":  142000,
+    "job_title":  "Risk Analyst",
+    "bonus_annual":  7000
+}

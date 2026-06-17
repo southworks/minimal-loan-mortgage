@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Emily Reed
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $22,575.00
+  Total Deposits    : $9,833.33
+  Ending Balance    : $26,908.33
+  Average Balance   : $24,741.66
+
+TRANSACTIONS
+  2025-12-14  Payroll                          +$4,916.66
+  2025-12-26  Payroll                          +$4,916.66
+  2025-12-22  Housing expense                  $-2,200.00
+  2025-12-23  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

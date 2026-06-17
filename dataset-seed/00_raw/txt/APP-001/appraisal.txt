@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : December 31, 2025
+Property Type  : Single Family
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  2211 Birch Court, Denver, CO 80211
+
+VALUATION
+  Purchase Price   : $520,000.00
+  Appraised Value  : $535,000.00
+  Calculated LTV   : 72.9%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

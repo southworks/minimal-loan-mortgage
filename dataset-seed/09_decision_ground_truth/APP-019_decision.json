@@ -1,0 +1,31 @@
+﻿{
+    "application_id":  "APP-019",
+    "document_id":  "APP-019-DEC-001",
+    "document_type":  "decision_ground_truth",
+    "document_date":  "2026-03-23",
+    "source_system":  "underwriting_ground_truth",
+    "expected_decision":  "manual_review",
+    "primary_reason":  "employment_tenure_borderline",
+    "required_human_review":  true,
+    "risk_flags":  [
+                       "employment_tenure_short",
+                       "income_mismatch",
+                       "address_mismatch",
+                       "low_score_or_high_dti"
+                   ],
+    "top_policy_refs":  [
+                            "UW-100",
+                            "CR-210",
+                            "IN-330",
+                            "CL-125",
+                            "ID-150",
+                            "MR-001"
+                        ],
+    "summary_explanation":  "Application is plausible but contains discrepancies or borderline attributes that require analyst review.",
+    "secondary_reasons":  [
+                              "tenure_less_than_12_months",
+                              "identity_address_differs_from_application",
+                              "verified_income_below_declared_income",
+                              "score_in_caution_band"
+                          ]
+}

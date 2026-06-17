@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-007",
+    "document_id":  "APP-007-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-02-03",
+    "source_system":  "property_record",
+    "property_address":  "9924 Aurora Heights, Seattle, WA 98115",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  720000
+}

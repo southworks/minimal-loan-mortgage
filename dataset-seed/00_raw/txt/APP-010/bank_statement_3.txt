@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Benjamin Flores
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $27,825.00
+  Total Deposits    : $12,666.67
+  Ending Balance    : $34,791.67
+  Average Balance   : $31,308.34
+
+TRANSACTIONS
+  2025-12-02  Payroll                          +$6,333.34
+  2025-12-14  Payroll                          +$6,333.34
+  2025-12-10  Housing expense                  $-2,200.00
+  2025-12-11  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

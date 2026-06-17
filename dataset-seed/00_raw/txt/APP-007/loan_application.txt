@@ -1,0 +1,35 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-007
+Application Date : February 03, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $540,000.00
+  Purchase Price   : $720,000.00
+  Down Payment     : $180,000.00
+  Est. Interest    : 6.2%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Isabella Nguyen
+  Date of Birth  : February 14, 1989
+  Current Address: 52 Elm Point, Seattle, WA 98109
+
+CO-BORROWER INFORMATION
+  Full Name      : Lucas Nguyen
+
+PROPERTY
+  Address        : 9924 Aurora Heights, Seattle, WA 98115
+  City / State   : Seattle, WA
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $14,667.00
+  Monthly Debt   : $2,900.00
+  Liquid Assets  : $97,200.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Liam Brooks
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $21,375.00
+  Total Deposits    : $12,333.33
+  Ending Balance    : $28,108.33
+  Average Balance   : $24,741.66
+
+TRANSACTIONS
+  2026-01-17  Payroll                          +$6,166.66
+  2026-01-29  Payroll                          +$6,166.66
+  2026-01-25  Housing expense                  $-2,200.00
+  2026-01-26  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

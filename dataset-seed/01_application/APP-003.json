@@ -1,0 +1,32 @@
+﻿{
+    "application_id":  "APP-003",
+    "document_id":  "APP-003-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-01-18",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  345000,
+    "purchase_price":  460000,
+    "down_payment":  115000,
+    "interest_rate_estimate":  6.3,
+    "borrower":  {
+                     "full_name":  "Mia Thompson",
+                     "date_of_birth":  "1990-01-27",
+                     "current_address":  "46 Harbor Street, Tampa, FL 33602"
+                 },
+    "co_borrower":  null,
+    "property":  {
+                     "address":  "1209 Palm View Dr, Tampa, FL 33609",
+                     "city":  "Tampa",
+                     "state":  "FL",
+                     "property_type":  "condo"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  10500,
+                                "existing_monthly_debt":  1750,
+                                "liquid_assets":  62100
+                            }
+}

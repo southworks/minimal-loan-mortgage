@@ -1,0 +1,13 @@
+﻿{
+    "application_id":  "APP-010",
+    "document_id":  "APP-010-ID-001",
+    "document_type":  "drivers_license",
+    "document_date":  "2026-01-15",
+    "source_system":  "identity_document",
+    "party_role":  "borrower",
+    "full_name":  "Benjamin Flores",
+    "date_of_birth":  "1983-10-08",
+    "address":  "901 Lakeview Road, Minneapolis, MN 55416",
+    "document_number":  "D100243",
+    "expiry_date":  "2030-01-15"
+}

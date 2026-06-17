@@ -1,0 +1,13 @@
+﻿{
+    "application_id":  "APP-015",
+    "document_id":  "APP-015-ID-001",
+    "document_type":  "drivers_license",
+    "document_date":  "2026-01-15",
+    "source_system":  "identity_document",
+    "party_role":  "borrower",
+    "full_name":  "Sofia Alvarez",
+    "date_of_birth":  "1991-12-11",
+    "address":  "22 Del Mar Ave, San Diego, CA 92107",
+    "document_number":  "D100248",
+    "expiry_date":  "2030-01-15"
+}

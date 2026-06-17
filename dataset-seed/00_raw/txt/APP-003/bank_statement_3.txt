@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-11
+========================
+Account Holder : Mia Thompson
+Statement Date : November 28, 2025
+Period         : 2025-11
+
+SUMMARY
+  Beginning Balance : $24,150.00
+  Total Deposits    : $10,500.00
+  Ending Balance    : $29,500.00
+  Average Balance   : $26,825.00
+
+TRANSACTIONS
+  2025-11-05  Payroll                          +$5,250.00
+  2025-11-17  Payroll                          +$5,250.00
+  2025-11-13  Housing expense                  $-2,200.00
+  2025-11-14  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-017",
+    "document_id":  "APP-017-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-03-15",
+    "source_system":  "property_record",
+    "property_address":  "604 Birch Terrace, Raleigh, NC 27608",
+    "property_type":  "townhome",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  500000
+}

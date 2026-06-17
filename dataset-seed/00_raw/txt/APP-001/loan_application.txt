@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-001
+Application Date : January 10, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $390,000.00
+  Purchase Price   : $520,000.00
+  Down Payment     : $130,000.00
+  Est. Interest    : 6.1%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Olivia Bennett
+  Date of Birth  : April 12, 1988
+  Current Address: 114 Cedar Lane, Denver, CO 80206
+
+PROPERTY
+  Address        : 2211 Birch Court, Denver, CO 80211
+  City / State   : Denver, CO
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $11,500.00
+  Monthly Debt   : $2,100.00
+  Liquid Assets  : $70,200.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

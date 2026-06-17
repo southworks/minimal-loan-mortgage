@@ -1,0 +1,25 @@
+﻿{
+    "application_id":  "APP-017",
+    "document_id":  "APP-017-DEC-001",
+    "document_type":  "decision_ground_truth",
+    "document_date":  "2026-03-15",
+    "source_system":  "underwriting_ground_truth",
+    "expected_decision":  "manual_review",
+    "primary_reason":  "address_mismatch_requires_review",
+    "required_human_review":  true,
+    "risk_flags":  [
+                       "address_mismatch"
+                   ],
+    "top_policy_refs":  [
+                            "UW-100",
+                            "CR-210",
+                            "IN-330",
+                            "CL-125",
+                            "ID-150",
+                            "MR-001"
+                        ],
+    "summary_explanation":  "Application is plausible but contains discrepancies or borderline attributes that require analyst review.",
+    "secondary_reasons":  [
+                              "identity_address_differs_from_application"
+                          ]
+}

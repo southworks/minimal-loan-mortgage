@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Evelyn Ross
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $20,475.00
+  Total Deposits    : $10,083.33
+  Ending Balance    : $25,058.33
+  Average Balance   : $22,766.66
+
+TRANSACTIONS
+  2026-02-10  Payroll                          +$5,041.66
+  2026-02-22  Payroll                          +$5,041.66
+  2026-02-18  Housing expense                  $-2,200.00
+  2026-02-19  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,15 @@
+﻿{
+    "application_id":  "APP-005",
+    "document_id":  "APP-005-EMP-001",
+    "document_type":  "employment_verification",
+    "document_date":  "2026-01-26",
+    "source_system":  "employer_verification",
+    "party_role":  "borrower",
+    "employee_name":  "Ava Patel",
+    "employer":  "Meridian Consulting Group",
+    "employment_status":  "full_time",
+    "hire_date":  "2021-04-05",
+    "base_salary_annual":  132000,
+    "job_title":  "Finance Manager",
+    "bonus_annual":  5000
+}

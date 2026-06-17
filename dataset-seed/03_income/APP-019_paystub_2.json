@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-019",
+    "document_id":  "APP-019-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-03-09",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Evelyn Ross",
+    "employer":  "Wasatch Energy Solutions",
+    "pay_date":  "2026-03-09",
+    "gross_pay":  5041.67,
+    "net_pay":  3630.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-02-24",
+    "pay_period_end":  "2026-03-09",
+    "ytd_gross":  20166.68
+}
