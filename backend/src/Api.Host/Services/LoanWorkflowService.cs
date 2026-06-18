@@ -121,6 +121,8 @@ public sealed class LoanWorkflowService
             .ResumeStreamingAsync(workflow, record.PendingCheckpoint, checkpointManager, cancellationToken)
             .ConfigureAwait(false);
 
+        await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+
         bool responded = false;
 
         await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
@@ -159,6 +161,11 @@ public sealed class LoanWorkflowService
                 await run.SendResponseAsync(requestInfoEvent.Request.CreateResponse(decision)).ConfigureAwait(false);
                 responded = true;
                 _caseStore.Save(record);
+
+                if (request.Approved)
+                {
+                    await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+                }
 
                 if (!request.Approved)
                 {
@@ -224,11 +231,26 @@ public sealed class LoanWorkflowService
                 .RunStreamingAsync(workflow, input, checkpointManager, sessionId, cancellationToken)
                 .ConfigureAwait(false);
 
-            bool receivedWorkflowEvent = false;
+            await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Sent TurnToken for execution {ExecutionId} to start agent processing.",
+                sessionId);
+
+            bool receivedAgentResponse = false;
 
             await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
             {
-                receivedWorkflowEvent = true;
+                if (workflowEvent is AgentResponseEvent)
+                {
+                    receivedAgentResponse = true;
+                }
+
+                _logger.LogDebug(
+                    "Workflow event for execution {ExecutionId}: {EventType}",
+                    sessionId,
+                    workflowEvent.GetType().Name);
+
                 ProcessWorkflowEvent(record, workflowEvent, run);
 
                 if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
@@ -237,12 +259,12 @@ public sealed class LoanWorkflowService
                 }
             }
 
-            if (!receivedWorkflowEvent &&
+            if (!receivedAgentResponse &&
                 record.State.Status == LoanCaseStatus.Running &&
                 record.State.CurrentStep == LoanWorkflowStep.Submitted)
             {
                 const string message =
-                    "Workflow completed without emitting any agent events. Verify hosted Foundry agents are provisioned and the API is using AsAIAgent with AgentRecord.";
+                    "Workflow completed without any agent responses. Verify hosted Foundry agents are provisioned and that a TurnToken was sent to start processing.";
                 MarkFailed(record, message);
                 throw new InvalidOperationException(message);
             }
@@ -404,4 +426,16 @@ public sealed class LoanWorkflowService
 
     private static void AddTimeline(LoanCaseState state, LoanWorkflowStep step, string message) =>
         state.Timeline.Add(new TimelineEntry { Step = step, Message = message });
+
+    private static async Task SendTurnTokenAsync(StreamingRun run, CancellationToken cancellationToken)
+    {
+        bool sent = await run.TrySendMessageAsync(new TurnToken(emitEvents: true)).ConfigureAwait(false);
+
+        if (!sent)
+        {
+            throw new InvalidOperationException("Failed to send TurnToken to start workflow agent processing.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
 }
