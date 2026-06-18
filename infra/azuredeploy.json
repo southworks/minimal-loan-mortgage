@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "4327809317363100855"
+      "templateHash": "12372107942613912954"
     }
   },
   "parameters": {
@@ -39,7 +39,7 @@
     },
     "cohereModelVersion": {
       "type": "string",
-      "defaultValue": "1",
+      "defaultValue": "4",
       "metadata": {
         "description": "Cohere Command A model version."
       }
@@ -60,7 +60,7 @@
     },
     "embedModelVersion": {
       "type": "string",
-      "defaultValue": "1",
+      "defaultValue": "6",
       "metadata": {
         "description": "Cohere embed model version."
       }

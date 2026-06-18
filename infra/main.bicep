@@ -11,7 +11,7 @@ param modelDeploymentName string = 'cohere-command-a'
 param cohereModelName string = 'Cohere-command-a'
 
 @description('Cohere Command A model version.')
-param cohereModelVersion string = '1'
+param cohereModelVersion string = '4'
 
 @description('Foundry deployment name for Cohere embed-v-4-0.')
 param embedDeploymentName string = 'cohere-embed-v4'
@@ -20,7 +20,7 @@ param embedDeploymentName string = 'cohere-embed-v4'
 param embedModelName string = 'embed-v-4-0'
 
 @description('Cohere embed model version.')
-param embedModelVersion string = '1'
+param embedModelVersion string = '6'
 
 @description('Foundry deployment name for Cohere-rerank-v4.0-pro.')
 param rerankDeploymentName string = 'cohere-rerank-v4-pro'

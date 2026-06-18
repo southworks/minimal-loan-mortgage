@@ -12,7 +12,7 @@
       "value": "Cohere-command-a"
     },
     "cohereModelVersion": {
-      "value": "1"
+      "value": "4"
     },
     "embedDeploymentName": {
       "value": "cohere-embed-v4"
@@ -21,7 +21,7 @@
       "value": "embed-v-4-0"
     },
     "embedModelVersion": {
-      "value": "1"
+      "value": "6"
     },
     "rerankDeploymentName": {
       "value": "cohere-rerank-v4-pro"
