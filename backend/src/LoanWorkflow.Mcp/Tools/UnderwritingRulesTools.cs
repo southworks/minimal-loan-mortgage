@@ -29,7 +29,7 @@ public sealed class UnderwritingRulesTools
     }
 
     [McpServerTool]
-    [Description("Searches indexed case evidence using Azure AI Search and Cohere Rerank.")]
+    [Description("Searches indexed case evidence using Azure AI Search and Azure Foundry rerank.")]
     public Task<SearchCaseEvidenceResponse> SearchCaseEvidence(
         string caseId,
         string executionId,
@@ -73,7 +73,7 @@ public sealed class UnderwritingRulesTools
     }
 
     [McpServerTool]
-    [Description("Retrieves the most relevant underwriting policies using Azure AI Search and Cohere Rerank.")]
+    [Description("Retrieves the most relevant underwriting policies using Azure AI Search and Azure Foundry rerank.")]
     public Task<GetRelevantPoliciesResponse> GetRelevantPolicies(
         string query,
         string? caseContext = null,

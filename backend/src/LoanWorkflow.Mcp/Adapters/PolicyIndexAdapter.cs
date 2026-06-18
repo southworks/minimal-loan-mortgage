@@ -12,14 +12,14 @@ public sealed class PolicyIndexAdapter
     public const string MetadataDocumentId = "policy-index-metadata";
 
     private readonly SearchClient _searchClient;
-    private readonly CohereEmbeddingService _embeddingService;
-    private readonly CohereRerankService _rerankService;
+    private readonly FoundryEmbeddingService _embeddingService;
+    private readonly FoundryRerankService _rerankService;
     private readonly AzureSearchOptions _options;
 
     public PolicyIndexAdapter(
         SearchIndexClient indexClient,
-        CohereEmbeddingService embeddingService,
-        CohereRerankService rerankService,
+        FoundryEmbeddingService embeddingService,
+        FoundryRerankService rerankService,
         IOptions<AzureSearchOptions> options)
     {
         _options = options.Value;

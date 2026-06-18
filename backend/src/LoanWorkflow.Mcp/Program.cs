@@ -5,6 +5,8 @@ using ModelContextProtocol.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
+
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
 builder.Services.AddHostedService<McpStartupInitializer>();
 

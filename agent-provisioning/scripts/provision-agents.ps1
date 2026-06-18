@@ -3,6 +3,8 @@ param(
     [string]$ConfigPath = "agent-provisioning/config/provisioning.local.json"
 )
 
+# Optional local maintenance helper. The standard demo path uses Deploy to Azure instead.
+
 $ErrorActionPreference = "Stop"
 
 dotnet run --project agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning -- `

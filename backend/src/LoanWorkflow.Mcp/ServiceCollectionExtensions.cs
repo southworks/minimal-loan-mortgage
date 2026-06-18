@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<DatasetOptions>(configuration.GetSection(DatasetOptions.SectionName));
         services.Configure<AzureSearchOptions>(configuration.GetSection(AzureSearchOptions.SectionName));
-        services.Configure<CohereOptions>(configuration.GetSection(CohereOptions.SectionName));
+        services.Configure<AzureFoundryModelsOptions>(configuration.GetSection(AzureFoundryModelsOptions.SectionName));
 
         var searchOptions = configuration.GetSection(AzureSearchOptions.SectionName).Get<AzureSearchOptions>()
             ?? new AzureSearchOptions();
@@ -29,8 +29,8 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(SearchClientFactory.CreateIndexClient(searchOptions));
 
-        services.AddHttpClient<CohereEmbeddingService>();
-        services.AddHttpClient<CohereRerankService>();
+        services.AddHttpClient<FoundryEmbeddingService>();
+        services.AddHttpClient<FoundryRerankService>();
 
         services.AddSingleton<LocalCaseDataAdapter>();
         services.AddSingleton<PolicyParser>();

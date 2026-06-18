@@ -28,7 +28,7 @@ public sealed class DocumentRetrievalTools
         => _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
 
     [McpServerTool]
-    [Description("Chunks case documents, generates Cohere embeddings, and indexes evidence in Azure AI Search.")]
+    [Description("Chunks case documents, generates Azure Foundry embeddings, and indexes evidence in Azure AI Search.")]
     public async Task<IndexCaseDocumentsResponse> IndexCaseDocuments(
         string caseId,
         string executionId,

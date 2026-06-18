@@ -1,91 +1,60 @@
 # CohereLoanAndMortgage API
 
-Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and pre-provisioned Azure AI Foundry agents, with multipart document upload to Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
+Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry hosted agents, with multipart document upload to Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
 
-The API does **not** provision agents, configure prompts/models, implement MCP services, or duplicate Foundry capabilities. It assumes those components already exist.
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
 
-Agent provisioning lives in [agent-provisioning/README.md](agent-provisioning/README.md).
+## Deploy to Azure
 
-## Prerequisites
+The primary deployment path is a single end-to-end Azure deployment from the README button.
 
-- .NET 9 SDK
-- Azure CLI login or another credential available to `DefaultAzureCredential`
-- An Azure AI Foundry project containing these existing agents:
-  - `document-processing-agent`
-  - `underwriting-agent`
-  - `responsible-ai-agent`
-  - `loan-setup-agent`
-- An Azure Storage account with a blob container for document uploads
-- Each Foundry agent must return structured JSON at step completion:
+When you deploy:
 
-```json
-{
-  "summary": "Concise explanation of the step outcome.",
-  "decision": "The agent recommendation or outcome.",
-  "evidence": "Key facts or rationale supporting the decision.",
-  "memoryUpdates": ["Optional memory-oriented updates."]
-}
-```
+1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
+2. The API and MCP hosts start as Azure Container Apps.
+3. Foundry MCP connections are wired to the deployed MCP host.
+4. A Container Apps Job runs agent provisioning automatically.
+5. The deployment outputs the live API URL.
 
-If an agent returns invalid or missing structured output, the case fails fast with an explicit error.
+You do **not** need to run a separate provisioning CLI after deployment.
 
-## Configuration
+Container images are published automatically to GitHub Container Registry by [.github/workflows/publish-container-images.yml](.github/workflows/publish-container-images.yml) on pushes to `main`. The deployment template uses these default image URIs:
 
-### Azure AI Foundry
+- `ghcr.io/southworks/cohereloan-api:demo`
+- `ghcr.io/southworks/cohereloan-mcp:demo`
+- `ghcr.io/southworks/cohereloan-provisioning:demo`
 
-```json
-"AzureFoundry": {
-  "ProjectEndpoint": "https://{account}.services.ai.azure.com/api/projects/{project}"
-}
-```
+Make the GHCR packages public after the first workflow run so Azure Container Apps can pull them without registry credentials.
 
-Or:
+### After deployment
 
-```powershell
-$env:AZURE_FOUNDRY_PROJECT_ENDPOINT = "https://{account}.services.ai.azure.com/api/projects/{project}"
-```
+Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work against the deployed MCP host.
 
-### Azure Blob Storage
+## Architecture
 
-Use either a connection string or a blob service URI with `DefaultAzureCredential`:
+`document-processing-agent` -> `underwriting-agent` -> human approval -> `responsible-ai-agent` -> `loan-setup-agent`
 
-```json
-"AzureStorage": {
-  "ConnectionString": "",
-  "BlobServiceUri": "https://{account}.blob.core.windows.net",
-  "ContainerName": "loan-documents"
-}
-```
+The API orchestrates the workflow. Foundry hosted agents execute the steps. MCP tools are provided by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). Agent definitions and bindings are managed by [agent-provisioning/README.md](agent-provisioning/README.md) and run automatically during deployment.
 
-Or:
+## Demo limitations
 
-```powershell
-$env:AZURE_STORAGE_CONNECTION_STRING = "..."
-# or
-$env:AZURE_STORAGE_BLOB_SERVICE_URI = "https://{account}.blob.core.windows.net"
-```
+This is intentionally a simple demo:
 
-The API validates required Foundry and storage settings at startup and fails fast if they are missing.
-
-## Run
-
-```powershell
-cd backend/src/Api.Host
-dotnet run
-```
-
-Open the API at `http://localhost:5038` after `dotnet run`.
-
-A sample create-case body is available at [backend/src/Api.Host/sample-request.json](backend/src/Api.Host/sample-request.json).
+- Paused workflow cases are kept in memory only and are lost if the API restarts.
+- The API runs as a single Container App replica.
+- MCP auth is open (`authType: None`) so Foundry can call the demo MCP endpoints over HTTPS.
 
 ## API Endpoints
 
+- `GET /health` — health probe
 - `POST /api/loan-mortgage/applications` — create a loan case with applicant metadata
 - `POST /api/loan-mortgage/applications/{caseId}/documents` — upload documents (multipart/form-data)
 - `POST /api/loan-mortgage/applications/{caseId}/workflow/start` — start the Agent Framework workflow
 - `GET /api/loan-mortgage/applications/{caseId}` — full case state with persisted structured agent outputs
 - `GET /api/loan-mortgage/applications/{caseId}/progress` — lightweight progress for polling
 - `POST /api/loan-mortgage/applications/{caseId}/decisions` — submit a human decision (resumes workflow internally)
+
+A sample create-case body is available at [backend/src/Api.Host/sample-request.json](backend/src/Api.Host/sample-request.json).
 
 ## UI Integration Pattern
 
@@ -107,15 +76,51 @@ Example decision body:
 }
 ```
 
-## Workflow
+## Structured Agent Output
 
-`document-processing-agent` -> `underwriting-agent` -> human approval -> `responsible-ai-agent` -> `loan-setup-agent`
+Each Foundry agent must return JSON compatible with:
 
-Human approval uses Microsoft Agent Framework request/response handling and workflow checkpoints. Submitting a decision resumes the workflow internally; there is no separate public resume endpoint for the current single pause point.
+```json
+{
+  "summary": "Concise explanation of the step outcome.",
+  "decision": "The agent recommendation or outcome.",
+  "evidence": "Key facts or rationale supporting the decision.",
+  "memoryUpdates": ["Optional memory-oriented updates."]
+}
+```
 
-The API persists only minimal UI-facing state: case metadata, document references, checkpoint handles, timeline, pending approval info, and structured agent step results. Foundry Agent Memory evolves independently for collaborative agent context.
+If an agent returns invalid or missing structured output, the case fails fast with an explicit error.
 
-Paused cases are kept in memory only and are lost if the API process restarts.
+## Local Development
+
+Local development is optional and separate from the Azure deployment path.
+
+### Prerequisites
+
+- .NET 9 SDK
+- Azure CLI login or another credential available to `DefaultAzureCredential`
+- An Azure AI Foundry project with the four demo agents already provisioned
+- Azure Storage account with a blob container for document uploads
+
+### Run locally
+
+```powershell
+cd backend/src/Api.Host
+dotnet run
+```
+
+Open the API at `http://localhost:5038`.
+
+Run the MCP host separately:
+
+```powershell
+cd backend/src/LoanWorkflow.Mcp
+dotnet run
+```
+
+Default MCP URL: `http://localhost:5040`
+
+For local agent maintenance only, see [agent-provisioning/README.md](agent-provisioning/README.md).
 
 ## Packages
 
@@ -124,15 +129,4 @@ dotnet add package Azure.Identity
 dotnet add package Azure.Storage.Blobs
 dotnet add package Microsoft.Agents.AI.AzureAI --prerelease
 dotnet add package Microsoft.Agents.AI.Workflows --prerelease
-```
-
-## MCP Server
-
-The workflow agents consume MCP tools from [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). The API does not implement MCP logic itself.
-
-Run the MCP host separately:
-
-```powershell
-cd backend/src/LoanWorkflow.Mcp
-dotnet run
 ```

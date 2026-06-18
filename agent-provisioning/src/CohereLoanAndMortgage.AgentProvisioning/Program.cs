@@ -36,6 +36,17 @@ internal static class Program
             AgentAssetLoader assetLoader = new(AgentAssetLoader.ResolveAgentsRoot(agentsRoot));
             IReadOnlyList<AgentAssetBundle> bundles = assetLoader.LoadAll();
 
+            string? mcpBaseUrl = Environment.GetEnvironmentVariable("MCP_BASE_URL");
+            if (!string.IsNullOrWhiteSpace(mcpBaseUrl))
+            {
+                Console.WriteLine($"Updating Foundry MCP connection targets to '{mcpBaseUrl.TrimEnd('/')}'...");
+                FoundryMcpConnectionUpdater connectionUpdater = new();
+                await connectionUpdater.UpdateConnectionsAsync(
+                    settings.FoundryProjectResourceId,
+                    mcpBaseUrl,
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+
             Console.WriteLine($"Provisioning {bundles.Count} agents to {settings.ProjectEndpoint}");
             Console.WriteLine($"Model deployment: {settings.ModelDeploymentName}");
 
@@ -70,5 +81,6 @@ internal static class Program
         Console.WriteLine("Environment variables:");
         Console.WriteLine("  AZURE_FOUNDRY_PROJECT_ENDPOINT");
         Console.WriteLine("  AZURE_FOUNDRY_PROJECT_RESOURCE_ID");
+        Console.WriteLine("  MCP_BASE_URL");
     }
 }

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+      {
+        "name": "location",
+        "type": "Microsoft.Common.Location",
+        "label": "Region",
+        "toolTip": "Azure region for the demo environment."
+      },
+      {
+        "name": "baseName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Base name",
+        "defaultValue": "cohereloan",
+        "toolTip": "Short prefix used for deployed resource names."
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "baseName": "[basics('baseName')]"
+    }
+  }
+}

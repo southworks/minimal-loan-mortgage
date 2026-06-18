@@ -2,7 +2,7 @@
 
 This project provisions the four Azure AI Foundry hosted agents required by the loan and mortgage demo API.
 
-The runtime API does not create or update agents. This CLI owns agent definitions, structured output settings, MCP bindings, memory participation, and idempotent create/update behavior.
+In the standard Azure deployment flow, provisioning runs automatically as a Container Apps Job after infrastructure and MCP wiring complete. You do not need to run this CLI manually after clicking **Deploy to Azure**.
 
 ## Agents
 
@@ -15,9 +15,23 @@ The runtime API does not create or update agents. This CLI owns agent definition
 
 All agents use the same Foundry model deployment: **Cohere Command A**.
 
-## Agent-as-Code Layout
+## Azure Deployment Lifecycle
 
-Each agent folder contains only the minimum demo configuration:
+During `Deploy to Azure`, [infra/main.bicep](../infra/main.bicep):
+
+1. Provisions Foundry, Storage, Search, and model deployments.
+2. Deploys the MCP Container App and wires Foundry MCP connection targets to its public URL.
+3. Starts the agent provisioning Container Apps Job.
+4. Waits for the job to finish before completing the deployment.
+
+The provisioning container image is built from [Dockerfile](Dockerfile) and runs:
+
+- MCP connection target updates when `MCP_BASE_URL` is set
+- hosted agent create/update
+- prompt and structured output configuration
+- MCP bindings and memory settings
+
+## Agent-as-Code Layout
 
 ```text
 agents/
@@ -32,42 +46,9 @@ config/
   provisioning.json
 ```
 
-### `agent.json`
-
-Declares agent identity, instructions file, shared output schema, and allowed decision values.
-
-### `instructions.md`
-
-Business prompt and workflow boundaries for the agent.
-
-### `memory-policy.json`
-
-Defines whether the agent participates in Agent Memory and what it may read or write.
-
-Agent Memory is used only for durable reusable observations. It is not authoritative case state.
-
-### `mcp.json`
-
-Declares external MCP dependencies. The provisioning CLI validates required project connections and binds them to the agent definition. MCP services themselves are implemented separately.
-
-## Structured Output
-
-All agents must return JSON compatible with the API contract:
-
-```json
-{
-  "summary": "Concise explanation of the step outcome.",
-  "decision": "Agent-specific business decision.",
-  "evidence": "Key facts or rationale supporting the decision.",
-  "memoryUpdates": ["Optional memory-oriented updates."]
-}
-```
-
-The shared schema lives in [shared/agent-structured-output.schema.json](shared/agent-structured-output.schema.json). Provisioning configures native JSON schema output rather than relying on prompt-only compliance.
-
 ## Configuration
 
-[config/provisioning.json](config/provisioning.json) is the single deployment configuration file:
+[config/provisioning.json](config/provisioning.json) is the base configuration file:
 
 ```json
 {
@@ -82,35 +63,23 @@ Environment variable overrides:
 
 - `AZURE_FOUNDRY_PROJECT_ENDPOINT`
 - `AZURE_FOUNDRY_PROJECT_RESOURCE_ID`
+- `MCP_BASE_URL` — when set, updates Foundry MCP connection targets before provisioning agents
 
-## Run Locally
+## Optional Local Maintenance
+
+Use this only when updating agent definitions outside the Azure deployment flow:
+
+```powershell
+./agent-provisioning/scripts/provision-agents.ps1 -ConfigPath agent-provisioning/config/provisioning.local.json
+```
+
+Or:
 
 ```powershell
 dotnet run --project agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning -- `
   --config agent-provisioning/config/provisioning.local.json `
   --agents agent-provisioning/agents
 ```
-
-Or use:
-
-```powershell
-./agent-provisioning/scripts/provision-agents.ps1 -ConfigPath agent-provisioning/config/provisioning.local.json
-```
-
-## Deployment Lifecycle
-
-1. Deploy [infra/main.bicep](../infra/main.bicep).
-2. Write Foundry outputs into `config/provisioning.local.json`.
-3. Run the provisioning CLI.
-4. Deploy the API with the same Foundry endpoint and stable agent names.
-
-Full demo deployment:
-
-```powershell
-./agent-provisioning/scripts/deploy-demo.ps1 -ResourceGroupName cohereloan-demo-rg
-```
-
-GitHub Actions workflow: [.github/workflows/deploy-demo.yml](../.github/workflows/deploy-demo.yml)
 
 ## Idempotency and Fail-Fast Behavior
 
@@ -124,8 +93,6 @@ For each agent the CLI:
 6. Creates a new version only when the definition changed.
 
 Results are reported as `Created`, `Updated`, `Unchanged`, or `Failed`.
-
-The provisioning project does not invoke agents, execute MCP business logic, or simulate workflow behavior after deployment.
 
 ## Per-Agent Decision Semantics
 
@@ -153,7 +120,7 @@ The provisioning project does not invoke agents, execute MCP business logic, or 
 
 ## MCP Strategy
 
-- MCP services are external dependencies provisioned separately.
+- MCP services are deployed separately as the MCP Container App.
 - `mcp.json` declares required or optional project connections per agent.
-- IaC creates placeholder Foundry project connections with target URLs that can be replaced when MCP services are implemented.
+- IaC creates Foundry project connections using the deployed MCP host URL.
 - Provisioning validates connection existence and binds agent definitions to those connections.
