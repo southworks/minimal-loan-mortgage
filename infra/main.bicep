@@ -49,20 +49,24 @@ param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
+@description('Optional suffix for Container Apps resources. Set when redeploying after a partial failure left names reserved.')
+param nameSuffix string = ''
+
 var resourceTags = {
   project: 'inesite'
 }
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
+var containerAppsSuffix = empty(nameSuffix) ? uniqueSuffix : uniqueString(resourceGroup().id, nameSuffix)
 var storageAccountName = toLower(take(replace('${baseName}st${uniqueSuffix}', '-', ''), 24))
 var foundryAccountName = toLower(take(replace('${baseName}foundry${uniqueSuffix}', '-', ''), 24))
 var searchServiceName = toLower(take(replace('${baseName}search${uniqueSuffix}', '-', ''), 60))
 var projectName = '${baseName}-project'
 var logAnalyticsName = take('${baseName}-logs-${uniqueSuffix}', 63)
-var containerAppsEnvironmentName = take('${baseName}-cae-${uniqueSuffix}', 63)
-var apiAppName = take('${baseName}-api-${uniqueSuffix}', 32)
-var mcpAppName = take('${baseName}-mcp-${uniqueSuffix}', 32)
-var provisioningJobName = take('${baseName}-provision-${uniqueSuffix}', 32)
+var containerAppsEnvironmentName = take('${baseName}-cae-${containerAppsSuffix}', 63)
+var apiAppName = take('${baseName}-api-${containerAppsSuffix}', 32)
+var mcpAppName = take('${baseName}-mcp-${containerAppsSuffix}', 32)
+var provisioningJobName = take('${baseName}-provision-${containerAppsSuffix}', 32)
 var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
 var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeploymentName}'
 var rerankEndpoint = '${foundryEndpointBase}/openai/deployments/${rerankDeploymentName}'
@@ -251,7 +255,7 @@ resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@
 }
 
 resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor')
+  name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor', nameSuffix)
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
@@ -261,7 +265,7 @@ resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser')
+  name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -274,7 +278,7 @@ resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, mcpIdentity.id, 'SearchServiceContributor')
+  name: guid(searchService.id, mcpIdentity.id, 'SearchServiceContributor', nameSuffix)
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
@@ -284,7 +288,7 @@ resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-
 }
 
 resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, mcpIdentity.id, 'SearchIndexDataContributor')
+  name: guid(searchService.id, mcpIdentity.id, 'SearchIndexDataContributor', nameSuffix)
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
@@ -294,7 +298,7 @@ resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, mcpIdentity.id, 'CognitiveServicesUser')
+  name: guid(foundryAccount.id, mcpIdentity.id, 'CognitiveServicesUser', nameSuffix)
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -307,7 +311,7 @@ resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor')
+  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor', nameSuffix)
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
@@ -564,7 +568,7 @@ resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentit
 }
 
 resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor')
+  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor', nameSuffix)
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
