@@ -2,5 +2,6 @@
   "ProjectEndpoint": "",
   "FoundryProjectResourceId": "",
   "ModelDeploymentName": "cohere-command-a",
+  "EmbeddingDeploymentName": "cohere-embed-v4",
   "MemoryStoreName": "loan-mortgage-agent-memory"
 }

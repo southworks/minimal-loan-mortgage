@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "allowedWrites": [
     "operational summaries",
     "setup readiness observations"

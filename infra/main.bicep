@@ -49,24 +49,23 @@ param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
-@description('Optional suffix for Container Apps resources. Set when redeploying after a partial failure left names reserved.')
+@description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
 param nameSuffix string = ''
 
 var resourceTags = {
   project: 'inesite'
 }
 
-var uniqueSuffix = uniqueString(resourceGroup().id)
-var containerAppsSuffix = empty(nameSuffix) ? uniqueSuffix : uniqueString(resourceGroup().id, nameSuffix)
-var storageAccountName = toLower(take(replace('${baseName}st${uniqueSuffix}', '-', ''), 24))
-var foundryAccountName = toLower(take(replace('${baseName}foundry${uniqueSuffix}', '-', ''), 24))
-var searchServiceName = toLower(take(replace('${baseName}search${uniqueSuffix}', '-', ''), 60))
+var deploymentSuffix = empty(nameSuffix) ? uniqueString(resourceGroup().id) : uniqueString(resourceGroup().id, nameSuffix)
+var storageAccountName = toLower(take(replace('${baseName}st${deploymentSuffix}', '-', ''), 24))
+var foundryAccountName = toLower(take(replace('${baseName}foundry${deploymentSuffix}', '-', ''), 24))
+var searchServiceName = toLower(take(replace('${baseName}search${deploymentSuffix}', '-', ''), 60))
 var projectName = '${baseName}-project'
-var logAnalyticsName = take('${baseName}-logs-${uniqueSuffix}', 63)
-var containerAppsEnvironmentName = take('${baseName}-cae-${containerAppsSuffix}', 63)
-var apiAppName = take('${baseName}-api-${containerAppsSuffix}', 32)
-var mcpAppName = take('${baseName}-mcp-${containerAppsSuffix}', 32)
-var provisioningJobName = take('${baseName}-provision-${containerAppsSuffix}', 32)
+var logAnalyticsName = take('${baseName}-logs-${deploymentSuffix}', 63)
+var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 63)
+var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
+var mcpAppName = take('${baseName}-mcp-${deploymentSuffix}', 32)
+var provisioningJobName = take('${baseName}-provision-${deploymentSuffix}', 32)
 var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
 var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeploymentName}'
 var rerankEndpoint = '${foundryEndpointBase}/openai/deployments/${rerankDeploymentName}'
@@ -237,19 +236,19 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
 }
 
 resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-api-identity-${uniqueSuffix}'
+  name: '${baseName}-api-identity-${deploymentSuffix}'
   location: location
   tags: resourceTags
 }
 
 resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-mcp-identity-${uniqueSuffix}'
+  name: '${baseName}-mcp-identity-${deploymentSuffix}'
   location: location
   tags: resourceTags
 }
 
 resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-provision-identity-${uniqueSuffix}'
+  name: '${baseName}-provision-identity-${deploymentSuffix}'
   location: location
   tags: resourceTags
 }
@@ -562,7 +561,7 @@ resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
 }
 
 resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-deployscript-${uniqueSuffix}'
+  name: '${baseName}-deployscript-${deploymentSuffix}'
   location: location
   tags: resourceTags
 }
@@ -578,7 +577,7 @@ resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignment
 }
 
 resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'run-agent-provisioning-${uniqueSuffix}'
+  name: 'run-agent-provisioning-${deploymentSuffix}'
   location: location
   tags: resourceTags
   kind: 'AzureCLI'
@@ -593,7 +592,7 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
     timeout: 'PT45M'
     retentionInterval: 'PT1H'
     cleanupPreference: 'OnSuccess'
-    forceUpdateTag: uniqueSuffix
+    forceUpdateTag: deploymentSuffix
     scriptContent: '''
       set -euo pipefail
       echo "Waiting briefly for role assignment propagation..."

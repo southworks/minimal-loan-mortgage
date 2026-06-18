@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "allowedWrites": [
     "normalized document facts",
     "recurring document quality observations"

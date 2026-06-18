@@ -35,7 +35,10 @@ public sealed class FoundryAgentProvisioner
 
         if (results.Any(result => result.Outcome == ProvisionOutcome.Failed))
         {
-            throw new InvalidOperationException("One or more agents failed to provision.");
+            string details = string.Join("; ", results
+                .Where(result => result.Outcome == ProvisionOutcome.Failed)
+                .Select(result => $"{result.AgentName}: {result.Message}"));
+            throw new InvalidOperationException($"One or more agents failed to provision. {details}");
         }
 
         return results;
@@ -80,16 +83,12 @@ public sealed class FoundryAgentProvisioner
                 foundryFeatures: null,
                 options: new RequestOptions { CancellationToken = cancellationToken }).ConfigureAwait(false);
 
-            ClientResult<ProjectsAgentVersion> latest = await agentClient
-                .GetAgentVersionAsync(agentName, "latest", cancellationToken)
-                .ConfigureAwait(false);
-
             ProvisionOutcome outcome = existingVersion is null ? ProvisionOutcome.Created : ProvisionOutcome.Updated;
             return new AgentProvisionResult
             {
                 AgentName = agentName,
                 Outcome = outcome,
-                Message = $"Agent '{agentName}' version {latest.Value.Version} was {(outcome == ProvisionOutcome.Created ? "created" : "updated")}."
+                Message = $"Agent '{agentName}' was {(outcome == ProvisionOutcome.Created ? "created" : "updated")}."
             };
         }
         catch (Exception ex)
@@ -116,9 +115,20 @@ public sealed class FoundryAgentProvisioner
 
             return response.Value;
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (Exception ex) when (IsMissingAgentVersion(ex))
         {
             return null;
         }
+    }
+
+    private static bool IsMissingAgentVersion(Exception exception)
+    {
+        if (exception is RequestFailedException { Status: 404 })
+        {
+            return true;
+        }
+
+        // Foundry returns HTTP 400 for agentVersion{latest} when the agent has no versions yet.
+        return exception.Message.Contains("agentVersion{latest}", StringComparison.OrdinalIgnoreCase);
     }
 }

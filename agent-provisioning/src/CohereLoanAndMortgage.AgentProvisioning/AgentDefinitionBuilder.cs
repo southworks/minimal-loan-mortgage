@@ -53,12 +53,9 @@ public sealed class AgentDefinitionBuilder
         {
             tools.Add(new JsonObject
             {
-                ["type"] = "memory_search",
-                ["memory_search"] = new JsonObject
-                {
-                    ["memory_store_name"] = settings.MemoryStoreName,
-                    ["scope"] = string.Join(", ", bundle.MemoryPolicy.ReadScopes)
-                }
+                ["type"] = "memory_search_preview",
+                ["memory_store_name"] = settings.MemoryStoreName,
+                ["scope"] = "{{$userId}}"
             });
         }
 

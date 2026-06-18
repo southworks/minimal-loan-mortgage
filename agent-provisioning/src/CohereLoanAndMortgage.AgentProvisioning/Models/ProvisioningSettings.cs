@@ -8,5 +8,7 @@ public sealed class ProvisioningSettings
 
     public string ModelDeploymentName { get; set; } = "cohere-command-a";
 
+    public string EmbeddingDeploymentName { get; set; } = "cohere-embed-v4";
+
     public string MemoryStoreName { get; set; } = "loan-mortgage-agent-memory";
 }

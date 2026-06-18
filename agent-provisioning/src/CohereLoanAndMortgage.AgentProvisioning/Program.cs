@@ -50,6 +50,17 @@ internal static class Program
             Console.WriteLine($"Provisioning {bundles.Count} agents to {settings.ProjectEndpoint}");
             Console.WriteLine($"Model deployment: {settings.ModelDeploymentName}");
 
+            if (bundles.Any(bundle => bundle.MemoryPolicy.Enabled))
+            {
+                FoundryMemoryStoreProvisioner memoryStoreProvisioner = new();
+                await memoryStoreProvisioner.EnsureMemoryStoreAsync(settings, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                Console.WriteLine("Agent memory is disabled; skipping memory store provisioning.");
+            }
+
             FoundryAgentProvisioner provisioner = new();
             IReadOnlyList<AgentProvisionResult> results =
                 await provisioner.ProvisionAllAsync(settings, bundles, CancellationToken.None).ConfigureAwait(false);

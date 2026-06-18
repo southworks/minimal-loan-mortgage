@@ -22,7 +22,7 @@
         "type": "Microsoft.Common.TextBox",
         "label": "Name suffix (retry only)",
         "defaultValue": "",
-        "toolTip": "Leave empty on first deploy. If redeploying after a partial failure, enter a short value such as 2 to avoid name conflicts with resources stuck in deletion."
+        "toolTip": "Leave empty on first deploy. If redeploying after a partial failure, enter a short value such as 2 or 3 to avoid name conflicts with resources stuck in deletion."
       }
     ],
     "outputs": {

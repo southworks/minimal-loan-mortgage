@@ -91,6 +91,12 @@ public static class SettingsLoader
             throw new InvalidOperationException("ModelDeploymentName is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(settings.EmbeddingDeploymentName))
+        {
+            settings.EmbeddingDeploymentName =
+                Environment.GetEnvironmentVariable("EMBEDDING_DEPLOYMENT_NAME") ?? "cohere-embed-v4";
+        }
+
         if (string.IsNullOrWhiteSpace(settings.MemoryStoreName))
         {
             throw new InvalidOperationException("MemoryStoreName is required.");
