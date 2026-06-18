@@ -25,6 +25,7 @@
   "required": [
     "summary",
     "decision",
-    "evidence"
+    "evidence",
+    "memoryUpdates"
   ]
 }

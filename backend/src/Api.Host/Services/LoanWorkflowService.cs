@@ -14,6 +14,7 @@ public sealed class LoanWorkflowService
     private readonly LoanMortgageWorkflowFactory _workflowFactory;
     private readonly InMemoryLoanCaseStore _caseStore;
     private readonly BlobDocumentStorageService _documentStorage;
+    private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<LoanWorkflowService> _logger;
 
     public LoanWorkflowService(
@@ -21,12 +22,14 @@ public sealed class LoanWorkflowService
         LoanMortgageWorkflowFactory workflowFactory,
         InMemoryLoanCaseStore caseStore,
         BlobDocumentStorageService documentStorage,
+        IHostApplicationLifetime applicationLifetime,
         ILogger<LoanWorkflowService> logger)
     {
         _agentProvider = agentProvider;
         _workflowFactory = workflowFactory;
         _caseStore = caseStore;
         _documentStorage = documentStorage;
+        _applicationLifetime = applicationLifetime;
         _logger = logger;
     }
 
@@ -66,15 +69,11 @@ public sealed class LoanWorkflowService
         record.State.Status = LoanCaseStatus.Running;
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         AddTimeline(record.State, LoanWorkflowStep.Submitted, $"Workflow started with {loadedDocuments.Count} document(s).");
+        record.WorkflowSessionId = executionId;
         _caseStore.Save(record);
 
-        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken);
-        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, caseId, executionId);
-        CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
         List<ChatMessage> input = CreateInitialMessages(caseId, executionId, loadedDocuments);
-
-        await ProcessRunAsync(record, workflow, checkpointManager, input, executionId, cancellationToken)
-            .ConfigureAwait(false);
+        StartWorkflowProcessing(record, input, executionId);
 
         return LoanCaseMapper.ToResponse(record.State);
     }
@@ -217,6 +216,54 @@ public sealed class LoanWorkflowService
         }
     }
 
+    private void StartWorkflowProcessing(
+        LoanCaseRecord record,
+        IList<ChatMessage> input,
+        string executionId)
+    {
+        CancellationToken applicationStopping = _applicationLifetime.ApplicationStopping;
+
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    FoundryAgents agents = await _agentProvider.GetAgentsAsync(applicationStopping).ConfigureAwait(false);
+                    AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+                        agents,
+                        record.State.CaseId,
+                        record.State.ExecutionId);
+                    CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
+
+                    await ProcessRunAsync(
+                            record,
+                            workflow,
+                            checkpointManager,
+                            input,
+                            executionId,
+                            applicationStopping)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested)
+                {
+                    MarkFailed(record, "Workflow processing was cancelled because the application is stopping.");
+                }
+                catch (Exception ex)
+                {
+                    if (record.State.Status != LoanCaseStatus.Failed)
+                    {
+                        MarkFailed(record, ex.Message);
+                    }
+
+                    _logger.LogError(
+                        ex,
+                        "Background workflow processing failed for execution {ExecutionId}.",
+                        executionId);
+                }
+            },
+            CancellationToken.None);
+    }
+
     private async Task ProcessRunAsync(
         LoanCaseRecord record,
         AgentWorkflow workflow,
@@ -290,9 +337,33 @@ public sealed class LoanWorkflowService
                 }
                 catch (InvalidOperationException ex)
                 {
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to parse structured output from executor {ExecutorId}. Raw output preview: {RawOutputPreview}",
+                        agentResponseEvent.ExecutorId,
+                        TruncateForLog(WorkflowTextExtractor.FromAgentResponse(agentResponseEvent.Response)));
                     MarkFailed(record, ex.Message);
                 }
 
+                break;
+
+            case AgentResponseUpdateEvent agentResponseUpdateEvent:
+                TryUpdateAgentOutput(record, agentResponseUpdateEvent.ExecutorId, agentResponseUpdateEvent.AsResponse());
+                break;
+
+            case ExecutorFailedEvent executorFailedEvent:
+                string errorMessage = executorFailedEvent.Data?.Message
+                    ?? $"Workflow executor '{executorFailedEvent.ExecutorId}' failed without an exception message.";
+                MarkFailed(record, $"Executor '{executorFailedEvent.ExecutorId}' failed: {errorMessage}");
+                break;
+
+            case ExecutorCompletedEvent executorCompletedEvent:
+                TryUpdateAgentOutput(record, executorCompletedEvent.ExecutorId, executorCompletedEvent.Data);
+                _logger.LogDebug(
+                    "Workflow executor {ExecutorId} completed for execution {ExecutionId} with data type {DataType}.",
+                    executorCompletedEvent.ExecutorId,
+                    record.State.ExecutionId,
+                    executorCompletedEvent.Data?.GetType().FullName ?? "<null>");
                 break;
 
             case SuperStepCompletedEvent superStepCompleted when superStepCompleted.CompletionInfo?.Checkpoint is not null:
@@ -340,32 +411,95 @@ public sealed class LoanWorkflowService
     private void UpdateAgentOutput(LoanCaseRecord record, string executorId, AgentResponse response)
     {
         string rawOutput = WorkflowTextExtractor.FromAgentResponse(response);
-        AgentStepResult result = AgentStructuredOutputParser.Parse(executorId, rawOutput);
+        UpdateAgentOutput(record, executorId, rawOutput);
+    }
 
-        if (executorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
+    private void UpdateAgentOutput(LoanCaseRecord record, string executorId, string rawOutput)
+    {
+        AgentStepResult result = AgentStructuredOutputParser.Parse(executorId, rawOutput);
+        string normalizedExecutorId = NormalizeExecutorId(executorId);
+
+        if (normalizedExecutorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
         {
             record.State.DocumentProcessing = result;
             record.State.CurrentStep = LoanWorkflowStep.DocumentProcessing;
             AddTimeline(record.State, LoanWorkflowStep.DocumentProcessing, result.Summary);
         }
-        else if (executorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase))
+        else if (normalizedExecutorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase))
         {
             record.State.Underwriting = result;
             record.State.CurrentStep = LoanWorkflowStep.Underwriting;
             AddTimeline(record.State, LoanWorkflowStep.Underwriting, result.Summary);
         }
-        else if (executorId.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase))
+        else if (normalizedExecutorId.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase))
         {
             record.State.ResponsibleAi = result;
             record.State.CurrentStep = LoanWorkflowStep.ResponsibleAi;
             AddTimeline(record.State, LoanWorkflowStep.ResponsibleAi, result.Summary);
         }
-        else if (executorId.Contains("loan-setup", StringComparison.OrdinalIgnoreCase))
+        else if (normalizedExecutorId.Contains("loan-setup", StringComparison.OrdinalIgnoreCase))
         {
             record.State.LoanSetup = result;
             record.State.CurrentStep = LoanWorkflowStep.LoanSetup;
             AddTimeline(record.State, LoanWorkflowStep.LoanSetup, result.Summary);
         }
+    }
+
+    private void TryUpdateAgentOutput(LoanCaseRecord record, string executorId, object? data)
+    {
+        if (data is null || !IsAgentExecutor(executorId))
+        {
+            return;
+        }
+
+        try
+        {
+            switch (data)
+            {
+                case AgentResponse agentResponse:
+                    UpdateAgentOutput(record, executorId, agentResponse);
+                    break;
+
+                case IList<ChatMessage> messages:
+                    UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages(messages));
+                    break;
+
+                case ChatMessage message:
+                    UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages([message]));
+                    break;
+
+                case string text:
+                    UpdateAgentOutput(record, executorId, text);
+                    break;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogTrace(
+                ex,
+                "Ignoring non-final or non-structured agent update from executor {ExecutorId}.",
+                executorId);
+        }
+    }
+
+    private static bool IsAgentExecutor(string executorId)
+    {
+        string normalizedExecutorId = NormalizeExecutorId(executorId);
+        return normalizedExecutorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase)
+            || normalizedExecutorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase)
+            || normalizedExecutorId.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase)
+            || normalizedExecutorId.Contains("loan-setup", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeExecutorId(string executorId) =>
+        executorId.Replace('_', '-');
+
+    private static string TruncateForLog(string value)
+    {
+        const int maxLength = 2_000;
+        return value.Length <= maxLength
+            ? value
+            : string.Concat(value.AsSpan(0, maxLength), "...");
     }
 
     private void MarkFailed(LoanCaseRecord record, string reason)

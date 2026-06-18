@@ -52,7 +52,14 @@ public static class AgentStructuredOutputParser
                 $"Agent '{agentName}' returned empty output. Expected JSON with summary, decision, evidence, and optional memoryUpdates.");
         }
 
-        AgentStructuredOutput? structured = TryDeserialize(rawOutput.Trim())
+        string trimmedOutput = rawOutput.Trim();
+        if (trimmedOutput.Contains("Error (", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Agent '{agentName}' returned an error instead of structured JSON: {Truncate(trimmedOutput)}");
+        }
+
+        AgentStructuredOutput? structured = TryDeserialize(trimmedOutput)
             ?? TryDeserialize(ExtractJsonObject(rawOutput));
 
         if (structured is null)
@@ -108,5 +115,13 @@ public static class AgentStructuredOutputParser
         }
 
         return text[start..(end + 1)];
+    }
+
+    private static string Truncate(string value)
+    {
+        const int maxLength = 500;
+        return value.Length <= maxLength
+            ? value
+            : string.Concat(value.AsSpan(0, maxLength), "...");
     }
 }

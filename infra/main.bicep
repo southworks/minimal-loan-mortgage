@@ -7,6 +7,13 @@ param baseName string = 'cohereloan'
 @description('Foundry model deployment name used by all agents.')
 param modelDeploymentName string = 'cohere-command-a'
 
+@description('SKU used by the Foundry model deployment for the agents. Use GlobalStandard for serverless deployments; use a provisioned SKU only if it is available for the model and region.')
+param modelDeploymentSkuName string = 'GlobalStandard'
+
+@minValue(1)
+@description('Capacity units for the Foundry model deployment used by the agents. Increase this when agents fail with no_capacity during peak load.')
+param modelDeploymentCapacity int = 10
+
 @description('Cohere Command A model name in Foundry catalog.')
 param cohereModelName string = 'cohere-command-a'
 
@@ -139,8 +146,8 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   parent: foundryAccount
   name: modelDeploymentName
   sku: {
-    name: 'GlobalStandard'
-    capacity: 1
+    name: modelDeploymentSkuName
+    capacity: modelDeploymentCapacity
   }
   properties: {
     model: {
@@ -320,6 +327,20 @@ resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-0
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
+    principalId: provisioningIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    foundryProject
+    rerankModelDeployment
+  ]
+}
+
+resource provisioningFoundryDeveloperRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundryAccount.id, provisioningIdentity.id, 'FoundryUser', nameSuffix)
+  scope: foundryAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
     principalId: provisioningIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }

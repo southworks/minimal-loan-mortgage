@@ -8,6 +8,12 @@
     "modelDeploymentName": {
       "value": "cohere-command-a"
     },
+    "modelDeploymentSkuName": {
+      "value": "GlobalStandard"
+    },
+    "modelDeploymentCapacity": {
+      "value": 10
+    },
     "cohereModelName": {
       "value": "cohere-command-a"
     },

@@ -46,7 +46,7 @@ builder.Services.AddSingleton<InMemoryLoanCaseStore>();
 builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageWorkflowFactory>();
 builder.Services.AddSingleton<BlobDocumentStorageService>();
-builder.Services.AddScoped<LoanWorkflowService>();
+builder.Services.AddSingleton<LoanWorkflowService>();
 
 var app = builder.Build();
 

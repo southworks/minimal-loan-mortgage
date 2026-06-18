@@ -31,7 +31,20 @@ internal static class WorkflowTextExtractor
             {
                 foreach (AIContent content in message.Contents)
                 {
-                    if (!string.IsNullOrWhiteSpace(content.ToString()))
+                    if (content is ErrorContent errorContent)
+                    {
+                        builder
+                            .Append("Error")
+                            .Append(string.IsNullOrWhiteSpace(errorContent.ErrorCode) ? string.Empty : $" ({errorContent.ErrorCode})")
+                            .Append(": ")
+                            .AppendLine(errorContent.Message);
+
+                        if (!string.IsNullOrWhiteSpace(errorContent.Details))
+                        {
+                            builder.AppendLine(errorContent.Details);
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(content.ToString()))
                     {
                         builder.AppendLine(content.ToString());
                     }

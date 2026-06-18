@@ -133,7 +133,8 @@ public sealed partial class PolicyParser
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(policyText);
 
-        var blocks = policyText
+        var normalizedText = policyText.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var blocks = normalizedText
             .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(block => block.StartsWith("Policy Ref:", StringComparison.OrdinalIgnoreCase))
             .ToArray();

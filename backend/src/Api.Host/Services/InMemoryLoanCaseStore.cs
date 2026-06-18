@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CohereLoanAndMortgage.Api.Host.Workflow;
 using Microsoft.Agents.AI.Workflows;
 
@@ -14,7 +15,7 @@ public sealed class LoanCaseRecord
 
 public sealed class InMemoryLoanCaseStore
 {
-    private readonly Dictionary<string, LoanCaseRecord> _executions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, LoanCaseRecord> _executions = new(StringComparer.OrdinalIgnoreCase);
 
     public void Save(LoanCaseRecord record) => _executions[record.State.ExecutionId] = record;
 

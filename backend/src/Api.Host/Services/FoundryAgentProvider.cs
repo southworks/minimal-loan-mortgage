@@ -1,9 +1,8 @@
-using Azure.AI.Extensions.OpenAI;
 using Azure.AI.Projects;
+using Azure.AI.Projects.Agents;
 using Azure.Identity;
 using CohereLoanAndMortgage.Api.Host.Options;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.AzureAI;
 using Microsoft.Extensions.Options;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
@@ -23,6 +22,7 @@ public sealed class FoundryAgentProvider
 {
     private readonly AzureFoundryOptions _options;
     private readonly ILogger<FoundryAgentProvider> _logger;
+    private readonly SemaphoreSlim _agentLoadLock = new(1, 1);
     private FoundryAgents? _agents;
 
     public FoundryAgentProvider(IOptions<AzureFoundryOptions> options, ILogger<FoundryAgentProvider> logger)
@@ -38,41 +38,85 @@ public sealed class FoundryAgentProvider
             return _agents;
         }
 
-        if (string.IsNullOrWhiteSpace(_options.ProjectEndpoint))
+        await _agentLoadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            throw new InvalidOperationException(
-                "Azure Foundry configuration is missing. Set AzureFoundry:ProjectEndpoint in configuration or the AZURE_FOUNDRY_PROJECT_ENDPOINT environment variable.");
+            if (_agents is not null)
+            {
+                return _agents;
+            }
+
+            if (string.IsNullOrWhiteSpace(_options.ProjectEndpoint))
+            {
+                throw new InvalidOperationException(
+                    "Azure Foundry configuration is missing. Set AzureFoundry:ProjectEndpoint in configuration or the AZURE_FOUNDRY_PROJECT_ENDPOINT environment variable.");
+            }
+
+            var credential = new DefaultAzureCredential();
+            var projectEndpoint = new Uri(_options.ProjectEndpoint);
+            var projectClient = new AIProjectClient(projectEndpoint, credential);
+            var agentClient = new AgentAdministrationClient(projectEndpoint, credential);
+
+            _logger.LogInformation("Resolving Azure AI Foundry agents from project endpoint {Endpoint}", _options.ProjectEndpoint);
+
+            AIAgent documentProcessing = await LoadAgentAsync(
+                    projectClient,
+                    agentClient,
+                    _options.DocumentProcessingAgentName,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            AIAgent underwriting = await LoadAgentAsync(
+                    projectClient,
+                    agentClient,
+                    _options.UnderwritingAgentName,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            AIAgent responsibleAi = await LoadAgentAsync(
+                    projectClient,
+                    agentClient,
+                    _options.ResponsibleAiAgentName,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            AIAgent loanSetup = await LoadAgentAsync(
+                    projectClient,
+                    agentClient,
+                    _options.LoanSetupAgentName,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            _agents = new FoundryAgents
+            {
+                DocumentProcessing = documentProcessing,
+                Underwriting = underwriting,
+                ResponsibleAi = responsibleAi,
+                LoanSetup = loanSetup
+            };
+
+            return _agents;
         }
-
-        var projectClient = new AIProjectClient(new Uri(_options.ProjectEndpoint), new DefaultAzureCredential());
-
-        _logger.LogInformation("Resolving Azure AI Foundry agents from project endpoint {Endpoint}", _options.ProjectEndpoint);
-
-        AIAgent documentProcessing = LoadAgent(projectClient, _options.DocumentProcessingAgentName);
-        AIAgent underwriting = LoadAgent(projectClient, _options.UnderwritingAgentName);
-        AIAgent responsibleAi = LoadAgent(projectClient, _options.ResponsibleAiAgentName);
-        AIAgent loanSetup = LoadAgent(projectClient, _options.LoanSetupAgentName);
-
-        _agents = new FoundryAgents
+        finally
         {
-            DocumentProcessing = documentProcessing,
-            Underwriting = underwriting,
-            ResponsibleAi = responsibleAi,
-            LoanSetup = loanSetup
-        };
-
-        return await Task.FromResult(_agents).ConfigureAwait(false);
+            _agentLoadLock.Release();
+        }
     }
 
-    private AIAgent LoadAgent(AIProjectClient projectClient, string agentName)
+    private async Task<AIAgent> LoadAgentAsync(
+        AIProjectClient projectClient,
+        AgentAdministrationClient agentClient,
+        string agentName,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var agentReference = new AgentReference(agentName, "latest");
-            AIAgent agent = projectClient.AsAIAgent(agentReference);
+            ProjectsAgentRecord agentRecord = (await agentClient
+                    .GetAgentAsync(agentName, cancellationToken)
+                    .ConfigureAwait(false))
+                .Value;
+
+            AIAgent agent = projectClient.AsAIAgent(agentRecord);
 
             _logger.LogInformation(
-                "Resolved Foundry agent {AgentName} via AgentReference as {AgentType}.",
+                "Validated Azure AI Foundry agent {AgentName} and resolved as {AgentType}.",
                 agentName,
                 agent.GetType().Name);
 

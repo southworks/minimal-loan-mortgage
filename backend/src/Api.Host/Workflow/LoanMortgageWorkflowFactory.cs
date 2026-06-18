@@ -72,14 +72,24 @@ public sealed class LoanMortgageWorkflowFactory
             sentMessageTypes: [typeof(IList<ChatMessage>)],
             outputTypes: [typeof(UnderwritingApprovalDecision)]);
 
-        return new WorkflowBuilder(agents.DocumentProcessing)
-            .AddEdge(agents.DocumentProcessing, agents.Underwriting)
-            .AddEdge(agents.Underwriting, requestApprovalExecutor)
+        var agentHostOptions = new AIAgentHostOptions
+        {
+            EmitAgentResponseEvents = true
+        };
+
+        var documentProcessing = agents.DocumentProcessing.BindAsExecutor(agentHostOptions);
+        var underwriting = agents.Underwriting.BindAsExecutor(agentHostOptions);
+        var responsibleAi = agents.ResponsibleAi.BindAsExecutor(agentHostOptions);
+        var loanSetup = agents.LoanSetup.BindAsExecutor(agentHostOptions);
+
+        return new WorkflowBuilder(documentProcessing)
+            .AddEdge(documentProcessing, underwriting)
+            .AddEdge(underwriting, requestApprovalExecutor)
             .AddEdge(requestApprovalExecutor, approvalPort)
             .AddEdge(approvalPort, decisionExecutor)
-            .AddEdge(decisionExecutor, agents.ResponsibleAi)
-            .AddEdge(agents.ResponsibleAi, agents.LoanSetup)
-            .WithOutputFrom(agents.LoanSetup)
+            .AddEdge(decisionExecutor, responsibleAi)
+            .AddEdge(responsibleAi, loanSetup)
+            .WithOutputFrom(loanSetup)
             .WithName($"loan-mortgage-{executionId}")
             .WithDescription("Loan and mortgage processing workflow with underwriting human approval.")
             .Build();
