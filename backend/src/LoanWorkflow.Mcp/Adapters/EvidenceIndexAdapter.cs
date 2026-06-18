@@ -105,6 +105,7 @@ public sealed class EvidenceIndexAdapter
                 contentHash,
                 documents.Count,
                 chunkCount: 0,
+                _options.VectorDimensions,
                 cancellationToken);
 
             return new IndexCaseDocumentsResponse
@@ -139,7 +140,8 @@ public sealed class EvidenceIndexAdapter
             effectiveSourceKey,
             contentHash,
             documents.Count,
-            chunks.Count));
+            chunks.Count,
+            _options.VectorDimensions));
 
         var batch = IndexDocumentsBatch.Upload(chunks);
         await _searchClient.IndexDocumentsAsync(batch, cancellationToken: cancellationToken);
@@ -349,6 +351,7 @@ public sealed class EvidenceIndexAdapter
         string contentHash,
         int sourceDocumentCount,
         int chunkCount,
+        int vectorDimensions,
         CancellationToken cancellationToken)
     {
         var metadata = CreateMetadataDocument(
@@ -359,7 +362,8 @@ public sealed class EvidenceIndexAdapter
             sourceKey,
             contentHash,
             sourceDocumentCount,
-            chunkCount);
+            chunkCount,
+            vectorDimensions);
 
         var batch = IndexDocumentsBatch.Upload([metadata]);
         await _searchClient.IndexDocumentsAsync(batch, cancellationToken: cancellationToken);
@@ -373,7 +377,8 @@ public sealed class EvidenceIndexAdapter
         string sourceKey,
         string contentHash,
         int sourceDocumentCount,
-        int chunkCount) =>
+        int chunkCount,
+        int vectorDimensions) =>
         new()
         {
             Id = metadataId,
@@ -389,7 +394,8 @@ public sealed class EvidenceIndexAdapter
             SourceDocumentCount = sourceDocumentCount,
             ChunkCount = chunkCount,
             ChunkText = $"Evidence index metadata for {sourceType}:{sourceKey}",
-            SourcePath = sourceKey
+            SourcePath = sourceKey,
+            Embedding = new float[vectorDimensions]
         };
 
     private static string CreateMetadataId(
