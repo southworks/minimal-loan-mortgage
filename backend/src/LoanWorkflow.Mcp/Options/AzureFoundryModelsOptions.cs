@@ -25,4 +25,24 @@ public sealed class AzureFoundryModelsOptions
     public string ApiKey { get; set; } = string.Empty;
 
     public int EmbeddingDimensions { get; set; } = 1024;
+
+    /// <summary>
+    /// When true, retries transient Foundry HTTP failures including 429 throttling.
+    /// </summary>
+    public bool RetryEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Maximum number of retry attempts after the initial request.
+    /// </summary>
+    public int MaxRetryAttempts { get; set; } = 4;
+
+    /// <summary>
+    /// Base delay in seconds for exponential backoff when Retry-After is not present.
+    /// </summary>
+    public double BaseDelaySeconds { get; set; } = 1;
+
+    /// <summary>
+    /// Maximum delay cap in seconds for exponential backoff retries.
+    /// </summary>
+    public double MaxDelaySeconds { get; set; } = 30;
 }

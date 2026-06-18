@@ -13,8 +13,9 @@ When you deploy:
 1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
 2. The API and MCP hosts start as Azure Container Apps.
 3. Foundry MCP connections are wired to the deployed MCP host.
-4. A Container Apps Job runs agent provisioning automatically.
-5. The deployment outputs the live API URL.
+4. A Container Apps Job seeds the policy index before agent provisioning runs.
+5. A Container Apps Job runs agent provisioning automatically.
+6. The deployment outputs the live API URL.
 
 You do **not** need to run a separate provisioning CLI after deployment.
 
@@ -119,6 +120,13 @@ dotnet run
 ```
 
 Default MCP URL: `http://localhost:5040`
+
+To seed the policy index locally without starting the MCP web host:
+
+```powershell
+cd backend/src/LoanWorkflow.Mcp
+dotnet run -- --seed-policies
+```
 
 For local agent maintenance only, see [agent-provisioning/README.md](agent-provisioning/README.md).
 

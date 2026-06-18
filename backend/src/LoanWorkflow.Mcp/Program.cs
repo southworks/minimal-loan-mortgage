@@ -3,6 +3,20 @@ using LoanWorkflow.Mcp;
 using LoanWorkflow.Mcp.Startup;
 using ModelContextProtocol.Server;
 
+if (args.Contains("--seed-policies", StringComparer.OrdinalIgnoreCase))
+{
+    var seedBuilder = WebApplication.CreateBuilder(args);
+    seedBuilder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
+    seedBuilder.Services.AddLoanWorkflowMcpServices(seedBuilder.Configuration);
+
+    var seedApp = seedBuilder.Build();
+    var exitCode = await seedApp.Services
+        .GetRequiredService<PolicySeedRunner>()
+        .RunAsync(CancellationToken.None);
+
+    Environment.Exit(exitCode);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);

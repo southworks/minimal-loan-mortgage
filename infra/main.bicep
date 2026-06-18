@@ -66,9 +66,10 @@ var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 6
 var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
 var mcpAppName = take('${baseName}-mcp-${deploymentSuffix}', 32)
 var provisioningJobName = take('${baseName}-provision-${deploymentSuffix}', 32)
+var policySeedJobName = take('${baseName}-policyseed-${deploymentSuffix}', 32)
 var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
 var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeploymentName}'
-var rerankEndpoint = '${foundryEndpointBase}/openai/deployments/${rerankDeploymentName}'
+var rerankEndpoint = foundryEndpointBase
 var foundryProjectEndpoint = '${foundryEndpointBase}/api/projects/${foundryProject.name}'
 
 resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
@@ -205,6 +206,11 @@ resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
     partitionCount: 1
     hostingMode: 'default'
     publicNetworkAccess: 'enabled'
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http403'
+      }
+    }
   }
 }
 
@@ -323,6 +329,23 @@ resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-0
   ]
 }
 
+var mcpContainerEnv = [
+  { name: 'AzureSearch__Endpoint', value: 'https://${searchService.name}.search.windows.net' }
+  { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
+  { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
+  { name: 'AzureSearch__VectorDimensions', value: '1024' }
+  { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
+  { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
+  { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
+  { name: 'AzureFoundryModels__RerankModelName', value: rerankModelName }
+  { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
+  { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
+  { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
+  { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
+  { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
+  { name: 'AZURE_CLIENT_ID', value: mcpIdentity.properties.clientId }
+]
+
 resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: mcpAppName
   location: location
@@ -351,22 +374,10 @@ resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: [
-            { name: 'AzureSearch__Endpoint', value: 'https://${searchService.name}.search.windows.net' }
-            { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
-            { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
-            { name: 'AzureSearch__VectorDimensions', value: '1024' }
-            { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
-            { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
-            { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
-            { name: 'AzureFoundryModels__RerankModelName', value: rerankModelName }
-            { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
-            { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
-            { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
-            { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
-            { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
-            { name: 'AZURE_CLIENT_ID', value: mcpIdentity.properties.clientId }
-          ]
+          env: concat(mcpContainerEnv, [
+            { name: 'McpStartup__EnsureSearchIndexesOnStartup', value: 'true' }
+            { name: 'McpStartup__SeedPoliciesOnStartup', value: 'false' }
+          ])
           probes: [
             {
               type: 'Liveness'
@@ -507,6 +518,53 @@ resource loanSetupConnection 'Microsoft.CognitiveServices/accounts/projects/conn
   ]
 }
 
+resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
+  name: policySeedJobName
+  location: location
+  tags: resourceTags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${mcpIdentity.id}': {}
+    }
+  }
+  properties: {
+    environmentId: containerAppsEnvironment.id
+    configuration: {
+      triggerType: 'Manual'
+      replicaTimeout: 1800
+      replicaRetryLimit: 0
+      manualTriggerConfig: {
+        replicaCompletionCount: 1
+        parallelism: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'policy-seed'
+          image: mcpContainerImage
+          command: [
+            'dotnet'
+            'LoanWorkflow.Mcp.dll'
+            '--seed-policies'
+          ]
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: mcpContainerEnv
+        }
+      ]
+    }
+  }
+  dependsOn: [
+    mcpSearchContributorRole
+    mcpSearchDataRole
+    mcpFoundryRole
+  ]
+}
+
 resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
   name: provisioningJobName
   location: location
@@ -576,6 +634,73 @@ resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignment
   }
 }
 
+resource runPolicySeedScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'run-policy-seed-${deploymentSuffix}'
+  location: location
+  tags: resourceTags
+  kind: 'AzureCLI'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${deploymentScriptIdentity.id}': {}
+    }
+  }
+  properties: {
+    azCliVersion: '2.62.0'
+    timeout: 'PT45M'
+    retentionInterval: 'PT1H'
+    cleanupPreference: 'OnSuccess'
+    forceUpdateTag: deploymentSuffix
+    scriptContent: '''
+      set -euo pipefail
+      echo "Waiting briefly for role assignment propagation..."
+      sleep 60
+      echo "Starting policy seed job..."
+      EXECUTION=$(az containerapp job start --name "${POLICY_SEED_JOB_NAME}" --resource-group "${RESOURCE_GROUP}" --query name -o tsv)
+      echo "Policy seed job execution: ${EXECUTION}"
+
+      for i in $(seq 1 120); do
+        STATUS=$(az containerapp job execution show \
+          --name "${POLICY_SEED_JOB_NAME}" \
+          --resource-group "${RESOURCE_GROUP}" \
+          --job-execution-name "${EXECUTION}" \
+          --query properties.status -o tsv)
+
+        echo "Policy seed job status: ${STATUS}"
+
+        if [ "${STATUS}" = "Succeeded" ]; then
+          echo "Policy seeding completed successfully."
+          exit 0
+        fi
+
+        if [ "${STATUS}" = "Failed" ]; then
+          echo "Policy seed job failed."
+          exit 1
+        fi
+
+        sleep 15
+      done
+
+      echo "Timed out waiting for policy seed job."
+      exit 1
+    '''
+    environmentVariables: [
+      {
+        name: 'RESOURCE_GROUP'
+        value: resourceGroup().name
+      }
+      {
+        name: 'POLICY_SEED_JOB_NAME'
+        value: policySeedJobName
+      }
+    ]
+  }
+  dependsOn: [
+    policySeedJob
+    deploymentScriptContributorRole
+  ]
+}
+
 resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'run-agent-provisioning-${deploymentSuffix}'
   location: location
@@ -642,6 +767,7 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
     deploymentScriptContributorRole
     apiApp
     mcpApp
+    runPolicySeedScript
   ]
 }
 
@@ -662,4 +788,5 @@ output searchServiceName string = searchService.name
 output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
 output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
+output policySeedJobName string = policySeedJob.name
 output provisioningJobName string = provisioningJob.name

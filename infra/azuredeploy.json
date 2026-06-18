@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "2425363295486917148"
+      "templateHash": "13333656989207838449"
     }
   },
   "parameters": {
@@ -149,7 +149,8 @@
     "containerAppsEnvironmentName": "[take(format('{0}-cae-{1}', parameters('baseName'), variables('deploymentSuffix')), 63)]",
     "apiAppName": "[take(format('{0}-api-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "mcpAppName": "[take(format('{0}-mcp-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-    "provisioningJobName": "[take(format('{0}-provision-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]"
+    "provisioningJobName": "[take(format('{0}-provision-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
+    "policySeedJobName": "[take(format('{0}-policyseed-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]"
   },
   "resources": [
     {
@@ -302,7 +303,12 @@
         "replicaCount": 1,
         "partitionCount": 1,
         "hostingMode": "default",
-        "publicNetworkAccess": "enabled"
+        "publicNetworkAccess": "enabled",
+        "authOptions": {
+          "aadOrApiKey": {
+            "aadAuthFailureMode": "http403"
+          }
+        }
       }
     },
     {
@@ -482,64 +488,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1Gi"
               },
-              "env": [
-                {
-                  "name": "AzureSearch__Endpoint",
-                  "value": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]"
-                },
-                {
-                  "name": "AzureSearch__EvidenceIndexName",
-                  "value": "loan-case-evidence"
-                },
-                {
-                  "name": "AzureSearch__PolicyIndexName",
-                  "value": "loan-policy-knowledge"
-                },
-                {
-                  "name": "AzureSearch__VectorDimensions",
-                  "value": "1024"
-                },
-                {
-                  "name": "AzureFoundryModels__EmbedDeploymentName",
-                  "value": "[parameters('embedDeploymentName')]"
-                },
-                {
-                  "name": "AzureFoundryModels__RerankDeploymentName",
-                  "value": "[parameters('rerankDeploymentName')]"
-                },
-                {
-                  "name": "AzureFoundryModels__EmbedModelName",
-                  "value": "[parameters('embedModelName')]"
-                },
-                {
-                  "name": "AzureFoundryModels__RerankModelName",
-                  "value": "[parameters('rerankModelName')]"
-                },
-                {
-                  "name": "AzureFoundryModels__EmbedEndpoint",
-                  "value": "[format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))]"
-                },
-                {
-                  "name": "AzureFoundryModels__RerankEndpoint",
-                  "value": "[format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('rerankDeploymentName'))]"
-                },
-                {
-                  "name": "AzureFoundryModels__EmbeddingDimensions",
-                  "value": "1024"
-                },
-                {
-                  "name": "Dataset__RootPath",
-                  "value": "/app/dataset-seed"
-                },
-                {
-                  "name": "Dataset__PolicyFilePath",
-                  "value": "/app/dataset-seed/08_policy_rag/general_policy.txt"
-                },
-                {
-                  "name": "AZURE_CLIENT_ID",
-                  "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId]"
-                }
-              ],
+              "env": "[concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
               "probes": [
                 {
                   "type": "Liveness",
@@ -713,6 +662,115 @@
     {
       "type": "Microsoft.App/jobs",
       "apiVersion": "2024-03-01",
+      "name": "[variables('policySeedJobName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))))]": {}
+        }
+      },
+      "properties": {
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
+        "configuration": {
+          "triggerType": "Manual",
+          "replicaTimeout": 1800,
+          "replicaRetryLimit": 0,
+          "manualTriggerConfig": {
+            "replicaCompletionCount": 1,
+            "parallelism": 1
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "policy-seed",
+              "image": "[parameters('mcpContainerImage')]",
+              "command": [
+                "dotnet",
+                "LoanWorkflow.Mcp.dll",
+                "--seed-policies"
+              ],
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              },
+              "env": [
+                {
+                  "name": "AzureSearch__Endpoint",
+                  "value": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]"
+                },
+                {
+                  "name": "AzureSearch__EvidenceIndexName",
+                  "value": "loan-case-evidence"
+                },
+                {
+                  "name": "AzureSearch__PolicyIndexName",
+                  "value": "loan-policy-knowledge"
+                },
+                {
+                  "name": "AzureSearch__VectorDimensions",
+                  "value": "1024"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedDeploymentName",
+                  "value": "[parameters('embedDeploymentName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankDeploymentName",
+                  "value": "[parameters('rerankDeploymentName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedModelName",
+                  "value": "[parameters('embedModelName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankModelName",
+                  "value": "[parameters('rerankModelName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedEndpoint",
+                  "value": "[format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankEndpoint",
+                  "value": "[format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbeddingDimensions",
+                  "value": "1024"
+                },
+                {
+                  "name": "Dataset__RootPath",
+                  "value": "/app/dataset-seed"
+                },
+                {
+                  "name": "Dataset__PolicyFilePath",
+                  "value": "/app/dataset-seed/08_policy_rag/general_policy.txt"
+                },
+                {
+                  "name": "AZURE_CLIENT_ID",
+                  "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId]"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesUser', parameters('nameSuffix')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchServiceContributor', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchIndexDataContributor', parameters('nameSuffix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/jobs",
+      "apiVersion": "2024-03-01",
       "name": "[variables('provisioningJobName')]",
       "location": "[parameters('location')]",
       "tags": "[variables('resourceTags')]",
@@ -816,6 +874,43 @@
     {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
+      "name": "[format('run-policy-seed-{0}', variables('deploymentSuffix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.62.0",
+        "timeout": "PT45M",
+        "retentionInterval": "PT1H",
+        "cleanupPreference": "OnSuccess",
+        "forceUpdateTag": "[variables('deploymentSuffix')]",
+        "scriptContent": "      set -euo pipefail\n      echo \"Waiting briefly for role assignment propagation...\"\n      sleep 60\n      echo \"Starting policy seed job...\"\n      EXECUTION=$(az containerapp job start --name \"${POLICY_SEED_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Policy seed job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${POLICY_SEED_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Policy seed job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Policy seeding completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Policy seed job failed.\"\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for policy seed job.\"\n      exit 1\n    ",
+        "environmentVariables": [
+          {
+            "name": "RESOURCE_GROUP",
+            "value": "[resourceGroup().name]"
+          },
+          {
+            "name": "POLICY_SEED_JOB_NAME",
+            "value": "[variables('policySeedJobName')]"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'Contributor', parameters('nameSuffix')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.App/jobs', variables('policySeedJobName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
       "name": "[format('run-agent-provisioning-{0}', variables('deploymentSuffix'))]",
       "location": "[parameters('location')]",
       "tags": "[variables('resourceTags')]",
@@ -849,7 +944,8 @@
         "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'Contributor', parameters('nameSuffix')))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]",
-        "[resourceId('Microsoft.App/jobs', variables('provisioningJobName'))]"
+        "[resourceId('Microsoft.App/jobs', variables('provisioningJobName'))]",
+        "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', variables('deploymentSuffix')))]"
       ]
     }
   ],
@@ -921,6 +1017,10 @@
     "mcpUrl": {
       "type": "string",
       "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "policySeedJobName": {
+      "type": "string",
+      "value": "[variables('policySeedJobName')]"
     },
     "provisioningJobName": {
       "type": "string",

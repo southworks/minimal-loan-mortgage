@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.Configure<DatasetOptions>(configuration.GetSection(DatasetOptions.SectionName));
         services.Configure<AzureSearchOptions>(configuration.GetSection(AzureSearchOptions.SectionName));
         services.Configure<AzureFoundryModelsOptions>(configuration.GetSection(AzureFoundryModelsOptions.SectionName));
+        services.Configure<McpStartupOptions>(configuration.GetSection(McpStartupOptions.SectionName));
 
         var searchOptions = configuration.GetSection(AzureSearchOptions.SectionName).Get<AzureSearchOptions>()
             ?? new AzureSearchOptions();
@@ -27,10 +28,15 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException("AzureSearch:Endpoint is required.");
         }
 
+        var foundryOptions = configuration.GetSection(AzureFoundryModelsOptions.SectionName).Get<AzureFoundryModelsOptions>()
+            ?? new AzureFoundryModelsOptions();
+
         services.AddSingleton(SearchClientFactory.CreateIndexClient(searchOptions));
 
-        services.AddHttpClient<FoundryEmbeddingService>();
-        services.AddHttpClient<FoundryRerankService>();
+        services.AddHttpClient<FoundryEmbeddingService>()
+            .AddFoundryResilience(foundryOptions);
+        services.AddHttpClient<FoundryRerankService>()
+            .AddFoundryResilience(foundryOptions);
 
         services.AddSingleton<LocalCaseDataAdapter>();
         services.AddSingleton<PolicyParser>();
@@ -40,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<HumanDecisionValidator>();
         services.AddSingleton<AccountSetupBuilder>();
         services.AddSingleton<PolicyIndexSeeder>();
+        services.AddSingleton<PolicySeedRunner>();
 
         services.AddSingleton<DocumentRetrievalTools>();
         services.AddSingleton<UnderwritingRulesTools>();

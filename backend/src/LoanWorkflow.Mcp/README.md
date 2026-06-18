@@ -18,12 +18,13 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 - Read structured demo case data from `dataset-seed/02_identity` through `dataset-seed/07_collateral`
 - Index case evidence into Azure AI Search using Azure AI Foundry `embed-v-4-0`
 - Retrieve evidence and policies from Azure AI Search using Azure AI Foundry `Cohere-rerank-v4.0-pro`
-- Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` on startup
+- Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` during deploy-time seeding
 - Reindex policies only when the policy source hash changes
+- Retry transient Foundry throttling and server errors for embedding and rerank calls
 
 ## Azure Deployment
 
-[infra/main.bicep](../../../infra/main.bicep) deploys the MCP host as a Container App and sets runtime configuration through environment variables:
+[infra/main.bicep](../../../infra/main.bicep) deploys the MCP host as a Container App and runs a separate Container Apps Job to seed the policy index before agent provisioning. Runtime configuration is set through environment variables:
 
 - Azure AI Search endpoint and index names
 - Foundry embed and rerank deployment endpoints
@@ -49,6 +50,10 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
 
 ```json
 {
+  "McpStartup": {
+    "EnsureSearchIndexesOnStartup": true,
+    "SeedPoliciesOnStartup": false
+  },
   "Dataset": {
     "RootPath": "/app/dataset-seed",
     "PolicyFilePath": "/app/dataset-seed/08_policy_rag/general_policy.txt"
@@ -67,7 +72,11 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
     "EmbedEndpoint": "https://{account}.services.ai.azure.com/openai/deployments/cohere-embed-v4",
     "RerankEndpoint": "https://{account}.services.ai.azure.com",
     "ApiKey": "",
-    "EmbeddingDimensions": 1024
+    "EmbeddingDimensions": 1024,
+    "RetryEnabled": true,
+    "MaxRetryAttempts": 4,
+    "BaseDelaySeconds": 1,
+    "MaxDelaySeconds": 30
   }
 }
 ```
@@ -87,6 +96,13 @@ dotnet run
 ```
 
 Default URL: `http://localhost:5040`
+
+To run deploy-style policy seeding locally without starting the web host:
+
+```powershell
+cd backend/src/LoanWorkflow.Mcp
+dotnet run -- --seed-policies
+```
 
 For local runs, the default dataset paths in [appsettings.json](appsettings.json) point to the repo `dataset-seed` folder.
 
