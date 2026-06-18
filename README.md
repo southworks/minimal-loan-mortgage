@@ -125,3 +125,14 @@ dotnet add package Azure.Storage.Blobs
 dotnet add package Microsoft.Agents.AI.AzureAI --prerelease
 dotnet add package Microsoft.Agents.AI.Workflows --prerelease
 ```
+
+## MCP Server
+
+The workflow agents consume MCP tools from [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). The API does not implement MCP logic itself.
+
+Run the MCP host separately:
+
+```powershell
+cd backend/src/LoanWorkflow.Mcp
+dotnet run
+```

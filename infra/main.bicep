@@ -19,9 +19,13 @@ param documentsContainerName string = 'loan-documents'
 @description('Agent memory store name.')
 param memoryStoreName string = 'loan-mortgage-agent-memory'
 
+@description('Azure AI Search SKU for demo retrieval indexes.')
+param searchSku string = 'basic'
+
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageAccountName = toLower(take(replace('${baseName}st${uniqueSuffix}', '-', ''), 24))
 var foundryAccountName = toLower(take(replace('${baseName}foundry${uniqueSuffix}', '-', ''), 24))
+var searchServiceName = toLower(take(replace('${baseName}search${uniqueSuffix}', '-', ''), 60))
 var projectName = '${baseName}-project'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -93,6 +97,20 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   }
 }
 
+resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
+  name: searchServiceName
+  location: location
+  sku: {
+    name: searchSku
+  }
+  properties: {
+    replicaCount: 1
+    partitionCount: 1
+    hostingMode: 'default'
+    publicNetworkAccess: 'enabled'
+  }
+}
+
 resource documentRetrievalConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
   parent: foundryProject
   name: 'document-retrieval-mcp'
@@ -154,3 +172,5 @@ output foundryProjectEndpoint string = 'https://${foundryAccount.properties.cust
 output foundryProjectResourceId string = foundryProject.id
 output modelDeploymentName string = modelDeploymentName
 output memoryStoreName string = memoryStoreName
+output searchServiceName string = searchService.name
+output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
