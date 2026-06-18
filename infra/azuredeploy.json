@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9694377204804728561"
+      "templateHash": "9790997921447416468"
     }
   },
   "parameters": {
@@ -80,6 +80,14 @@
         "description": "Cohere embed model version."
       }
     },
+    "embedDeploymentCapacity": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 1,
+      "metadata": {
+        "description": "Capacity units for the Cohere embed deployment. Increase this for faster case evidence indexing and fewer throttling failures."
+      }
+    },
     "rerankDeploymentName": {
       "type": "string",
       "defaultValue": "cohere-rerank-v4-pro",
@@ -99,6 +107,14 @@
       "defaultValue": "1",
       "metadata": {
         "description": "Cohere rerank model version."
+      }
+    },
+    "rerankDeploymentCapacity": {
+      "type": "int",
+      "defaultValue": 5,
+      "minValue": 1,
+      "metadata": {
+        "description": "Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures."
       }
     },
     "documentsContainerName": {
@@ -269,7 +285,7 @@
       "name": "[format('{0}/{1}', variables('foundryAccountName'), parameters('embedDeploymentName'))]",
       "sku": {
         "name": "GlobalStandard",
-        "capacity": 3
+        "capacity": "[parameters('embedDeploymentCapacity')]"
       },
       "properties": {
         "model": {
@@ -290,7 +306,7 @@
       "name": "[format('{0}/{1}', variables('foundryAccountName'), parameters('rerankDeploymentName'))]",
       "sku": {
         "name": "GlobalStandard",
-        "capacity": 1
+        "capacity": "[parameters('rerankDeploymentCapacity')]"
       },
       "properties": {
         "model": {
@@ -414,6 +430,36 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
       "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
@@ -520,7 +566,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1Gi"
               },
-              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'))), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
+              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
               "probes": [
                 {
                   "type": "Liveness",
@@ -587,8 +633,64 @@
                   "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
                 },
                 {
+                  "name": "AzureSearch__Endpoint",
+                  "value": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]"
+                },
+                {
+                  "name": "AzureSearch__EvidenceIndexName",
+                  "value": "loan-case-evidence"
+                },
+                {
+                  "name": "AzureSearch__PolicyIndexName",
+                  "value": "loan-policy-knowledge"
+                },
+                {
+                  "name": "AzureSearch__VectorDimensions",
+                  "value": "1024"
+                },
+                {
                   "name": "AzureStorage__ContainerName",
                   "value": "[parameters('documentsContainerName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedDeploymentName",
+                  "value": "[parameters('embedDeploymentName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankDeploymentName",
+                  "value": "[parameters('rerankDeploymentName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedModelName",
+                  "value": "[parameters('embedModelName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankModelName",
+                  "value": "[parameters('rerankModelName')]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbedEndpoint",
+                  "value": "[format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))]"
+                },
+                {
+                  "name": "AzureFoundryModels__RerankEndpoint",
+                  "value": "[format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)]"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbeddingDimensions",
+                  "value": "1024"
+                },
+                {
+                  "name": "AzureFoundryModels__EmbeddingBatchSize",
+                  "value": "16"
+                },
+                {
+                  "name": "AzureFoundryModels__MaxConcurrentEmbeddingRequests",
+                  "value": "1"
+                },
+                {
+                  "name": "AzureFoundryModels__MaxConcurrentRerankRequests",
+                  "value": "2"
                 },
                 {
                   "name": "ASPNETCORE_ENVIRONMENT",
@@ -632,6 +734,7 @@
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ]
     },
@@ -728,7 +831,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1Gi"
               },
-              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'))), createArray(createObject('name', 'AzureFoundryModels__MaxRetryAttempts', 'value', '10'), createObject('name', 'AzureFoundryModels__MaxDelaySeconds', 'value', '60')))]"
+              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'AzureFoundryModels__MaxRetryAttempts', 'value', '10'), createObject('name', 'AzureFoundryModels__MaxDelaySeconds', 'value', '60')))]"
             }
           ]
         }
