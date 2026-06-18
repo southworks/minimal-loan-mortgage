@@ -12,8 +12,14 @@ public sealed class AzureFoundryModelsOptions
 
     public string RerankModelName { get; set; } = "Cohere-rerank-v4.0-pro";
 
+    /// <summary>
+    /// Hub deployment URL, e.g. https://{account}.services.ai.azure.com/openai/deployments/cohere-embed-v4
+    /// </summary>
     public string EmbedEndpoint { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Foundry account base URL, e.g. https://{account}.services.ai.azure.com
+    /// </summary>
     public string RerankEndpoint { get; set; } = string.Empty;
 
     public string ApiKey { get; set; } = string.Empty;

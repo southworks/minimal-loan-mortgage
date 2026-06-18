@@ -65,7 +65,7 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
     "EmbedModelName": "embed-v-4-0",
     "RerankModelName": "Cohere-rerank-v4.0-pro",
     "EmbedEndpoint": "https://{account}.services.ai.azure.com/openai/deployments/cohere-embed-v4",
-    "RerankEndpoint": "https://{account}.services.ai.azure.com/openai/deployments/cohere-rerank-v4-pro",
+    "RerankEndpoint": "https://{account}.services.ai.azure.com",
     "ApiKey": "",
     "EmbeddingDimensions": 1024
   }
@@ -73,6 +73,11 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
 ```
 
 Leave `ApiKey` empty in Azure to use managed identity with scope `https://ai.azure.com/.default`.
+
+Endpoint notes:
+
+- `EmbedEndpoint` must point to the hub deployment path (`/openai/deployments/{name}`). The app calls `/embeddings?api-version=2024-05-01-preview` on that URL. Do not append `/v1/embed`; that path is for serverless model endpoints only.
+- `RerankEndpoint` must be the Foundry account base URL. The app calls `/providers/cohere/v2/rerank` on that base. A deployment URL such as `/openai/deployments/cohere-rerank-v4-pro` is normalized automatically, but the account base is preferred.
 
 ## Local Development
 
