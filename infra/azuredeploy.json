@@ -39,7 +39,7 @@
     },
     "cohereModelVersion": {
       "type": "string",
-      "defaultValue": "4",
+      "defaultValue": "1",
       "metadata": {
         "description": "Cohere Command A model version."
       }

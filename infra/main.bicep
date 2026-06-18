@@ -11,7 +11,7 @@ param modelDeploymentName string = 'cohere-command-a'
 param cohereModelName string = 'Cohere-command-a'
 
 @description('Cohere Command A model version.')
-param cohereModelVersion string = '4'
+param cohereModelVersion string = '1'
 
 @description('Foundry deployment name for Cohere embed-v-4-0.')
 param embedDeploymentName string = 'cohere-embed-v4'
