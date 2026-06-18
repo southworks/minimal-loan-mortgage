@@ -28,6 +28,42 @@ public sealed class DocumentRetrievalTools
         => _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
 
     [McpServerTool]
+    [Description("Loads customer context for a discovered caseId, ensures it is indexed for retrieval, and returns compact facts for document comparison.")]
+    public async Task<EnrichCustomerContextResponse> EnrichCustomerContext(
+        string caseId,
+        string executionId,
+        CancellationToken cancellationToken)
+    {
+        var context = await _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
+        var indexing = await _evidenceIndexAdapter.IndexDocumentsAsync(
+            caseId,
+            executionId,
+            context.Documents,
+            EvidenceIndexAdapter.CustomerContextSourceType,
+            sourceKey: $"assets:{caseId}",
+            cancellationToken);
+
+        return new EnrichCustomerContextResponse
+        {
+            CaseId = caseId,
+            ExecutionId = executionId,
+            Source = context.Source,
+            Indexing = indexing,
+            Facts = context.Documents
+                .Select(document => new CustomerContextFact
+                {
+                    Category = document.Category,
+                    DocumentId = document.DocumentId,
+                    DocumentType = document.DocumentType,
+                    SummaryText = document.SummaryText
+                })
+                .ToArray(),
+            AvailableCategories = context.AvailableCategories,
+            MissingCategories = context.MissingCategories
+        };
+    }
+
+    [McpServerTool]
     [Description("Chunks case documents, generates Azure Foundry embeddings, and indexes evidence in Azure AI Search.")]
     public async Task<IndexCaseDocumentsResponse> IndexCaseDocuments(
         string caseId,
@@ -46,7 +82,7 @@ public sealed class DocumentRetrievalTools
             caseId,
             executionId,
             normalizedDocuments,
-            cancellationToken);
+            cancellationToken: cancellationToken);
     }
 
     private static List<CaseDocument> NormalizeDocuments(JsonElement documents)

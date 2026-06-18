@@ -26,6 +26,12 @@ public sealed class AzureFoundryModelsOptions
 
     public int EmbeddingDimensions { get; set; } = 1024;
 
+    public int EmbeddingBatchSize { get; set; } = 16;
+
+    public int MaxConcurrentEmbeddingRequests { get; set; } = 1;
+
+    public int MaxConcurrentRerankRequests { get; set; } = 2;
+
     /// <summary>
     /// When true, retries transient Foundry HTTP failures including 429 throttling.
     /// </summary>

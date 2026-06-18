@@ -14,6 +14,7 @@ public sealed class LoanWorkflowService
     private readonly LoanMortgageWorkflowFactory _workflowFactory;
     private readonly InMemoryLoanCaseStore _caseStore;
     private readonly BlobDocumentStorageService _documentStorage;
+    private readonly CaseEvidenceIndexingService _caseEvidenceIndexingService;
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<LoanWorkflowService> _logger;
 
@@ -22,6 +23,7 @@ public sealed class LoanWorkflowService
         LoanMortgageWorkflowFactory workflowFactory,
         InMemoryLoanCaseStore caseStore,
         BlobDocumentStorageService documentStorage,
+        CaseEvidenceIndexingService caseEvidenceIndexingService,
         IHostApplicationLifetime applicationLifetime,
         ILogger<LoanWorkflowService> logger)
     {
@@ -29,6 +31,7 @@ public sealed class LoanWorkflowService
         _workflowFactory = workflowFactory;
         _caseStore = caseStore;
         _documentStorage = documentStorage;
+        _caseEvidenceIndexingService = caseEvidenceIndexingService;
         _applicationLifetime = applicationLifetime;
         _logger = logger;
     }
@@ -64,6 +67,10 @@ public sealed class LoanWorkflowService
             throw new KeyNotFoundException(
                 $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'.");
         }
+
+        await _caseEvidenceIndexingService
+            .EnsureBlobDocumentsIndexedAsync(caseId, executionId, loadedDocuments, cancellationToken)
+            .ConfigureAwait(false);
 
         RefreshCaseDocuments(record, loadedDocuments);
         record.State.Status = LoanCaseStatus.Running;

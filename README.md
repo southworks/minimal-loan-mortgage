@@ -37,6 +37,8 @@ Open the `apiUrl` output from the deployment and use the API endpoints below. Se
 
 The API orchestrates the workflow. Foundry hosted agents execute the steps. MCP tools are provided by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). Agent definitions and bindings are managed by [agent-provisioning/README.md](agent-provisioning/README.md) and run automatically during deployment.
 
+Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During document processing, the agent extracts the case id and calls `enrich_customer_context`; the MCP loads the current assets-backed customer context, indexes it idempotently for that execution, and returns compact facts for comparison. Policy knowledge is still indexed by the deploy-time seed job.
+
 ## Demo limitations
 
 This is intentionally a simple demo:

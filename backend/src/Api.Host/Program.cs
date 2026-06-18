@@ -1,6 +1,7 @@
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Services;
 using CohereLoanAndMortgage.Api.Host.Workflow;
+using LoanWorkflow.Mcp;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +47,8 @@ builder.Services.AddSingleton<InMemoryLoanCaseStore>();
 builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageWorkflowFactory>();
 builder.Services.AddSingleton<BlobDocumentStorageService>();
+builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
+builder.Services.AddSingleton<CaseEvidenceIndexingService>();
 builder.Services.AddSingleton<LoanWorkflowService>();
 
 var app = builder.Build();

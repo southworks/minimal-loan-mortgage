@@ -43,6 +43,12 @@ public sealed class SearchIndexInitializer
             new SearchableField("documentId") { IsFilterable = true },
             new SearchableField("documentType") { IsFilterable = true, IsFacetable = true },
             new SearchableField("category") { IsFilterable = true, IsFacetable = true },
+            new SearchableField("sourceType") { IsFilterable = true, IsFacetable = true },
+            new SearchableField("sourceKey") { IsFilterable = true },
+            new SearchableField("contentHash") { IsFilterable = true },
+            new SimpleField("indexedAtUtc", SearchFieldDataType.DateTimeOffset) { IsFilterable = true, IsSortable = true },
+            new SimpleField("sourceDocumentCount", SearchFieldDataType.Int32) { IsFilterable = true },
+            new SimpleField("chunkCount", SearchFieldDataType.Int32) { IsFilterable = true },
             new SearchableField("chunkText") { IsFilterable = false },
             new SearchableField("sourcePath") { IsFilterable = false },
             new SearchField("embedding", SearchFieldDataType.Collection(SearchFieldDataType.Single))

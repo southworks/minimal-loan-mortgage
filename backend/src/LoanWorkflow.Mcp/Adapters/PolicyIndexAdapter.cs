@@ -144,6 +144,25 @@ public sealed class PolicyIndexAdapter
             };
         }
 
+        if (candidates.Count <= topK)
+        {
+            return new GetRelevantPoliciesResponse
+            {
+                Query = query,
+                Policies = candidates
+                    .Select(candidate => new PolicyMatch
+                    {
+                        PolicyRef = candidate.PolicyRef,
+                        Rule = candidate.Rule,
+                        Threshold = candidate.Threshold,
+                        Action = candidate.Action,
+                        Exception = candidate.Exception,
+                        Score = 1
+                    })
+                    .ToArray()
+            };
+        }
+
         var reranked = await _rerankService.RerankAsync(
             effectiveQuery,
             candidates.Select(candidate => candidate.FullText).ToArray(),

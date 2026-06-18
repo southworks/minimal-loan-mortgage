@@ -1,6 +1,8 @@
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Models;
+using System.Security.Cryptography;
+using System.Text;
 using LoanWorkflow.Mcp.Models;
 using LoanWorkflow.Mcp.Options;
 using Microsoft.Extensions.Options;
@@ -9,6 +11,11 @@ namespace LoanWorkflow.Mcp.Adapters;
 
 public sealed class EvidenceIndexAdapter
 {
+    public const string BlobDocumentSourceType = "blob-document";
+    public const string CustomerContextSourceType = "customer-context";
+    public const string WorkflowPayloadSourceType = "workflow-payload";
+    private const string MetadataDocumentType = "metadata";
+
     private readonly SearchClient _searchClient;
     private readonly FoundryEmbeddingService _embeddingService;
     private readonly FoundryRerankService _rerankService;
@@ -30,8 +37,36 @@ public sealed class EvidenceIndexAdapter
         string caseId,
         string executionId,
         IReadOnlyList<CaseDocument> documents,
+        string sourceType = WorkflowPayloadSourceType,
+        string? sourceKey = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceType);
+
+        var effectiveSourceKey = string.IsNullOrWhiteSpace(sourceKey) ? sourceType : sourceKey.Trim();
+        var contentHash = ComputeDocumentsHash(documents);
+        var metadataId = CreateMetadataId(caseId, executionId, sourceType, effectiveSourceKey);
+
+        var storedMetadata = await GetMetadataAsync(metadataId, cancellationToken);
+        if (storedMetadata is not null
+            && string.Equals(storedMetadata.ContentHash, contentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return new IndexCaseDocumentsResponse
+            {
+                CaseId = caseId,
+                ExecutionId = executionId,
+                IndexName = _options.EvidenceIndexName,
+                SourceType = sourceType,
+                SourceKey = effectiveSourceKey,
+                ContentHash = contentHash,
+                IndexedDocumentCount = storedMetadata.SourceDocumentCount,
+                ChunkCount = storedMetadata.ChunkCount,
+                AlreadyIndexed = true
+            };
+        }
+
         var chunks = new List<EvidenceChunkDocument>();
 
         foreach (var document in documents)
@@ -47,6 +82,12 @@ public sealed class EvidenceIndexAdapter
                     DocumentId = document.DocumentId,
                     DocumentType = document.DocumentType,
                     Category = document.Category,
+                    SourceType = sourceType,
+                    SourceKey = effectiveSourceKey,
+                    ContentHash = contentHash,
+                    IndexedAtUtc = DateTimeOffset.UtcNow,
+                    SourceDocumentCount = documents.Count,
+                    ChunkCount = 0,
                     ChunkText = chunkTexts[index],
                     SourcePath = document.SourcePath
                 });
@@ -55,13 +96,28 @@ public sealed class EvidenceIndexAdapter
 
         if (chunks.Count == 0)
         {
+            await UpsertMetadataAsync(
+                metadataId,
+                caseId,
+                executionId,
+                sourceType,
+                effectiveSourceKey,
+                contentHash,
+                documents.Count,
+                chunkCount: 0,
+                cancellationToken);
+
             return new IndexCaseDocumentsResponse
             {
                 CaseId = caseId,
                 ExecutionId = executionId,
                 IndexName = _options.EvidenceIndexName,
+                SourceType = sourceType,
+                SourceKey = effectiveSourceKey,
+                ContentHash = contentHash,
                 IndexedDocumentCount = 0,
-                ChunkCount = 0
+                ChunkCount = 0,
+                AlreadyIndexed = false
             };
         }
 
@@ -72,7 +128,18 @@ public sealed class EvidenceIndexAdapter
         for (var index = 0; index < chunks.Count; index++)
         {
             chunks[index].Embedding = embeddings[index];
+            chunks[index].ChunkCount = chunks.Count;
         }
+
+        chunks.Add(CreateMetadataDocument(
+            metadataId,
+            caseId,
+            executionId,
+            sourceType,
+            effectiveSourceKey,
+            contentHash,
+            documents.Count,
+            chunks.Count));
 
         var batch = IndexDocumentsBatch.Upload(chunks);
         await _searchClient.IndexDocumentsAsync(batch, cancellationToken: cancellationToken);
@@ -82,8 +149,12 @@ public sealed class EvidenceIndexAdapter
             CaseId = caseId,
             ExecutionId = executionId,
             IndexName = _options.EvidenceIndexName,
+            SourceType = sourceType,
+            SourceKey = effectiveSourceKey,
+            ContentHash = contentHash,
             IndexedDocumentCount = documents.Count,
-            ChunkCount = chunks.Count
+            ChunkCount = chunks.Count - 1,
+            AlreadyIndexed = false
         };
     }
 
@@ -134,7 +205,7 @@ public sealed class EvidenceIndexAdapter
     {
         var queryEmbedding = (await _embeddingService.EmbedAsync([query], cancellationToken)).Single();
 
-        var filter = $"caseId eq '{EscapeFilterValue(caseId)}' and executionId eq '{EscapeFilterValue(executionId)}'";
+        var filter = $"caseId eq '{EscapeFilterValue(caseId)}' and executionId eq '{EscapeFilterValue(executionId)}' and documentType ne '{MetadataDocumentType}'";
         if (!string.IsNullOrWhiteSpace(category))
         {
             filter += $" and category eq '{EscapeFilterValue(category)}'";
@@ -182,6 +253,20 @@ public sealed class EvidenceIndexAdapter
         if (candidates.Count == 0)
         {
             return [];
+        }
+
+        if (candidates.Count <= topK)
+        {
+            return candidates
+                .Select(candidate => new EvidenceMatch
+                {
+                    DocumentId = candidate.DocumentId,
+                    DocumentType = candidate.DocumentType,
+                    Category = candidate.Category,
+                    Snippet = candidate.ChunkText,
+                    Score = 1
+                })
+                .ToArray();
         }
 
         var reranked = await _rerankService.RerankAsync(
@@ -237,6 +322,106 @@ public sealed class EvidenceIndexAdapter
 
     private static string EscapeFilterValue(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
+    private async Task<EvidenceChunkDocument?> GetMetadataAsync(
+        string metadataId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _searchClient.GetDocumentAsync<EvidenceChunkDocument>(
+                metadataId,
+                cancellationToken: cancellationToken);
+
+            return response.Value;
+        }
+        catch (Azure.RequestFailedException exception) when (exception.Status == 404)
+        {
+            return null;
+        }
+    }
+
+    private async Task UpsertMetadataAsync(
+        string metadataId,
+        string caseId,
+        string executionId,
+        string sourceType,
+        string sourceKey,
+        string contentHash,
+        int sourceDocumentCount,
+        int chunkCount,
+        CancellationToken cancellationToken)
+    {
+        var metadata = CreateMetadataDocument(
+            metadataId,
+            caseId,
+            executionId,
+            sourceType,
+            sourceKey,
+            contentHash,
+            sourceDocumentCount,
+            chunkCount);
+
+        var batch = IndexDocumentsBatch.Upload([metadata]);
+        await _searchClient.IndexDocumentsAsync(batch, cancellationToken: cancellationToken);
+    }
+
+    private static EvidenceChunkDocument CreateMetadataDocument(
+        string metadataId,
+        string caseId,
+        string executionId,
+        string sourceType,
+        string sourceKey,
+        string contentHash,
+        int sourceDocumentCount,
+        int chunkCount) =>
+        new()
+        {
+            Id = metadataId,
+            CaseId = caseId,
+            ExecutionId = executionId,
+            DocumentId = metadataId,
+            DocumentType = MetadataDocumentType,
+            Category = MetadataDocumentType,
+            SourceType = sourceType,
+            SourceKey = sourceKey,
+            ContentHash = contentHash,
+            IndexedAtUtc = DateTimeOffset.UtcNow,
+            SourceDocumentCount = sourceDocumentCount,
+            ChunkCount = chunkCount,
+            ChunkText = $"Evidence index metadata for {sourceType}:{sourceKey}",
+            SourcePath = sourceKey
+        };
+
+    private static string CreateMetadataId(
+        string caseId,
+        string executionId,
+        string sourceType,
+        string sourceKey) =>
+        $"metadata:{HashKey($"{caseId}:{executionId}:{sourceType}:{sourceKey}")}";
+
+    private static string ComputeDocumentsHash(IReadOnlyList<CaseDocument> documents)
+    {
+        var builder = new StringBuilder();
+        foreach (var document in documents
+            .OrderBy(document => document.DocumentId, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(document => document.SourcePath, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.AppendLine(document.DocumentId);
+            builder.AppendLine(document.DocumentType);
+            builder.AppendLine(document.Category);
+            builder.AppendLine(document.SourcePath);
+            builder.AppendLine(document.SummaryText);
+        }
+
+        return HashKey(builder.ToString());
+    }
+
+    private static string HashKey(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(bytes);
+    }
+
     public sealed class EvidenceChunkDocument
     {
         public required string Id { get; set; }
@@ -251,10 +436,22 @@ public sealed class EvidenceIndexAdapter
 
         public required string Category { get; set; }
 
+        public required string SourceType { get; set; }
+
+        public required string SourceKey { get; set; }
+
+        public required string ContentHash { get; set; }
+
+        public DateTimeOffset IndexedAtUtc { get; set; }
+
+        public int SourceDocumentCount { get; set; }
+
+        public int ChunkCount { get; set; }
+
         public required string ChunkText { get; set; }
 
         public required string SourcePath { get; set; }
 
-        public IReadOnlyList<float> Embedding { get; set; } = [];
+        public IReadOnlyList<float>? Embedding { get; set; }
     }
 }

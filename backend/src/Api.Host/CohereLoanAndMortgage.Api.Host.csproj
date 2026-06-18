@@ -15,4 +15,8 @@
     <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.10.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj" />
+  </ItemGroup>
+
 </Project>

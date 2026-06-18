@@ -29,6 +29,10 @@ param embedModelName string = 'embed-v-4-0'
 @description('Cohere embed model version.')
 param embedModelVersion string = '1'
 
+@minValue(1)
+@description('Capacity units for the Cohere embed deployment. Increase this for faster case evidence indexing and fewer throttling failures.')
+param embedDeploymentCapacity int = 10
+
 @description('Foundry deployment name for Cohere-rerank-v4.0-pro.')
 param rerankDeploymentName string = 'cohere-rerank-v4-pro'
 
@@ -37,6 +41,10 @@ param rerankModelName string = 'Cohere-rerank-v4.0-pro'
 
 @description('Cohere rerank model version.')
 param rerankModelVersion string = '1'
+
+@minValue(1)
+@description('Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures.')
+param rerankDeploymentCapacity int = 5
 
 @description('Blob container for uploaded loan documents.')
 param documentsContainerName string = 'loan-documents'
@@ -166,7 +174,7 @@ resource embedModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@
   name: embedDeploymentName
   sku: {
     name: 'GlobalStandard'
-    capacity: 3
+    capacity: embedDeploymentCapacity
   }
   properties: {
     model: {
@@ -186,7 +194,7 @@ resource rerankModelDeployment 'Microsoft.CognitiveServices/accounts/deployments
   name: rerankDeploymentName
   sku: {
     name: 'GlobalStandard'
-    capacity: 1
+    capacity: rerankDeploymentCapacity
   }
   properties: {
     model: {
@@ -289,6 +297,26 @@ resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   ]
 }
 
+resource apiSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, apiIdentity.id, 'SearchServiceContributor', nameSuffix)
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
+    principalId: apiIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource apiSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, apiIdentity.id, 'SearchIndexDataContributor', nameSuffix)
+  scope: searchService
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
+    principalId: apiIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(searchService.id, mcpIdentity.id, 'SearchServiceContributor', nameSuffix)
   scope: searchService
@@ -358,6 +386,9 @@ var mcpFoundryModelEnv = [
   { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
   { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
   { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
+  { name: 'AzureFoundryModels__EmbeddingBatchSize', value: '16' }
+  { name: 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', value: '1' }
+  { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
 ]
 
 var mcpContainerEnv = concat([
@@ -459,7 +490,21 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
           env: [
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
             { name: 'AZURE_STORAGE_BLOB_SERVICE_URI', value: storageAccount.properties.primaryEndpoints.blob }
+            { name: 'AzureSearch__Endpoint', value: 'https://${searchService.name}.search.windows.net' }
+            { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
+            { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
+            { name: 'AzureSearch__VectorDimensions', value: '1024' }
             { name: 'AzureStorage__ContainerName', value: documentsContainerName }
+            { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
+            { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
+            { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
+            { name: 'AzureFoundryModels__RerankModelName', value: rerankModelName }
+            { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
+            { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
+            { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
+            { name: 'AzureFoundryModels__EmbeddingBatchSize', value: '16' }
+            { name: 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', value: '1' }
+            { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
             { name: 'AZURE_CLIENT_ID', value: apiIdentity.properties.clientId }
           ]

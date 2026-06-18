@@ -8,7 +8,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 
 | MCP endpoint | Tools |
 | --- | --- |
-| `/document-retrieval/mcp` | `get_case_documents`, `index_case_documents` |
+| `/document-retrieval/mcp` | `get_case_documents`, `enrich_customer_context`, `index_case_documents` |
 | `/underwriting-rules/mcp` | `search_case_evidence`, `get_underwriting_context`, `get_relevant_policies` |
 | `/policy-knowledge/mcp` | `get_relevant_policies`, `validate_human_decision` |
 | `/loan-setup/mcp` | `build_account_setup_draft` |
@@ -16,11 +16,12 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 ## Responsibilities
 
 - Read structured demo case data from `dataset-seed/02_identity` through `dataset-seed/07_collateral`
-- Index case evidence into Azure AI Search using Azure AI Foundry `embed-v-4-0`
+- Enrich customer context from local assets today, with the same adapter boundary intended for Fabric later
+- Ensure customer context evidence is indexed idempotently into Azure AI Search using Azure AI Foundry `embed-v-4-0`
 - Retrieve evidence and policies from Azure AI Search using Azure AI Foundry `Cohere-rerank-v4.0-pro`
 - Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` during deploy-time seeding
 - Reindex policies only when the policy source hash changes
-- Retry transient Foundry throttling and server errors for embedding and rerank calls
+- Batch embedding inputs, limit Foundry concurrency, and retry transient throttling/server errors
 
 ## Azure Deployment
 
@@ -73,6 +74,9 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
     "RerankEndpoint": "https://{account}.services.ai.azure.com",
     "ApiKey": "",
     "EmbeddingDimensions": 1024,
+    "EmbeddingBatchSize": 16,
+    "MaxConcurrentEmbeddingRequests": 1,
+    "MaxConcurrentRerankRequests": 2,
     "RetryEnabled": true,
     "MaxRetryAttempts": 4,
     "BaseDelaySeconds": 1,
@@ -112,8 +116,8 @@ For local runs, the default dataset paths in [appsettings.json](appsettings.json
 - `APP-017` — borderline/manual review style case
 - `APP-015` — clearly rejectable
 
-Run document processing first so evidence is indexed for the target `caseId` and `executionId` before calling underwriting tools.
+When the API workflow starts, Blob-uploaded documents are indexed before the agent workflow begins. During document processing, the agent extracts the case id and calls `enrich_customer_context`; that tool loads the current assets-backed customer context, indexes it if the content hash changed, and returns compact facts for comparison. Policies are still indexed by deploy-time seed.
 
 ## Future Extension
 
-Case retrieval currently uses `LocalCaseDataAdapter` over local dataset assets. A future `AzureFabricCaseDataAdapter` can replace the local source without changing MCP tool contracts.
+Customer context retrieval currently uses `LocalCaseDataAdapter` over local dataset assets. A future `AzureFabricCaseDataAdapter` can replace the local source without changing the `enrich_customer_context` tool contract.
