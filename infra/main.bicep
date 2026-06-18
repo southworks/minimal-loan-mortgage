@@ -115,6 +115,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     type: 'SystemAssigned'
   }
   properties: {
+    allowProjectManagement: true
     customSubDomainName: foundryAccountName
     publicNetworkAccess: 'Enabled'
   }
@@ -144,6 +145,9 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
       version: cohereModelVersion
     }
   }
+  dependsOn: [
+    foundryProject
+  ]
 }
 
 resource embedModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
@@ -160,6 +164,10 @@ resource embedModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@
       version: embedModelVersion
     }
   }
+  dependsOn: [
+    foundryProject
+    modelDeployment
+  ]
 }
 
 resource rerankModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
@@ -176,6 +184,10 @@ resource rerankModelDeployment 'Microsoft.CognitiveServices/accounts/deployments
       version: rerankModelVersion
     }
   }
+  dependsOn: [
+    foundryProject
+    embedModelDeployment
+  ]
 }
 
 resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
@@ -242,7 +254,7 @@ resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor')
   scope: storageAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
     principalId: apiIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -252,17 +264,20 @@ resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser')
   scope: foundryAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97aa65c-624c-424c-a56f-59ff10e1e8ce')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
     principalId: apiIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    foundryProject
+  ]
 }
 
 resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(searchService.id, mcpIdentity.id, 'SearchServiceContributor')
   scope: searchService
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-b645b4fd2350')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
     principalId: mcpIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -272,7 +287,7 @@ resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   name: guid(searchService.id, mcpIdentity.id, 'SearchIndexDataContributor')
   scope: searchService
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8eb59f1d-7bff-47a0-b4d9-b645b4fd2350')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
     principalId: mcpIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -282,20 +297,27 @@ resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(foundryAccount.id, mcpIdentity.id, 'CognitiveServicesUser')
   scope: foundryAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97aa65c-624c-424c-a56f-59ff10e1e8ce')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
     principalId: mcpIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    foundryProject
+  ]
 }
 
 resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor')
   scope: foundryAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25c0f9b0-23c6-4788-b26e-7b7928663388')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
     principalId: provisioningIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
+  dependsOn: [
+    foundryProject
+    rerankModelDeployment
+  ]
 }
 
 resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
