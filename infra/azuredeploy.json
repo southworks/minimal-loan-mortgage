@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16290571005888762730"
+      "templateHash": "4327809317363100855"
     }
   },
   "parameters": {
@@ -130,6 +130,9 @@
     }
   },
   "variables": {
+    "resourceTags": {
+      "project": "inesite"
+    },
     "uniqueSuffix": "[uniqueString(resourceGroup().id)]",
     "storageAccountName": "[toLower(take(replace(format('{0}st{1}', parameters('baseName'), variables('uniqueSuffix')), '-', ''), 24))]",
     "foundryAccountName": "[toLower(take(replace(format('{0}foundry{1}', parameters('baseName'), variables('uniqueSuffix')), '-', ''), 24))]",
@@ -143,10 +146,19 @@
   },
   "resources": [
     {
+      "type": "Microsoft.Resources/tags",
+      "apiVersion": "2021-04-01",
+      "name": "default",
+      "properties": {
+        "tags": "[variables('resourceTags')]"
+      }
+    },
+    {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2023-05-01",
       "name": "[variables('storageAccountName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "sku": {
         "name": "Standard_LRS"
       },
@@ -181,6 +193,7 @@
       "apiVersion": "2025-06-01",
       "name": "[variables('foundryAccountName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "kind": "AIServices",
       "sku": {
         "name": "S0"
@@ -268,6 +281,7 @@
       "apiVersion": "2023-11-01",
       "name": "[variables('searchServiceName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "sku": {
         "name": "[parameters('searchSku')]"
       },
@@ -283,6 +297,7 @@
       "apiVersion": "2023-09-01",
       "name": "[variables('logAnalyticsName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "properties": {
         "sku": {
           "name": "PerGB2018"
@@ -295,6 +310,7 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('containerAppsEnvironmentName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "properties": {
         "appLogsConfiguration": {
           "destination": "log-analytics",
@@ -312,19 +328,22 @@
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-api-identity-{1}', parameters('baseName'), variables('uniqueSuffix'))]",
-      "location": "[parameters('location')]"
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]"
     },
     {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-mcp-identity-{1}', parameters('baseName'), variables('uniqueSuffix'))]",
-      "location": "[parameters('location')]"
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]"
     },
     {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-provision-identity-{1}', parameters('baseName'), variables('uniqueSuffix'))]",
-      "location": "[parameters('location')]"
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]"
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
@@ -421,6 +440,7 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('mcpAppName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
@@ -534,6 +554,7 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('apiAppName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
@@ -677,6 +698,7 @@
       "apiVersion": "2024-03-01",
       "name": "[variables('provisioningJobName')]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
@@ -758,7 +780,8 @@
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-deployscript-{1}', parameters('baseName'), variables('uniqueSuffix'))]",
-      "location": "[parameters('location')]"
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]"
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
@@ -778,6 +801,7 @@
       "apiVersion": "2023-08-01",
       "name": "[format('run-agent-provisioning-{0}', variables('uniqueSuffix'))]",
       "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
       "kind": "AzureCLI",
       "identity": {
         "type": "UserAssigned",

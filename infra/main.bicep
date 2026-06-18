@@ -49,6 +49,10 @@ param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
+var resourceTags = {
+  project: 'inesite'
+}
+
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var storageAccountName = toLower(take(replace('${baseName}st${uniqueSuffix}', '-', ''), 24))
 var foundryAccountName = toLower(take(replace('${baseName}foundry${uniqueSuffix}', '-', ''), 24))
@@ -64,9 +68,17 @@ var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeployment
 var rerankEndpoint = '${foundryEndpointBase}/openai/deployments/${rerankDeploymentName}'
 var foundryProjectEndpoint = '${foundryEndpointBase}/api/projects/${foundryProject.name}'
 
+resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
+  name: 'default'
+  properties: {
+    tags: resourceTags
+  }
+}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
   location: location
+  tags: resourceTags
   sku: {
     name: 'Standard_LRS'
   }
@@ -94,6 +106,7 @@ resource documentsContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: foundryAccountName
   location: location
+  tags: resourceTags
   kind: 'AIServices'
   sku: {
     name: 'S0'
@@ -168,6 +181,7 @@ resource rerankModelDeployment 'Microsoft.CognitiveServices/accounts/deployments
 resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
   name: searchServiceName
   location: location
+  tags: resourceTags
   sku: {
     name: searchSku
   }
@@ -182,6 +196,7 @@ resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
   location: location
+  tags: resourceTags
   properties: {
     sku: {
       name: 'PerGB2018'
@@ -193,6 +208,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: containerAppsEnvironmentName
   location: location
+  tags: resourceTags
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -207,16 +223,19 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
 resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${baseName}-api-identity-${uniqueSuffix}'
   location: location
+  tags: resourceTags
 }
 
 resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${baseName}-mcp-identity-${uniqueSuffix}'
   location: location
+  tags: resourceTags
 }
 
 resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${baseName}-provision-identity-${uniqueSuffix}'
   location: location
+  tags: resourceTags
 }
 
 resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -282,6 +301,7 @@ resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-0
 resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: mcpAppName
   location: location
+  tags: resourceTags
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -346,6 +366,7 @@ resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: apiAppName
   location: location
+  tags: resourceTags
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -464,6 +485,7 @@ resource loanSetupConnection 'Microsoft.CognitiveServices/accounts/projects/conn
 resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
   name: provisioningJobName
   location: location
+  tags: resourceTags
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -516,6 +538,7 @@ resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
 resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${baseName}-deployscript-${uniqueSuffix}'
   location: location
+  tags: resourceTags
 }
 
 resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -531,6 +554,7 @@ resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignment
 resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'run-agent-provisioning-${uniqueSuffix}'
   location: location
+  tags: resourceTags
   kind: 'AzureCLI'
   identity: {
     type: 'UserAssigned'
