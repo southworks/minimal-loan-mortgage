@@ -4,7 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <LoanWorkflowMcpCopyAppSettingsToPublish Condition="'$(LoanWorkflowMcpCopyAppSettingsToPublish)' == ''">PreserveNewest</LoanWorkflowMcpCopyAppSettingsToPublish>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings*.json" CopyToPublishDirectory="$(LoanWorkflowMcpCopyAppSettingsToPublish)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.21.0" />

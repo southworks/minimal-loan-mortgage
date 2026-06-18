@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj" />
+    <ProjectReference Include="..\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj" AdditionalProperties="LoanWorkflowMcpCopyAppSettingsToPublish=Never" />
   </ItemGroup>
 
 </Project>
