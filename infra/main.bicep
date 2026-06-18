@@ -8,7 +8,7 @@ param baseName string = 'cohereloan'
 param modelDeploymentName string = 'cohere-command-a'
 
 @description('Cohere Command A model name in Foundry catalog.')
-param cohereModelName string = 'Cohere-command-a'
+param cohereModelName string = 'cohere-command-a'
 
 @description('Cohere Command A model version.')
 param cohereModelVersion string = '1'
@@ -20,7 +20,7 @@ param embedDeploymentName string = 'cohere-embed-v4'
 param embedModelName string = 'embed-v-4-0'
 
 @description('Cohere embed model version.')
-param embedModelVersion string = '6'
+param embedModelVersion string = '1'
 
 @description('Foundry deployment name for Cohere-rerank-v4.0-pro.')
 param rerankDeploymentName string = 'cohere-rerank-v4-pro'

@@ -32,7 +32,7 @@
     },
     "cohereModelName": {
       "type": "string",
-      "defaultValue": "Cohere-command-a",
+      "defaultValue": "cohere-command-a",
       "metadata": {
         "description": "Cohere Command A model name in Foundry catalog."
       }
@@ -60,7 +60,7 @@
     },
     "embedModelVersion": {
       "type": "string",
-      "defaultValue": "6",
+      "defaultValue": "1",
       "metadata": {
         "description": "Cohere embed model version."
       }
