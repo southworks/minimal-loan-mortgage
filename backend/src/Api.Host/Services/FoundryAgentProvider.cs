@@ -1,3 +1,4 @@
+using Azure.AI.Extensions.OpenAI;
 using Azure.AI.Projects;
 using Azure.Identity;
 using CohereLoanAndMortgage.Api.Host.Options;
@@ -43,14 +44,14 @@ public sealed class FoundryAgentProvider
                 "Azure Foundry configuration is missing. Set AzureFoundry:ProjectEndpoint in configuration or the AZURE_FOUNDRY_PROJECT_ENDPOINT environment variable.");
         }
 
-        var client = new AIProjectClient(new Uri(_options.ProjectEndpoint), new DefaultAzureCredential());
+        var projectClient = new AIProjectClient(new Uri(_options.ProjectEndpoint), new DefaultAzureCredential());
 
         _logger.LogInformation("Resolving Azure AI Foundry agents from project endpoint {Endpoint}", _options.ProjectEndpoint);
 
-        AIAgent documentProcessing = await LoadAgentAsync(client, _options.DocumentProcessingAgentName, cancellationToken);
-        AIAgent underwriting = await LoadAgentAsync(client, _options.UnderwritingAgentName, cancellationToken);
-        AIAgent responsibleAi = await LoadAgentAsync(client, _options.ResponsibleAiAgentName, cancellationToken);
-        AIAgent loanSetup = await LoadAgentAsync(client, _options.LoanSetupAgentName, cancellationToken);
+        AIAgent documentProcessing = LoadAgent(projectClient, _options.DocumentProcessingAgentName);
+        AIAgent underwriting = LoadAgent(projectClient, _options.UnderwritingAgentName);
+        AIAgent responsibleAi = LoadAgent(projectClient, _options.ResponsibleAiAgentName);
+        AIAgent loanSetup = LoadAgent(projectClient, _options.LoanSetupAgentName);
 
         _agents = new FoundryAgents
         {
@@ -60,17 +61,22 @@ public sealed class FoundryAgentProvider
             LoanSetup = loanSetup
         };
 
-        return _agents;
+        return await Task.FromResult(_agents).ConfigureAwait(false);
     }
 
-    private static async Task<AIAgent> LoadAgentAsync(
-        AIProjectClient client,
-        string agentName,
-        CancellationToken cancellationToken)
+    private AIAgent LoadAgent(AIProjectClient projectClient, string agentName)
     {
         try
         {
-            return await client.GetAIAgentAsync(agentName, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var agentReference = new AgentReference(agentName, "latest");
+            AIAgent agent = projectClient.AsAIAgent(agentReference);
+
+            _logger.LogInformation(
+                "Resolved Foundry agent {AgentName} via AgentReference as {AgentType}.",
+                agentName,
+                agent.GetType().Name);
+
+            return agent;
         }
         catch (Exception ex)
         {

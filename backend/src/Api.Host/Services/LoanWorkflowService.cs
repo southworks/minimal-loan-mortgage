@@ -224,14 +224,27 @@ public sealed class LoanWorkflowService
                 .RunStreamingAsync(workflow, input, checkpointManager, sessionId, cancellationToken)
                 .ConfigureAwait(false);
 
+            bool receivedWorkflowEvent = false;
+
             await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
             {
+                receivedWorkflowEvent = true;
                 ProcessWorkflowEvent(record, workflowEvent, run);
 
                 if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
                 {
                     break;
                 }
+            }
+
+            if (!receivedWorkflowEvent &&
+                record.State.Status == LoanCaseStatus.Running &&
+                record.State.CurrentStep == LoanWorkflowStep.Submitted)
+            {
+                const string message =
+                    "Workflow completed without emitting any agent events. Verify hosted Foundry agents are provisioned and the API is using AsAIAgent with AgentRecord.";
+                MarkFailed(record, message);
+                throw new InvalidOperationException(message);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

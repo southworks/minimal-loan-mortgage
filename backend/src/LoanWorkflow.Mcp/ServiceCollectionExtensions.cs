@@ -33,9 +33,15 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(SearchClientFactory.CreateIndexClient(searchOptions));
 
-        services.AddHttpClient<FoundryEmbeddingService>()
+        services.AddHttpClient<FoundryEmbeddingService>(client =>
+            {
+                client.Timeout = TimeSpan.FromMinutes(10);
+            })
             .AddFoundryResilience(foundryOptions);
-        services.AddHttpClient<FoundryRerankService>()
+        services.AddHttpClient<FoundryRerankService>(client =>
+            {
+                client.Timeout = TimeSpan.FromMinutes(10);
+            })
             .AddFoundryResilience(foundryOptions);
 
         services.AddSingleton<LocalCaseDataAdapter>();

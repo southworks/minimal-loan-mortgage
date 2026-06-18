@@ -14,7 +14,9 @@ if (args.Contains("--seed-policies", StringComparer.OrdinalIgnoreCase))
         .GetRequiredService<PolicySeedRunner>()
         .RunAsync(CancellationToken.None);
 
-    Environment.Exit(exitCode);
+    await seedApp.DisposeAsync();
+    Environment.ExitCode = exitCode;
+    return;
 }
 
 var builder = WebApplication.CreateBuilder(args);
