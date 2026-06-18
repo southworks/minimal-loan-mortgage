@@ -223,7 +223,7 @@ resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
     publicNetworkAccess: 'enabled'
     authOptions: {
       aadOrApiKey: {
-        aadAuthFailureMode: 'http403'
+        aadAuthFailureMode: 'http401WithBearerChallenge'
       }
     }
   }

@@ -76,7 +76,7 @@ public sealed class EvidenceIndexAdapter
             {
                 chunks.Add(new EvidenceChunkDocument
                 {
-                    Id = $"{caseId}:{executionId}:{document.DocumentId}:{index}",
+                    Id = CreateChunkId(caseId, executionId, document.DocumentId, index),
                     CaseId = caseId,
                     ExecutionId = executionId,
                     DocumentId = document.DocumentId,
@@ -397,7 +397,14 @@ public sealed class EvidenceIndexAdapter
         string executionId,
         string sourceType,
         string sourceKey) =>
-        $"metadata:{HashKey($"{caseId}:{executionId}:{sourceType}:{sourceKey}")}";
+        $"metadata-{HashKey($"{caseId}:{executionId}:{sourceType}:{sourceKey}")}";
+
+    private static string CreateChunkId(
+        string caseId,
+        string executionId,
+        string documentId,
+        int index) =>
+        $"chunk-{HashKey($"{caseId}:{executionId}:{documentId}:{index}")}";
 
     private static string ComputeDocumentsHash(IReadOnlyList<CaseDocument> documents)
     {

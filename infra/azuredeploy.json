@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9790997921447416468"
+      "templateHash": "11363881061689575381"
     }
   },
   "parameters": {
@@ -337,7 +337,7 @@
         "publicNetworkAccess": "enabled",
         "authOptions": {
           "aadOrApiKey": {
-            "aadAuthFailureMode": "http403"
+            "aadAuthFailureMode": "http401WithBearerChallenge"
           }
         }
       }
