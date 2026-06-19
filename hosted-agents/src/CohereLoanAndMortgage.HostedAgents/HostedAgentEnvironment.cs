@@ -15,15 +15,52 @@ public static class HostedAgentEnvironment
             "AZURE_AI_PROJECT_ENDPOINT",
             "AZURE_FOUNDRY_PROJECT_ENDPOINT");
 
+        endpoint = endpoint.TrimEnd('/');
+
+        if (endpoint.Contains("/api/projects/", StringComparison.OrdinalIgnoreCase))
+        {
+            return new Uri(endpoint);
+        }
+
+        string? projectName = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_NAME");
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            string? armId = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ARM_ID");
+            if (!string.IsNullOrWhiteSpace(armId))
+            {
+                projectName = armId.Split('/', StringSplitOptions.RemoveEmptyEntries)[^1];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(projectName))
+        {
+            return new Uri($"{endpoint}/api/projects/{projectName}");
+        }
+
         return new Uri(endpoint);
     }
 
-    public static string GetModelDeploymentName() =>
-        ReadRequired(
-            "MODEL_DEPLOYMENT_NAME",
+    public static string GetModelDeploymentName()
+    {
+        string? configuredModel = Environment.GetEnvironmentVariable("MODEL_DEPLOYMENT_NAME");
+        if (!string.IsNullOrWhiteSpace(configuredModel))
+        {
+            return configuredModel;
+        }
+
+        // Foundry injects AZURE_AI_MODEL_DEPLOYMENT_NAME with a platform default (often gpt-4o)
+        // that does not exist in this project. Require the custom env var in hosted sandboxes.
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FOUNDRY_AGENT_NAME")))
+        {
+            throw new InvalidOperationException(
+                "MODEL_DEPLOYMENT_NAME must be set on the hosted agent version.");
+        }
+
+        return ReadRequired(
             "AZURE_AI_MODEL_DEPLOYMENT_NAME",
             "FOUNDRY_MODEL",
             "AZURE_FOUNDRY_MODEL_DEPLOYMENT_NAME");
+    }
 
     private static string ReadRequired(params string[] names)
     {

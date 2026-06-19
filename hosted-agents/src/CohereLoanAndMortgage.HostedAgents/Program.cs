@@ -10,6 +10,12 @@ HostedAgentDefinition agentDefinition = HostedAgentCatalog.GetRequired(
 Uri projectEndpoint = HostedAgentEnvironment.GetProjectEndpoint();
 string modelDeploymentName = HostedAgentEnvironment.GetModelDeploymentName();
 
+Console.WriteLine(
+    "Starting hosted agent '{0}' with model '{1}' at '{2}'.",
+    agentDefinition.Name,
+    modelDeploymentName,
+    projectEndpoint);
+
 AIAgent agent = new AIProjectClient(projectEndpoint, new DefaultAzureCredential())
     .AsAIAgent(
         model: modelDeploymentName,
