@@ -13,17 +13,17 @@ When you deploy:
 1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
 2. The API and MCP hosts start as Azure Container Apps.
 3. Foundry MCP connections are wired to the deployed MCP host.
-4. A Container Apps Job seeds the policy index before agent provisioning runs.
-5. A Container Apps Job runs agent provisioning automatically.
+4. A Container Apps Job seeds the policy index.
+5. A deployment script registers the Foundry hosted agent versions.
 6. The deployment outputs the live API URL.
 
-You do **not** need to run a separate provisioning CLI after deployment.
+You do **not** need to run a separate agent CLI after deployment.
 
 Container images are published automatically to GitHub Container Registry by [.github/workflows/publish-container-images.yml](.github/workflows/publish-container-images.yml) on pushes to `main`. The deployment template uses these default image URIs:
 
 - `ghcr.io/southworks/cohereloan-api:demo`
 - `ghcr.io/southworks/cohereloan-mcp:demo`
-- `ghcr.io/southworks/cohereloan-provisioning:demo`
+- `ghcr.io/southworks/cohereloan-hosted-agents:demo`
 
 Make the GHCR packages public after the first workflow run so Azure Container Apps can pull them without registry credentials.
 
@@ -35,9 +35,9 @@ Open the `apiUrl` output from the deployment and use the API endpoints below. Se
 
 `document-processing-agent` -> `underwriting-agent` -> human approval -> `responsible-ai-agent` -> `loan-setup-agent`
 
-The API orchestrates the workflow. Foundry hosted agents execute the steps. MCP tools are provided by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). Agent definitions and bindings are managed by [agent-provisioning/README.md](agent-provisioning/README.md) and run automatically during deployment.
+The API orchestrates the workflow. Foundry hosted agents execute the steps and attach their own Foundry Toolboxes backed by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). Hosted agent code and minimal manifests live in [hosted-agents](hosted-agents).
 
-Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During document processing, the agent extracts the case id and calls `enrich_customer_context`; the MCP loads the current assets-backed customer context, indexes it idempotently for that execution, and returns compact facts for comparison. Policy knowledge is still indexed by the deploy-time seed job.
+Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During agent execution, each hosted agent uses only the toolbox assigned to that agent. Policy knowledge is still indexed by the deploy-time seed job.
 
 ## Demo limitations
 
@@ -45,7 +45,7 @@ This is intentionally a simple demo:
 
 - Paused workflow cases are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
-- MCP auth is open (`authType: None`) so Foundry can call the demo MCP endpoints over HTTPS.
+- MCP auth is open for the demo host. The API uses the same MCP services internally to prepare hosted-agent context.
 
 ## API Endpoints
 
@@ -102,7 +102,7 @@ Local development is optional and separate from the Azure deployment path.
 
 - .NET 9 SDK
 - Azure CLI login or another credential available to `DefaultAzureCredential`
-- An Azure AI Foundry project with the four demo agents already provisioned
+- An Azure AI Foundry project with the four demo hosted agents already deployed
 - Azure Storage account with a blob container for document uploads
 
 ### Run locally
@@ -130,7 +130,7 @@ cd backend/src/LoanWorkflow.Mcp
 dotnet run -- --seed-policies
 ```
 
-For local agent maintenance only, see [agent-provisioning/README.md](agent-provisioning/README.md).
+For hosted-agent code, see [hosted-agents](hosted-agents). `azd ai agent` is useful for local hosted-agent experiments, but it is not required for the one-click Azure deployment.
 
 ## Packages
 

@@ -25,13 +25,13 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 
 ## Azure Deployment
 
-[infra/main.bicep](../../../infra/main.bicep) deploys the MCP host as a Container App and runs a separate Container Apps Job to seed the policy index before agent provisioning. Runtime configuration is set through environment variables:
+[infra/main.bicep](../../../infra/main.bicep) deploys the MCP host as a Container App and runs a separate Container Apps Job to seed the policy index. Runtime configuration is set through environment variables:
 
 - Azure AI Search endpoint and index names
 - Foundry embed and rerank deployment endpoints
 - container-safe dataset paths (`/app/dataset-seed`)
 
-Foundry MCP connection targets are wired automatically to:
+The deployed MCP endpoints are:
 
 - `{mcpUrl}/document-retrieval/mcp`
 - `{mcpUrl}/underwriting-rules/mcp`

@@ -1,9 +1,0 @@
-{
-  "dependencies": [
-    {
-      "connectionName": "policy-knowledge-mcp",
-      "serverLabel": "policy-knowledge",
-      "required": false
-    }
-  ]
-}

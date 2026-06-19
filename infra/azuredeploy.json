@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "11363881061689575381"
+      "templateHash": "17492038582747166301"
     }
   },
   "parameters": {
@@ -152,11 +152,11 @@
         "description": "Full container image URI for the MCP host."
       }
     },
-    "provisioningContainerImage": {
+    "hostedAgentContainerImage": {
       "type": "string",
-      "defaultValue": "ghcr.io/southworks/cohereloan-provisioning:demo",
+      "defaultValue": "ghcr.io/southworks/cohereloan-hosted-agents:demo",
       "metadata": {
-        "description": "Full container image URI for the agent provisioning job."
+        "description": "Full container image URI for the hosted agents app."
       }
     },
     "nameSuffix": {
@@ -180,7 +180,6 @@
     "containerAppsEnvironmentName": "[take(format('{0}-cae-{1}', parameters('baseName'), variables('deploymentSuffix')), 63)]",
     "apiAppName": "[take(format('{0}-api-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "mcpAppName": "[take(format('{0}-mcp-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-    "provisioningJobName": "[take(format('{0}-provision-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "policySeedJobName": "[take(format('{0}-policyseed-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]"
   },
   "resources": [
@@ -389,13 +388,6 @@
       "tags": "[variables('resourceTags')]"
     },
     {
-      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-      "apiVersion": "2023-01-31",
-      "name": "[format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))]",
-      "location": "[parameters('location')]",
-      "tags": "[variables('resourceTags')]"
-    },
-    {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
@@ -500,40 +492,6 @@
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesContributor', parameters('nameSuffix'))]",
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'FoundryUser', parameters('nameSuffix'))]",
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
       ]
     },
     {
@@ -739,62 +697,6 @@
       ]
     },
     {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-06-01",
-      "name": "[format('{0}/{1}/{2}', variables('foundryAccountName'), variables('projectName'), 'document-retrieval-mcp')]",
-      "properties": {
-        "category": "GenericHttp",
-        "authType": "None",
-        "target": "[format('{0}/document-retrieval/mcp', format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn))]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-06-01",
-      "name": "[format('{0}/{1}/{2}', variables('foundryAccountName'), variables('projectName'), 'underwriting-rules-mcp')]",
-      "properties": {
-        "category": "GenericHttp",
-        "authType": "None",
-        "target": "[format('{0}/underwriting-rules/mcp', format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn))]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-06-01",
-      "name": "[format('{0}/{1}/{2}', variables('foundryAccountName'), variables('projectName'), 'policy-knowledge-mcp')]",
-      "properties": {
-        "category": "GenericHttp",
-        "authType": "None",
-        "target": "[format('{0}/policy-knowledge/mcp', format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn))]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-06-01",
-      "name": "[format('{0}/{1}/{2}', variables('foundryAccountName'), variables('projectName'), 'loan-setup-mcp')]",
-      "properties": {
-        "category": "GenericHttp",
-        "authType": "None",
-        "target": "[format('{0}/loan-setup/mcp', format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn))]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]"
-      ]
-    },
-    {
       "type": "Microsoft.App/jobs",
       "apiVersion": "2024-03-01",
       "name": "[variables('policySeedJobName')]",
@@ -847,89 +749,6 @@
       ]
     },
     {
-      "type": "Microsoft.App/jobs",
-      "apiVersion": "2024-03-01",
-      "name": "[variables('provisioningJobName')]",
-      "location": "[parameters('location')]",
-      "tags": "[variables('resourceTags')]",
-      "identity": {
-        "type": "UserAssigned",
-        "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))))]": {}
-        }
-      },
-      "properties": {
-        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
-        "configuration": {
-          "triggerType": "Manual",
-          "replicaTimeout": 1800,
-          "replicaRetryLimit": 0,
-          "manualTriggerConfig": {
-            "replicaCompletionCount": 1,
-            "parallelism": 1
-          }
-        },
-        "template": {
-          "containers": [
-            {
-              "name": "agent-provisioning",
-              "image": "[parameters('provisioningContainerImage')]",
-              "resources": {
-                "cpu": "[json('0.5')]",
-                "memory": "1Gi"
-              },
-              "env": [
-                {
-                  "name": "AZURE_FOUNDRY_PROJECT_ENDPOINT",
-                  "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('projectName'))]"
-                },
-                {
-                  "name": "AZURE_FOUNDRY_PROJECT_RESOURCE_ID",
-                  "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]"
-                },
-                {
-                  "name": "ProjectEndpoint",
-                  "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('projectName'))]"
-                },
-                {
-                  "name": "FoundryProjectResourceId",
-                  "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]"
-                },
-                {
-                  "name": "ModelDeploymentName",
-                  "value": "[parameters('modelDeploymentName')]"
-                },
-                {
-                  "name": "MemoryStoreName",
-                  "value": "[parameters('memoryStoreName')]"
-                },
-                {
-                  "name": "MCP_BASE_URL",
-                  "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn)]"
-                },
-                {
-                  "name": "AZURE_CLIENT_ID",
-                  "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId]"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAccountName'), variables('projectName'), 'document-retrieval-mcp')]",
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAccountName'), variables('projectName'), 'loan-setup-mcp')]",
-        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAccountName'), variables('projectName'), 'policy-knowledge-mcp')]",
-        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesContributor', parameters('nameSuffix')))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('foundryAccountName'), variables('projectName'), 'underwriting-rules-mcp')]"
-      ]
-    },
-    {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
       "name": "[format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))]",
@@ -947,6 +766,40 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesContributor', parameters('nameSuffix'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'FoundryUser', parameters('nameSuffix'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
       ]
     },
     {
@@ -989,7 +842,7 @@
     {
       "type": "Microsoft.Resources/deploymentScripts",
       "apiVersion": "2023-08-01",
-      "name": "[format('run-agent-provisioning-{0}', variables('deploymentSuffix'))]",
+      "name": "[format('deploy-hosted-agents-{0}', variables('deploymentSuffix'))]",
       "location": "[parameters('location')]",
       "tags": "[variables('resourceTags')]",
       "kind": "AzureCLI",
@@ -1005,24 +858,34 @@
         "retentionInterval": "PT1H",
         "cleanupPreference": "OnSuccess",
         "forceUpdateTag": "[variables('deploymentSuffix')]",
-        "scriptContent": "      set -euo pipefail\n      echo \"Waiting briefly for role assignment propagation...\"\n      sleep 60\n      echo \"Starting agent provisioning job...\"\n      EXECUTION=$(az containerapp job start --name \"${PROVISIONING_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${PROVISIONING_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Provisioning job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Agent provisioning completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Agent provisioning job failed.\"\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for agent provisioning job.\"\n      exit 1\n    ",
+        "scriptContent": "      set -euo pipefail\n      echo \"Waiting briefly for role assignments and Foundry deployments to settle...\"\n      sleep 60\n\n      create_toolbox_version() {\n        local toolbox_name=\"$1\"\n        local description=\"$2\"\n        local server_label=\"$3\"\n        local mcp_path=\"$4\"\n\n        echo \"Creating toolbox version for ${toolbox_name}...\"\n        body=$(printf '{\"description\":\"%s\",\"tools\":[{\"type\":\"mcp\",\"server_label\":\"%s\",\"server_url\":\"%s%s\",\"require_approval\":\"never\"}]}' \\\n          \"${description}\" \\\n          \"${server_label}\" \\\n          \"${MCP_BASE_URL}\" \\\n          \"${mcp_path}\")\n\n        az rest \\\n          --method POST \\\n          --url \"${FOUNDRY_PROJECT_ENDPOINT}/toolboxes/${toolbox_name}/versions?api-version=v1\" \\\n          --resource \"https://ai.azure.com\" \\\n          --headers \"Foundry-Features=Toolboxes=V1Preview\" \\\n          --body \"${body}\" \\\n          --only-show-errors 1>/dev/null\n      }\n\n      create_agent_version() {\n        local agent_name=\"$1\"\n        local description=\"$2\"\n\n        echo \"Creating hosted agent version for ${agent_name}...\"\n        body=$(printf '{\"definition\":{\"kind\":\"hosted\",\"image\":\"%s\",\"cpu\":\"0.5\",\"memory\":\"1Gi\",\"container_protocol_versions\":[{\"protocol\":\"responses\",\"version\":\"1.0.0\"}],\"environment_variables\":{\"AGENT_NAME\":\"%s\",\"FOUNDRY_PROJECT_ENDPOINT\":\"%s\",\"AZURE_AI_PROJECT_ENDPOINT\":\"%s\",\"AZURE_FOUNDRY_PROJECT_ENDPOINT\":\"%s\",\"AZURE_AI_MODEL_DEPLOYMENT_NAME\":\"%s\"}},\"description\":\"%s\"}' \\\n          \"${HOSTED_AGENT_IMAGE}\" \\\n          \"${agent_name}\" \\\n          \"${FOUNDRY_PROJECT_ENDPOINT}\" \\\n          \"${FOUNDRY_PROJECT_ENDPOINT}\" \\\n          \"${FOUNDRY_PROJECT_ENDPOINT}\" \\\n          \"${MODEL_DEPLOYMENT_NAME}\" \\\n          \"${description}\")\n\n        az rest \\\n          --method POST \\\n          --url \"${FOUNDRY_PROJECT_ENDPOINT}/agents/${agent_name}/versions?api-version=v1\" \\\n          --resource \"https://ai.azure.com\" \\\n          --body \"${body}\" \\\n          --only-show-errors 1>/dev/null\n      }\n\n      create_toolbox_version \"document-retrieval-toolbox\" \"Document retrieval MCP tools for document-processing-agent.\" \"document_retrieval\" \"/document-retrieval/mcp\"\n      create_toolbox_version \"underwriting-rules-toolbox\" \"Underwriting rules MCP tools for underwriting-agent.\" \"underwriting_rules\" \"/underwriting-rules/mcp\"\n      create_toolbox_version \"policy-knowledge-toolbox\" \"Policy knowledge MCP tools for responsible-ai-agent.\" \"policy_knowledge\" \"/policy-knowledge/mcp\"\n      create_toolbox_version \"loan-setup-toolbox\" \"Loan setup MCP tools for loan-setup-agent.\" \"loan_setup\" \"/loan-setup/mcp\"\n\n      create_agent_version \"document-processing-agent\" \"Processes loan documents and returns structured JSON.\"\n      create_agent_version \"underwriting-agent\" \"Evaluates loan risk and returns an underwriting recommendation.\"\n      create_agent_version \"responsible-ai-agent\" \"Reviews fairness, governance, and responsible AI concerns.\"\n      create_agent_version \"loan-setup-agent\" \"Prepares the final loan setup package.\"\n\n      echo \"Hosted agent versions were submitted successfully.\"\n    ",
         "environmentVariables": [
           {
-            "name": "RESOURCE_GROUP",
-            "value": "[resourceGroup().name]"
+            "name": "FOUNDRY_PROJECT_ENDPOINT",
+            "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('projectName'))]"
           },
           {
-            "name": "PROVISIONING_JOB_NAME",
-            "value": "[variables('provisioningJobName')]"
+            "name": "MODEL_DEPLOYMENT_NAME",
+            "value": "[parameters('modelDeploymentName')]"
+          },
+          {
+            "name": "HOSTED_AGENT_IMAGE",
+            "value": "[parameters('hostedAgentContainerImage')]"
+          },
+          {
+            "name": "MCP_BASE_URL",
+            "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('mcpAppName')), '2024-03-01').configuration.ingress.fqdn)]"
           }
         ]
       },
       "dependsOn": [
         "[resourceId('Microsoft.App/containerApps', variables('apiAppName'))]",
-        "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'Contributor', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesContributor', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'FoundryUser', parameters('nameSuffix')))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('projectName'))]",
         "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]",
-        "[resourceId('Microsoft.App/jobs', variables('provisioningJobName'))]",
         "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', variables('deploymentSuffix')))]"
       ]
     }
@@ -1100,9 +963,9 @@
       "type": "string",
       "value": "[variables('policySeedJobName')]"
     },
-    "provisioningJobName": {
+    "hostedAgentDeploymentScriptName": {
       "type": "string",
-      "value": "[variables('provisioningJobName')]"
+      "value": "[format('deploy-hosted-agents-{0}', variables('deploymentSuffix'))]"
     }
   }
 }

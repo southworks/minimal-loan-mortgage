@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -9,11 +9,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8B2E58CE-72D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.Api.Host", "backend\src\Api.Host\CohereLoanAndMortgage.Api.Host.csproj", "{5E32973F-9CED-4513-A4F0-B71A8DE0C432}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "agent-provisioning", "agent-provisioning", "{A72BC714-CCCA-423F-B2E7-1AA2F7864FF6}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hosted-agents", "hosted-agents", "{A72BC714-CCCA-423F-B2E7-1AA2F7864FF6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FD0E0C09-EB13-48A8-A486-D9306CE2233C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.AgentProvisioning", "agent-provisioning\src\CohereLoanAndMortgage.AgentProvisioning\CohereLoanAndMortgage.AgentProvisioning.csproj", "{762E2B05-5009-422B-82D9-BB82AD07D88E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.HostedAgents", "hosted-agents\src\CohereLoanAndMortgage.HostedAgents\CohereLoanAndMortgage.HostedAgents.csproj", "{762E2B05-5009-422B-82D9-BB82AD07D88E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoanWorkflow.Mcp", "backend\src\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj", "{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}"
 EndProject

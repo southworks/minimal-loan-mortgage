@@ -1,0 +1,12 @@
+kind: hosted
+name: document-processing-agent
+description: Processes loan documents and returns structured JSON.
+protocols:
+  - protocol: responses
+    version: 1.0.0
+resources:
+  cpu: "0.5"
+  memory: 1Gi
+environment_variables:
+  - name: AGENT_NAME
+    value: document-processing-agent

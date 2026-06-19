@@ -5,7 +5,7 @@ obj/
 *.swp
 appsettings.*.local.json
 backend/src/LoanWorkflow.Mcp/appsettings.Deployment.local.json
-agent-provisioning/config/provisioning.local.json
+hosted-agents/.env
 deployment-outputs.json
 .cursor/
 .vscode/

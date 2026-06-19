@@ -61,8 +61,8 @@ param apiContainerImage string = 'ghcr.io/southworks/cohereloan-api:demo'
 @description('Full container image URI for the MCP host.')
 param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 
-@description('Full container image URI for the agent provisioning job.')
-param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
+@description('Full container image URI for the hosted agents app.')
+param hostedAgentContainerImage string = 'ghcr.io/southworks/cohereloan-hosted-agents:demo'
 
 @description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
 param nameSuffix string = ''
@@ -80,7 +80,6 @@ var logAnalyticsName = take('${baseName}-logs-${deploymentSuffix}', 63)
 var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 63)
 var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
 var mcpAppName = take('${baseName}-mcp-${deploymentSuffix}', 32)
-var provisioningJobName = take('${baseName}-provision-${deploymentSuffix}', 32)
 var policySeedJobName = take('${baseName}-policyseed-${deploymentSuffix}', 32)
 var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
 var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeploymentName}'
@@ -268,12 +267,6 @@ resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
   tags: resourceTags
 }
 
-resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-provision-identity-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-}
-
 resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor', nameSuffix)
   scope: storageAccount
@@ -347,34 +340,6 @@ resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
   dependsOn: [
     foundryProject
-  ]
-}
-
-resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
-    principalId: provisioningIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
-  ]
-}
-
-resource provisioningFoundryDeveloperRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'FoundryUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
-    principalId: provisioningIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
   ]
 }
 
@@ -540,58 +505,6 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
 
 var mcpBaseUrl = 'https://${mcpApp.properties.configuration.ingress.fqdn}'
 
-resource documentRetrievalConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
-  parent: foundryProject
-  name: 'document-retrieval-mcp'
-  properties: {
-    category: 'GenericHttp'
-    authType: 'None'
-    target: '${mcpBaseUrl}/document-retrieval/mcp'
-  }
-  dependsOn: [
-    mcpApp
-  ]
-}
-
-resource underwritingRulesConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
-  parent: foundryProject
-  name: 'underwriting-rules-mcp'
-  properties: {
-    category: 'GenericHttp'
-    authType: 'None'
-    target: '${mcpBaseUrl}/underwriting-rules/mcp'
-  }
-  dependsOn: [
-    mcpApp
-  ]
-}
-
-resource policyKnowledgeConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
-  parent: foundryProject
-  name: 'policy-knowledge-mcp'
-  properties: {
-    category: 'GenericHttp'
-    authType: 'None'
-    target: '${mcpBaseUrl}/policy-knowledge/mcp'
-  }
-  dependsOn: [
-    mcpApp
-  ]
-}
-
-resource loanSetupConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
-  parent: foundryProject
-  name: 'loan-setup-mcp'
-  properties: {
-    category: 'GenericHttp'
-    authType: 'None'
-    target: '${mcpBaseUrl}/loan-setup/mcp'
-  }
-  dependsOn: [
-    mcpApp
-  ]
-}
-
 resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
   name: policySeedJobName
   location: location
@@ -639,59 +552,6 @@ resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
   ]
 }
 
-resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
-  name: provisioningJobName
-  location: location
-  tags: resourceTags
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${provisioningIdentity.id}': {}
-    }
-  }
-  properties: {
-    environmentId: containerAppsEnvironment.id
-    configuration: {
-      triggerType: 'Manual'
-      replicaTimeout: 1800
-      replicaRetryLimit: 0
-      manualTriggerConfig: {
-        replicaCompletionCount: 1
-        parallelism: 1
-      }
-    }
-    template: {
-      containers: [
-        {
-          name: 'agent-provisioning'
-          image: provisioningContainerImage
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: [
-            { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
-            { name: 'AZURE_FOUNDRY_PROJECT_RESOURCE_ID', value: foundryProject.id }
-            { name: 'ProjectEndpoint', value: foundryProjectEndpoint }
-            { name: 'FoundryProjectResourceId', value: foundryProject.id }
-            { name: 'ModelDeploymentName', value: modelDeploymentName }
-            { name: 'MemoryStoreName', value: memoryStoreName }
-            { name: 'MCP_BASE_URL', value: mcpBaseUrl }
-            { name: 'AZURE_CLIENT_ID', value: provisioningIdentity.properties.clientId }
-          ]
-        }
-      ]
-    }
-  }
-  dependsOn: [
-    documentRetrievalConnection
-    underwritingRulesConnection
-    policyKnowledgeConnection
-    loanSetupConnection
-    provisioningFoundryRole
-  ]
-}
-
 resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${baseName}-deployscript-${deploymentSuffix}'
   location: location
@@ -706,6 +566,34 @@ resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignment
     principalId: deploymentScriptIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
+}
+
+resource deploymentScriptFoundryContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'CognitiveServicesContributor', nameSuffix)
+  scope: foundryAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
+    principalId: deploymentScriptIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    foundryProject
+    rerankModelDeployment
+  ]
+}
+
+resource deploymentScriptFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'FoundryUser', nameSuffix)
+  scope: foundryAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+    principalId: deploymentScriptIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    foundryProject
+    rerankModelDeployment
+  ]
 }
 
 resource runPolicySeedScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
@@ -782,8 +670,8 @@ resource runPolicySeedScript 'Microsoft.Resources/deploymentScripts@2023-08-01' 
   ]
 }
 
-resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'run-agent-provisioning-${deploymentSuffix}'
+resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'deploy-hosted-agents-${deploymentSuffix}'
   location: location
   tags: resourceTags
   kind: 'AzureCLI'
@@ -801,53 +689,88 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
     forceUpdateTag: deploymentSuffix
     scriptContent: '''
       set -euo pipefail
-      echo "Waiting briefly for role assignment propagation..."
+      echo "Waiting briefly for role assignments and Foundry deployments to settle..."
       sleep 60
-      echo "Starting agent provisioning job..."
-      EXECUTION=$(az containerapp job start --name "${PROVISIONING_JOB_NAME}" --resource-group "${RESOURCE_GROUP}" --query name -o tsv)
-      echo "Job execution: ${EXECUTION}"
 
-      for i in $(seq 1 120); do
-        STATUS=$(az containerapp job execution show \
-          --name "${PROVISIONING_JOB_NAME}" \
-          --resource-group "${RESOURCE_GROUP}" \
-          --job-execution-name "${EXECUTION}" \
-          --query properties.status -o tsv)
+      create_toolbox_version() {
+        local toolbox_name="$1"
+        local description="$2"
+        local server_label="$3"
+        local mcp_path="$4"
 
-        echo "Provisioning job status: ${STATUS}"
+        echo "Creating toolbox version for ${toolbox_name}..."
+        body=$(printf '{"description":"%s","tools":[{"type":"mcp","server_label":"%s","server_url":"%s%s","require_approval":"never"}]}' \
+          "${description}" \
+          "${server_label}" \
+          "${MCP_BASE_URL}" \
+          "${mcp_path}")
 
-        if [ "${STATUS}" = "Succeeded" ]; then
-          echo "Agent provisioning completed successfully."
-          exit 0
-        fi
+        az rest \
+          --method POST \
+          --url "${FOUNDRY_PROJECT_ENDPOINT}/toolboxes/${toolbox_name}/versions?api-version=v1" \
+          --resource "https://ai.azure.com" \
+          --headers "Foundry-Features=Toolboxes=V1Preview" \
+          --body "${body}" \
+          --only-show-errors 1>/dev/null
+      }
 
-        if [ "${STATUS}" = "Failed" ]; then
-          echo "Agent provisioning job failed."
-          exit 1
-        fi
+      create_agent_version() {
+        local agent_name="$1"
+        local description="$2"
 
-        sleep 15
-      done
+        echo "Creating hosted agent version for ${agent_name}..."
+        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AGENT_NAME":"%s","FOUNDRY_PROJECT_ENDPOINT":"%s","AZURE_AI_PROJECT_ENDPOINT":"%s","AZURE_FOUNDRY_PROJECT_ENDPOINT":"%s","AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s"}},"description":"%s"}' \
+          "${HOSTED_AGENT_IMAGE}" \
+          "${agent_name}" \
+          "${FOUNDRY_PROJECT_ENDPOINT}" \
+          "${FOUNDRY_PROJECT_ENDPOINT}" \
+          "${FOUNDRY_PROJECT_ENDPOINT}" \
+          "${MODEL_DEPLOYMENT_NAME}" \
+          "${description}")
 
-      echo "Timed out waiting for agent provisioning job."
-      exit 1
+        az rest \
+          --method POST \
+          --url "${FOUNDRY_PROJECT_ENDPOINT}/agents/${agent_name}/versions?api-version=v1" \
+          --resource "https://ai.azure.com" \
+          --body "${body}" \
+          --only-show-errors 1>/dev/null
+      }
+
+      create_toolbox_version "document-retrieval-toolbox" "Document retrieval MCP tools for document-processing-agent." "document_retrieval" "/document-retrieval/mcp"
+      create_toolbox_version "underwriting-rules-toolbox" "Underwriting rules MCP tools for underwriting-agent." "underwriting_rules" "/underwriting-rules/mcp"
+      create_toolbox_version "policy-knowledge-toolbox" "Policy knowledge MCP tools for responsible-ai-agent." "policy_knowledge" "/policy-knowledge/mcp"
+      create_toolbox_version "loan-setup-toolbox" "Loan setup MCP tools for loan-setup-agent." "loan_setup" "/loan-setup/mcp"
+
+      create_agent_version "document-processing-agent" "Processes loan documents and returns structured JSON."
+      create_agent_version "underwriting-agent" "Evaluates loan risk and returns an underwriting recommendation."
+      create_agent_version "responsible-ai-agent" "Reviews fairness, governance, and responsible AI concerns."
+      create_agent_version "loan-setup-agent" "Prepares the final loan setup package."
+
+      echo "Hosted agent versions were submitted successfully."
     '''
     environmentVariables: [
       {
-        name: 'RESOURCE_GROUP'
-        value: resourceGroup().name
+        name: 'FOUNDRY_PROJECT_ENDPOINT'
+        value: foundryProjectEndpoint
       }
       {
-        name: 'PROVISIONING_JOB_NAME'
-        value: provisioningJobName
+        name: 'MODEL_DEPLOYMENT_NAME'
+        value: modelDeploymentName
+      }
+      {
+        name: 'HOSTED_AGENT_IMAGE'
+        value: hostedAgentContainerImage
+      }
+      {
+        name: 'MCP_BASE_URL'
+        value: mcpBaseUrl
       }
     ]
   }
   dependsOn: [
-    provisioningJob
-    deploymentScriptContributorRole
+    deploymentScriptFoundryContributorRole
+    deploymentScriptFoundryUserRole
     apiApp
-    mcpApp
     runPolicySeedScript
   ]
 }
@@ -870,4 +793,4 @@ output searchServiceEndpoint string = 'https://${searchService.name}.search.wind
 output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
 output policySeedJobName string = policySeedJob.name
-output provisioningJobName string = provisioningJob.name
+output hostedAgentDeploymentScriptName string = runHostedAgentDeploymentScript.name

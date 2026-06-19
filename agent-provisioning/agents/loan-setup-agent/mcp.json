@@ -1,9 +1,0 @@
-{
-  "dependencies": [
-    {
-      "connectionName": "loan-setup-mcp",
-      "serverLabel": "loan-setup",
-      "required": false
-    }
-  ]
-}

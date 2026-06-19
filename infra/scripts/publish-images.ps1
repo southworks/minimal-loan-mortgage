@@ -17,7 +17,7 @@ $registry = $RegistryLoginServer.TrimEnd('/')
 $images = @(
     @{ Name = "api"; Dockerfile = "backend/src/Api.Host/Dockerfile" },
     @{ Name = "mcp"; Dockerfile = "backend/src/LoanWorkflow.Mcp/Dockerfile" },
-    @{ Name = "provisioning"; Dockerfile = "agent-provisioning/Dockerfile" }
+    @{ Name = "hosted-agents"; Dockerfile = "hosted-agents/Dockerfile" }
 )
 
 foreach ($image in $images) {
@@ -43,4 +43,4 @@ Write-Host ""
 Write-Host "Published demo images with tag '$ImageTag':"
 Write-Host "  apiContainerImage: ${registry}/${RepositoryPrefix}-api:${ImageTag}"
 Write-Host "  mcpContainerImage: ${registry}/${RepositoryPrefix}-mcp:${ImageTag}"
-Write-Host "  provisioningContainerImage: ${registry}/${RepositoryPrefix}-provisioning:${ImageTag}"
+Write-Host "  hostedAgentContainerImage: ${registry}/${RepositoryPrefix}-hosted-agents:${ImageTag}"
