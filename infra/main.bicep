@@ -743,6 +743,11 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
           "${HOSTED_AGENT_DEPLOY_REVISION}" \
           "${description}")
 
+        apk add --no-cache curl
+        curl -fsSL https://aka.ms/install-azd.sh | bash
+        azd auth login --managed-identity
+        azd auth status
+
         response=$(az rest \
           --method POST \
           --url "${FOUNDRY_PROJECT_ENDPOINT}/agents/${agent_name}/versions?api-version=v1" \
