@@ -51,16 +51,21 @@ public static class HostedAgentEnvironment
             return configuredModel;
         }
 
+        string? azureModel = Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME");
+        if (!string.IsNullOrWhiteSpace(azureModel))
+        {
+            return azureModel;
+        }
+
         // Foundry injects AZURE_AI_MODEL_DEPLOYMENT_NAME with a platform default (often gpt-4o)
-        // that does not exist in this project. Require the custom env var in hosted sandboxes.
+        // that does not exist in this project. Require an explicit model env var in hosted sandboxes.
         if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FOUNDRY_AGENT_NAME")))
         {
             throw new InvalidOperationException(
-                "MODEL_DEPLOYMENT_NAME must be set on the hosted agent version.");
+                "MODEL_DEPLOYMENT_NAME or AZURE_AI_MODEL_DEPLOYMENT_NAME must be set on the hosted agent version.");
         }
 
         return ReadRequired(
-            "AZURE_AI_MODEL_DEPLOYMENT_NAME",
             "FOUNDRY_MODEL",
             "AZURE_FOUNDRY_MODEL_DEPLOYMENT_NAME");
     }

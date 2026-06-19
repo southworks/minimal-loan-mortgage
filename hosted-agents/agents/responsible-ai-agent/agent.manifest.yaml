@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/AgentManifest.yaml
+name: responsible-ai-agent
+displayName: Responsible AI Agent
+description: Reviews fairness, governance, and responsible AI concerns.
+template:
+  name: responsible-ai-agent
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: 1.0.0
+  resources:
+    cpu: "0.5"
+    memory: 1Gi
+parameters:
+  properties: []
+resources:
+  - kind: model
+    id: cohere-command-a
+    name: cohere-command-a

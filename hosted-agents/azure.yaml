@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: cohereloan-hosted-agents
+
+metadata:
+  template: cohereloan-loan-mortgage-hosted-agents
+
+requiredVersions:
+  extensions:
+    azure.ai.agents: latest
+
+services:
+  document-processing-agent:
+    project: agents/document-processing-agent
+    host: azure.ai.agent
+  underwriting-agent:
+    project: agents/underwriting-agent
+    host: azure.ai.agent
+  responsible-ai-agent:
+    project: agents/responsible-ai-agent
+    host: azure.ai.agent
+  loan-setup-agent:
+    project: agents/loan-setup-agent
+    host: azure.ai.agent

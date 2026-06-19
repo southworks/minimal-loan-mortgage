@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/AgentManifest.yaml
+name: loan-setup-agent
+displayName: Loan Setup Agent
+description: Prepares the final loan setup package.
+template:
+  name: loan-setup-agent
+  kind: hosted
+  protocols:
+    - protocol: responses
+      version: 1.0.0
+  resources:
+    cpu: "0.5"
+    memory: 1Gi
+parameters:
+  properties: []
+resources:
+  - kind: model
+    id: cohere-command-a
+    name: cohere-command-a
