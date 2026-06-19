@@ -719,12 +719,8 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         local description="$2"
 
         echo "Creating hosted agent version for ${agent_name}..."
-        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AGENT_NAME":"%s","FOUNDRY_PROJECT_ENDPOINT":"%s","AZURE_AI_PROJECT_ENDPOINT":"%s","AZURE_FOUNDRY_PROJECT_ENDPOINT":"%s","AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s"}},"description":"%s"}' \
+        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s"}},"description":"%s"}' \
           "${HOSTED_AGENT_IMAGE}" \
-          "${agent_name}" \
-          "${FOUNDRY_PROJECT_ENDPOINT}" \
-          "${FOUNDRY_PROJECT_ENDPOINT}" \
-          "${FOUNDRY_PROJECT_ENDPOINT}" \
           "${MODEL_DEPLOYMENT_NAME}" \
           "${description}")
 

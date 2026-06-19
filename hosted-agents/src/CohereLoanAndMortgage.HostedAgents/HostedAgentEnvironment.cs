@@ -2,6 +2,11 @@ namespace CohereLoanAndMortgage.HostedAgents;
 
 public static class HostedAgentEnvironment
 {
+    public static string GetAgentCatalogName() =>
+        ReadRequired(
+            "HOSTED_AGENT_CATALOG_NAME",
+            "AGENT_NAME");
+
     public static Uri GetProjectEndpoint()
     {
         string endpoint = ReadRequired(

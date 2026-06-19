@@ -104,7 +104,7 @@ public static class HostedAgentCatalog
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            throw new InvalidOperationException("AGENT_NAME is required.");
+            throw new InvalidOperationException("HOSTED_AGENT_CATALOG_NAME or AGENT_NAME is required.");
         }
 
         if (Agents.TryGetValue(name, out HostedAgentDefinition? definition))

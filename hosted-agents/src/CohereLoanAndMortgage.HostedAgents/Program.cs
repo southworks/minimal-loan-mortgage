@@ -5,7 +5,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Foundry.Hosting;
 
 HostedAgentDefinition agentDefinition = HostedAgentCatalog.GetRequired(
-    Environment.GetEnvironmentVariable("AGENT_NAME"));
+    HostedAgentEnvironment.GetAgentCatalogName());
 
 Uri projectEndpoint = HostedAgentEnvironment.GetProjectEndpoint();
 string modelDeploymentName = HostedAgentEnvironment.GetModelDeploymentName();
