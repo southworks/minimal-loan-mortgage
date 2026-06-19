@@ -20,6 +20,7 @@ public static class HostedAgentEnvironment
 
     public static string GetModelDeploymentName() =>
         ReadRequired(
+            "MODEL_DEPLOYMENT_NAME",
             "AZURE_AI_MODEL_DEPLOYMENT_NAME",
             "FOUNDRY_MODEL",
             "AZURE_FOUNDRY_MODEL_DEPLOYMENT_NAME");
