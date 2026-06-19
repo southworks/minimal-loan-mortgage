@@ -4,6 +4,7 @@ public static class HostedAgentEnvironment
 {
     public static string GetAgentCatalogName() =>
         ReadRequired(
+            "FOUNDRY_AGENT_NAME",
             "HOSTED_AGENT_CATALOG_NAME",
             "AGENT_NAME");
 

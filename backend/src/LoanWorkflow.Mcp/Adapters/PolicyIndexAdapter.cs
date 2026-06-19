@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Models;
@@ -32,14 +33,22 @@ public sealed class PolicyIndexAdapter
     {
         try
         {
-            var response = await _searchClient.GetDocumentAsync<PolicySearchDocument>(
+            var response = await _searchClient.GetDocumentAsync<PolicyMetadataDocument>(
                 MetadataDocumentId,
+                new GetDocumentOptions { SelectedFields = { "contentHash" } },
                 cancellationToken: cancellationToken);
 
-            return response.Value.ContentHash;
+            return string.IsNullOrWhiteSpace(response.Value.ContentHash)
+                ? null
+                : response.Value.ContentHash;
         }
         catch (Azure.RequestFailedException exception) when (exception.Status == 404)
         {
+            return null;
+        }
+        catch (JsonException)
+        {
+            // Legacy metadata documents may not match the current schema; treat as missing and reseed.
             return null;
         }
     }
@@ -186,6 +195,11 @@ public sealed class PolicyIndexAdapter
             Query = query,
             Policies = policies
         };
+    }
+
+    private sealed class PolicyMetadataDocument
+    {
+        public string? ContentHash { get; set; }
     }
 
     public sealed class PolicySearchDocument
