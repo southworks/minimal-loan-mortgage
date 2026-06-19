@@ -736,17 +736,12 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         local description="$2"
 
         echo "Creating hosted agent version for ${agent_name}..."
-        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AZURE_AI_PROJECT_ENDPOINT":"%s","MODEL_DEPLOYMENT_NAME":"%s","HOSTED_AGENT_DEPLOY_REVISION":"%s"}},"description":"%s"}' \
+        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AZURE_AI_PROJECT_ENDPOINT":"%s","AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s","HOSTED_AGENT_DEPLOY_REVISION":"%s"}},"description":"%s"}' \
           "${HOSTED_AGENT_IMAGE}" \
           "${FOUNDRY_PROJECT_ENDPOINT}" \
-          "${MODEL_DEPLOYMENT_NAME}" \
+          "${AZURE_AI_MODEL_DEPLOYMENT_NAME}" \
           "${HOSTED_AGENT_DEPLOY_REVISION}" \
           "${description}")
-
-        apk add --no-cache curl
-        curl -fsSL https://aka.ms/install-azd.sh | bash
-        azd auth login --managed-identity
-        azd auth status
 
         response=$(az rest \
           --method POST \
@@ -777,7 +772,7 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         value: foundryProjectEndpoint
       }
       {
-        name: 'MODEL_DEPLOYMENT_NAME'
+        name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'
         value: modelDeploymentName
       }
       {
