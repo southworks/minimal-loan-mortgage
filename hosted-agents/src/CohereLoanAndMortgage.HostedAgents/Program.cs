@@ -7,16 +7,16 @@ using Microsoft.Agents.AI.Foundry.Hosting;
 HostedAgentDefinition agentDefinition = HostedAgentCatalog.GetRequired(
     HostedAgentEnvironment.GetAgentCatalogName());
 
-Uri projectEndpoint = HostedAgentEnvironment.GetProjectEndpoint();
+Uri modelEndpoint = HostedAgentEnvironment.GetModelInferenceEndpoint();
 string modelDeploymentName = HostedAgentEnvironment.GetModelDeploymentName();
 
 Console.WriteLine(
     "Starting hosted agent '{0}' with model '{1}' at '{2}'.",
     agentDefinition.Name,
     modelDeploymentName,
-    projectEndpoint);
+    modelEndpoint);
 
-AIAgent agent = new AIProjectClient(projectEndpoint, new DefaultAzureCredential())
+AIAgent agent = new AIProjectClient(modelEndpoint, new DefaultAzureCredential())
     .AsAIAgent(
         model: modelDeploymentName,
         instructions: agentDefinition.Instructions,

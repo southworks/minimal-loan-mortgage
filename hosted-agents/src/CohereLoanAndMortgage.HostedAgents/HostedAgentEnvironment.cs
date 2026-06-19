@@ -8,7 +8,7 @@ public static class HostedAgentEnvironment
             "HOSTED_AGENT_CATALOG_NAME",
             "AGENT_NAME");
 
-    public static Uri GetProjectEndpoint()
+    public static Uri GetModelInferenceEndpoint()
     {
         string endpoint = ReadRequired(
             "FOUNDRY_PROJECT_ENDPOINT",
@@ -17,24 +17,12 @@ public static class HostedAgentEnvironment
 
         endpoint = endpoint.TrimEnd('/');
 
+        // Model deployments are account-scoped. Hosted sandboxes inject the account root URL,
+        // while local dev often uses a project URL — strip back to the account host in that case.
         if (endpoint.Contains("/api/projects/", StringComparison.OrdinalIgnoreCase))
         {
-            return new Uri(endpoint);
-        }
-
-        string? projectName = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_NAME");
-        if (string.IsNullOrWhiteSpace(projectName))
-        {
-            string? armId = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ARM_ID");
-            if (!string.IsNullOrWhiteSpace(armId))
-            {
-                projectName = armId.Split('/', StringSplitOptions.RemoveEmptyEntries)[^1];
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(projectName))
-        {
-            return new Uri($"{endpoint}/api/projects/{projectName}");
+            var builder = new UriBuilder(endpoint);
+            return new Uri($"{builder.Scheme}://{builder.Host}");
         }
 
         return new Uri(endpoint);
