@@ -62,24 +62,28 @@ public sealed class FoundryAgentProvider
             AIAgent documentProcessing = await LoadAgentAsync(
                     projectClient,
                     agentClient,
+                    projectEndpoint,
                     _options.DocumentProcessingAgentName,
                     cancellationToken)
                 .ConfigureAwait(false);
             AIAgent underwriting = await LoadAgentAsync(
                     projectClient,
                     agentClient,
+                    projectEndpoint,
                     _options.UnderwritingAgentName,
                     cancellationToken)
                 .ConfigureAwait(false);
             AIAgent responsibleAi = await LoadAgentAsync(
                     projectClient,
                     agentClient,
+                    projectEndpoint,
                     _options.ResponsibleAiAgentName,
                     cancellationToken)
                 .ConfigureAwait(false);
             AIAgent loanSetup = await LoadAgentAsync(
                     projectClient,
                     agentClient,
+                    projectEndpoint,
                     _options.LoanSetupAgentName,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -103,6 +107,7 @@ public sealed class FoundryAgentProvider
     private async Task<AIAgent> LoadAgentAsync(
         AIProjectClient projectClient,
         AgentAdministrationClient agentClient,
+        Uri projectEndpoint,
         string agentName,
         CancellationToken cancellationToken)
     {
@@ -113,11 +118,13 @@ public sealed class FoundryAgentProvider
                     .ConfigureAwait(false))
                 .Value;
 
-            AIAgent agent = projectClient.AsAIAgent(agentRecord);
+            Uri agentEndpoint = BuildHostedAgentEndpoint(projectEndpoint, agentName);
+            AIAgent agent = projectClient.AsAIAgent(agentEndpoint);
 
             _logger.LogInformation(
-                "Validated Azure AI Foundry agent {AgentName} and resolved as {AgentType}.",
+                "Validated Azure AI Foundry agent {AgentName} and resolved endpoint {AgentEndpoint} as {AgentType}.",
                 agentName,
+                agentEndpoint,
                 agent.GetType().Name);
 
             return agent;
@@ -128,5 +135,13 @@ public sealed class FoundryAgentProvider
                 $"Required Azure AI Foundry agent '{agentName}' could not be resolved. Verify the agent exists in the project and that the caller is authenticated.",
                 ex);
         }
+    }
+
+    private static Uri BuildHostedAgentEndpoint(Uri projectEndpoint, string agentName)
+    {
+        var projectBase = projectEndpoint.ToString().TrimEnd('/');
+        var escapedAgentName = Uri.EscapeDataString(agentName);
+
+        return new Uri($"{projectBase}/agents/{escapedAgentName}/endpoint/protocols/openai");
     }
 }
