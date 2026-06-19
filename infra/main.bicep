@@ -293,6 +293,20 @@ resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   ]
 }
 
+resource projectFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundryAccount.id, foundryProject.id, 'FoundryUser', nameSuffix)
+  scope: foundryAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
+    principalId: foundryProject.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    foundryProject
+    modelDeployment
+  ]
+}
+
 resource apiSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(searchService.id, apiIdentity.id, 'SearchServiceContributor', nameSuffix)
   scope: searchService
@@ -599,6 +613,20 @@ resource deploymentScriptFoundryUserRole 'Microsoft.Authorization/roleAssignment
   ]
 }
 
+resource deploymentScriptUserAccessAdminRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'UserAccessAdministrator', nameSuffix)
+  scope: foundryAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-3f32f0363531')
+    principalId: deploymentScriptIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [
+    foundryProject
+    rerankModelDeployment
+  ]
+}
+
 resource runPolicySeedScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'run-policy-seed-${deploymentSuffix}'
   location: location
@@ -722,10 +750,12 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         local description="$2"
 
         echo "Creating hosted agent version for ${agent_name}..."
-        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"MODEL_DEPLOYMENT_NAME":"%s","HOSTED_AGENT_DEPLOY_REVISION":"%s"}},"description":"%s"}' \
+        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"MODEL_DEPLOYMENT_NAME":"%s","HOSTED_AGENT_DEPLOY_REVISION":"%s"},"resources":[{"kind":"model","id":"%s","name":"%s"}]},"description":"%s"}' \
           "${HOSTED_AGENT_IMAGE}" \
           "${MODEL_DEPLOYMENT_NAME}" \
           "${HOSTED_AGENT_DEPLOY_REVISION}" \
+          "${MODEL_DEPLOYMENT_NAME}" \
+          "${MODEL_DEPLOYMENT_NAME}" \
           "${description}")
 
         response=$(az rest \
@@ -748,6 +778,61 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
       create_agent_version "underwriting-agent" "Evaluates loan risk and returns an underwriting recommendation."
       create_agent_version "responsible-ai-agent" "Reviews fairness, governance, and responsible AI concerns."
       create_agent_version "loan-setup-agent" "Prepares the final loan setup package."
+
+      ensure_role_assignment() {
+        local principal_id="$1"
+        local scope="$2"
+        local role_name="$3"
+
+        existing_assignment=$(az role assignment list \
+          --assignee-object-id "${principal_id}" \
+          --scope "${scope}" \
+          --role "${role_name}" \
+          --query "[0].id" \
+          -o tsv 2>/dev/null || true)
+
+        if [ -n "${existing_assignment}" ]; then
+          echo "Principal ${principal_id} already has ${role_name} on ${scope}."
+          return 0
+        fi
+
+        az role assignment create \
+          --assignee-object-id "${principal_id}" \
+          --assignee-principal-type ServicePrincipal \
+          --role "${role_name}" \
+          --scope "${scope}" \
+          --only-show-errors
+
+        echo "Assigned ${role_name} to ${principal_id} on ${scope}."
+      }
+
+      grant_hosted_agent_model_access() {
+        echo "Granting model inference roles to hosted agent identities..."
+        agent_json=$(az rest \
+          --method GET \
+          --url "${FOUNDRY_PROJECT_ENDPOINT}/agents/document-processing-agent?api-version=v1" \
+          --resource "https://ai.azure.com" \
+          -o json)
+
+        instance_principal_id=$(echo "${agent_json}" | jq -r '.instance_identity.principal_id // .versions.latest.instance_identity.principal_id // empty')
+        blueprint_principal_id=$(echo "${agent_json}" | jq -r '.blueprint.principal_id // .versions.latest.blueprint.principal_id // empty')
+
+        if [ -z "${instance_principal_id}" ]; then
+          echo "Could not resolve hosted agent instance principal id."
+          exit 1
+        fi
+
+        ensure_role_assignment "${instance_principal_id}" "${FOUNDRY_ACCOUNT_SCOPE}" "Foundry User"
+        ensure_role_assignment "${instance_principal_id}" "${FOUNDRY_PROJECT_SCOPE}" "Foundry User"
+        ensure_role_assignment "${instance_principal_id}" "${FOUNDRY_ACCOUNT_SCOPE}" "Cognitive Services OpenAI User"
+
+        if [ -n "${blueprint_principal_id}" ] && [ "${blueprint_principal_id}" != "${instance_principal_id}" ]; then
+          ensure_role_assignment "${blueprint_principal_id}" "${FOUNDRY_ACCOUNT_SCOPE}" "Foundry User"
+          ensure_role_assignment "${blueprint_principal_id}" "${FOUNDRY_PROJECT_SCOPE}" "Foundry User"
+        fi
+      }
+
+      grant_hosted_agent_model_access
 
       echo "Hosted agent versions were submitted successfully."
     '''
@@ -772,11 +857,20 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         name: 'MCP_BASE_URL'
         value: mcpBaseUrl
       }
+      {
+        name: 'FOUNDRY_ACCOUNT_SCOPE'
+        value: foundryAccount.id
+      }
+      {
+        name: 'FOUNDRY_PROJECT_SCOPE'
+        value: foundryProject.id
+      }
     ]
   }
   dependsOn: [
     deploymentScriptFoundryContributorRole
     deploymentScriptFoundryUserRole
+    deploymentScriptUserAccessAdminRole
     apiApp
     runPolicySeedScript
   ]

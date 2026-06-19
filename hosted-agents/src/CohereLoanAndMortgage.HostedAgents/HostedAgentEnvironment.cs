@@ -17,15 +17,30 @@ public static class HostedAgentEnvironment
 
         endpoint = endpoint.TrimEnd('/');
 
-        // Model deployments are account-scoped. Hosted sandboxes inject the account root URL,
-        // while local dev often uses a project URL — strip back to the account host in that case.
+        // The Agent Framework expects the Foundry project endpoint. Hosted sandboxes can inject
+        // the account root URL, so rebuild the project URL from the platform project metadata.
         if (endpoint.Contains("/api/projects/", StringComparison.OrdinalIgnoreCase))
         {
-            var builder = new UriBuilder(endpoint);
-            return new Uri($"{builder.Scheme}://{builder.Host}");
+            return new Uri(endpoint);
         }
 
-        return new Uri(endpoint);
+        string? projectName = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_NAME");
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            string? projectArmId = Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ARM_ID");
+            if (!string.IsNullOrWhiteSpace(projectArmId))
+            {
+                projectName = projectArmId.Split('/', StringSplitOptions.RemoveEmptyEntries)[^1];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(projectName))
+        {
+            return new Uri($"{endpoint}/api/projects/{projectName}");
+        }
+
+        throw new InvalidOperationException(
+            "Could not resolve the Foundry project URL. Use a full project endpoint or set FOUNDRY_PROJECT_ARM_ID / FOUNDRY_PROJECT_NAME.");
     }
 
     public static string GetModelDeploymentName()
