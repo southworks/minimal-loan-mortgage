@@ -67,6 +67,9 @@ param hostedAgentContainerImage string = 'ghcr.io/southworks/cohereloan-hosted-a
 @description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
 param nameSuffix string = ''
 
+@description('Bump to re-run hosted agent version creation on redeploy. Defaults to the deployment timestamp.')
+param hostedAgentDeployRevision string = utcNow('yyyyMMddHHmmss')
+
 var resourceTags = {
   project: 'inesite'
 }
@@ -686,7 +689,7 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
     timeout: 'PT45M'
     retentionInterval: 'PT1H'
     cleanupPreference: 'OnSuccess'
-    forceUpdateTag: deploymentSuffix
+    forceUpdateTag: '${deploymentSuffix}-${hostedAgentDeployRevision}'
     scriptContent: '''
       set -euo pipefail
       echo "Waiting briefly for role assignments and Foundry deployments to settle..."
@@ -719,17 +722,21 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
         local description="$2"
 
         echo "Creating hosted agent version for ${agent_name}..."
-        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s"}},"description":"%s"}' \
+        body=$(printf '{"definition":{"kind":"hosted","image":"%s","cpu":"0.5","memory":"1Gi","container_protocol_versions":[{"protocol":"responses","version":"1.0.0"}],"environment_variables":{"AZURE_AI_MODEL_DEPLOYMENT_NAME":"%s","HOSTED_AGENT_DEPLOY_REVISION":"%s"}},"description":"%s"}' \
           "${HOSTED_AGENT_IMAGE}" \
           "${MODEL_DEPLOYMENT_NAME}" \
+          "${HOSTED_AGENT_DEPLOY_REVISION}" \
           "${description}")
 
-        az rest \
+        response=$(az rest \
           --method POST \
           --url "${FOUNDRY_PROJECT_ENDPOINT}/agents/${agent_name}/versions?api-version=v1" \
           --resource "https://ai.azure.com" \
           --body "${body}" \
-          --only-show-errors 1>/dev/null
+          --only-show-errors \
+          -o json)
+
+        echo "Agent version response for ${agent_name}: ${response}"
       }
 
       create_toolbox_version "document-retrieval-toolbox" "Document retrieval MCP tools for document-processing-agent." "document_retrieval" "/document-retrieval/mcp"
@@ -756,6 +763,10 @@ resource runHostedAgentDeploymentScript 'Microsoft.Resources/deploymentScripts@2
       {
         name: 'HOSTED_AGENT_IMAGE'
         value: hostedAgentContainerImage
+      }
+      {
+        name: 'HOSTED_AGENT_DEPLOY_REVISION'
+        value: hostedAgentDeployRevision
       }
       {
         name: 'MCP_BASE_URL'
