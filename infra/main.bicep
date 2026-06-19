@@ -617,7 +617,7 @@ resource deploymentScriptUserAccessAdminRole 'Microsoft.Authorization/roleAssign
   name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'UserAccessAdministrator', nameSuffix)
   scope: foundryAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-3f32f0363531')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9')
     principalId: deploymentScriptIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
