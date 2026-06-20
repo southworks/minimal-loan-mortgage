@@ -119,12 +119,6 @@ public sealed class LoanWorkflowService
                 $"Execution '{executionId}' does not have a saved workflow checkpoint and cannot continue.");
         }
 
-        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken);
-        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
-            agents,
-            record.State.CaseId,
-            record.State.ExecutionId);
-
         var decision = new UnderwritingApprovalDecision
         {
             Approved = request.Approved,
@@ -132,35 +126,28 @@ public sealed class LoanWorkflowService
         };
 
         ExternalRequest pendingRequest = record.PendingExternalRequest;
-
-        await using StreamingRun run = await InProcessExecution
-            .ResumeStreamingAsync(workflow, record.PendingCheckpoint, record.WorkflowCheckpointManager, cancellationToken)
-            .ConfigureAwait(false);
+        CheckpointInfo pendingCheckpoint = record.PendingCheckpoint;
+        CheckpointManager checkpointManager = record.WorkflowCheckpointManager;
 
         ApplyUnderwritingDecision(record, decision, request);
-        await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
-        record.PendingExternalRequest = null;
         _caseStore.Save(record);
 
         if (!request.Approved)
         {
+            await SendRejectionResponseAsync(
+                    record,
+                    pendingCheckpoint,
+                    checkpointManager,
+                    pendingRequest,
+                    decision,
+                    cancellationToken)
+                .ConfigureAwait(false);
             ClearWorkflowResumeState(record);
             _caseStore.Save(record);
             return LoanCaseMapper.ToResponse(record.State);
         }
 
-        await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
-
-        await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
-        {
-            ProcessWorkflowEvent(record, workflowEvent, run);
-
-            if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
-            {
-                break;
-            }
-        }
-
+        StartResumeWorkflowProcessing(record, pendingCheckpoint, checkpointManager, pendingRequest, decision);
         return LoanCaseMapper.ToResponse(record.State);
     }
 
@@ -266,6 +253,128 @@ public sealed class LoanWorkflowService
                 }
             },
             CancellationToken.None);
+    }
+
+    private void StartResumeWorkflowProcessing(
+        LoanCaseRecord record,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision)
+    {
+        CancellationToken applicationStopping = _applicationLifetime.ApplicationStopping;
+        string executionId = record.State.ExecutionId;
+
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    FoundryAgents agents = await _agentProvider.GetAgentsAsync(applicationStopping).ConfigureAwait(false);
+                    AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+                        agents,
+                        record.State.CaseId,
+                        record.State.ExecutionId);
+                    await ProcessResumeRunAsync(
+                            record,
+                            workflow,
+                            pendingCheckpoint,
+                            checkpointManager,
+                            pendingRequest,
+                            decision,
+                            executionId,
+                            applicationStopping)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested)
+                {
+                    MarkFailed(record, "Workflow resume was cancelled because the application is stopping.");
+                }
+                catch (Exception ex)
+                {
+                    if (record.State.Status != LoanCaseStatus.Failed)
+                    {
+                        MarkFailed(record, ex.Message);
+                    }
+
+                    _logger.LogError(
+                        ex,
+                        "Background workflow resume failed for execution {ExecutionId}.",
+                        executionId);
+                }
+            },
+            CancellationToken.None);
+    }
+
+    private async Task SendRejectionResponseAsync(
+        LoanCaseRecord record,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision,
+        CancellationToken cancellationToken)
+    {
+        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
+        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+            agents,
+            record.State.CaseId,
+            record.State.ExecutionId);
+
+        await using StreamingRun run = await InProcessExecution
+            .ResumeStreamingAsync(workflow, pendingCheckpoint, checkpointManager, cancellationToken)
+            .ConfigureAwait(false);
+
+        await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
+        record.PendingExternalRequest = null;
+        _caseStore.Save(record);
+    }
+
+    private async Task ProcessResumeRunAsync(
+        LoanCaseRecord record,
+        AgentWorkflow workflow,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision,
+        string executionId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using StreamingRun run = await InProcessExecution
+                .ResumeStreamingAsync(workflow, pendingCheckpoint, checkpointManager, cancellationToken)
+                .ConfigureAwait(false);
+
+            await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
+            record.PendingExternalRequest = null;
+            _caseStore.Save(record);
+
+            await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Resumed workflow after human approval for execution {ExecutionId}.",
+                executionId);
+
+            await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
+            {
+                _logger.LogDebug(
+                    "Resume workflow event for execution {ExecutionId}: {EventType}",
+                    executionId,
+                    workflowEvent.GetType().Name);
+
+                ProcessWorkflowEvent(record, workflowEvent, run);
+
+                if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
+                {
+                    break;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            MarkFailed(record, ex.Message);
+            throw;
+        }
     }
 
     private async Task ProcessRunAsync(
