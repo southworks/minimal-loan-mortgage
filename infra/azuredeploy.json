@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "10614212744096626805"
+      "templateHash": "17111651924214060983"
     }
   },
   "parameters": {
@@ -25,9 +25,9 @@
     },
     "foundryProjectName": {
       "type": "string",
-      "defaultValue": "[format('{0}-project', parameters('baseName'))]",
+      "defaultValue": "",
       "metadata": {
-        "description": "Name of the Foundry project created in the AI account."
+        "description": "Foundry project name. Leave empty to default to {baseName}-project. Must be a plain string, not an ARM expression."
       }
     },
     "modelDeploymentName": {
@@ -182,6 +182,7 @@
     }
   },
   "variables": {
+    "resolvedFoundryProjectName": "[if(empty(parameters('foundryProjectName')), format('{0}-project', parameters('baseName')), parameters('foundryProjectName'))]",
     "resourceTags": {
       "project": "inesite"
     },
@@ -261,7 +262,7 @@
     {
       "type": "Microsoft.CognitiveServices/accounts/projects",
       "apiVersion": "2025-06-01",
-      "name": "[format('{0}/{1}', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+      "name": "[format('{0}/{1}', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
       "location": "[parameters('location')]",
       "identity": {
         "type": "SystemAssigned"
@@ -288,7 +289,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]"
       ]
     },
     {
@@ -308,7 +309,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('modelDeploymentName'))]"
       ]
     },
@@ -330,7 +331,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('embedDeploymentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]"
       ]
     },
     {
@@ -428,22 +429,22 @@
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]"
       ]
     },
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName')), 'FoundryUser', parameters('nameSuffix'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName')), 'FoundryUser', parameters('nameSuffix'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
-        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName')), '2025-06-01', 'full').identity.principalId]",
+        "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName')), '2025-06-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('modelDeploymentName'))]"
       ]
     },
@@ -519,7 +520,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]"
       ]
     },
@@ -613,7 +614,7 @@
               "env": [
                 {
                   "name": "AZURE_FOUNDRY_PROJECT_ENDPOINT",
-                  "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('foundryProjectName'))]"
+                  "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('resolvedFoundryProjectName'))]"
                 },
                 {
                   "name": "AZURE_STORAGE_BLOB_SERVICE_URI",
@@ -720,7 +721,7 @@
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ]
@@ -810,7 +811,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
       ]
     },
@@ -827,7 +828,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('foundryAccountName'), parameters('rerankDeploymentName'))]"
       ]
     },
@@ -891,7 +892,7 @@
         "environmentVariables": [
           {
             "name": "FOUNDRY_PROJECT_ENDPOINT",
-            "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('foundryProjectName'))]"
+            "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('resolvedFoundryProjectName'))]"
           },
           {
             "name": "AZURE_AI_MODEL_DEPLOYMENT_NAME",
@@ -917,7 +918,7 @@
         "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'FoundryUser', parameters('nameSuffix')))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deployscript-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]",
         "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', variables('deploymentSuffix')))]"
       ]
@@ -942,15 +943,15 @@
     },
     "foundryProjectName": {
       "type": "string",
-      "value": "[parameters('foundryProjectName')]"
+      "value": "[variables('resolvedFoundryProjectName')]"
     },
     "foundryProjectEndpoint": {
       "type": "string",
-      "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('foundryProjectName'))]"
+      "value": "[format('{0}/api/projects/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), variables('resolvedFoundryProjectName'))]"
     },
     "foundryProjectResourceId": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), parameters('foundryProjectName'))]"
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]"
     },
     "modelDeploymentName": {
       "type": "string",

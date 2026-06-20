@@ -4,8 +4,10 @@ param location string = resourceGroup().location
 @description('Base name used for deployed resources.')
 param baseName string = 'cohereloan'
 
-@description('Name of the Foundry project created in the AI account.')
-param foundryProjectName string = '${baseName}-project'
+@description('Foundry project name. Leave empty to default to {baseName}-project. Must be a plain string, not an ARM expression.')
+param foundryProjectName string = ''
+
+var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
 @description('Foundry model deployment name used by all agents.')
 param modelDeploymentName string = 'cohere-command-a'
@@ -146,7 +148,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundryAccount
-  name: foundryProjectName
+  name: resolvedFoundryProjectName
   location: location
   identity: {
     type: 'SystemAssigned'
