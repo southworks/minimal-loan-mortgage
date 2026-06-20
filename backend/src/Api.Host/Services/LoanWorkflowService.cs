@@ -630,12 +630,12 @@ public sealed class LoanWorkflowService
 
     private static bool IsAgentExecutor(string executorId)
     {
-        string normalizedExecutorId = NormalizeExecutorId(executorId);
-
-        if (IsWorkflowControlExecutor(normalizedExecutorId))
+        if (IsWorkflowControlExecutor(executorId))
         {
             return false;
         }
+
+        string normalizedExecutorId = NormalizeExecutorId(executorId);
 
         return normalizedExecutorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase)
             || normalizedExecutorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase)
@@ -643,8 +643,13 @@ public sealed class LoanWorkflowService
             || normalizedExecutorId.Contains("loan-setup", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsWorkflowControlExecutor(string normalizedExecutorId) =>
-        normalizedExecutorId.Contains("underwriting-approval", StringComparison.OrdinalIgnoreCase);
+    private static bool IsWorkflowControlExecutor(string executorId)
+    {
+        string compactId = executorId.Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal);
+
+        return compactId.Contains("UnderwritingApproval", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string NormalizeExecutorId(string executorId) =>
         executorId.Replace('_', '-');
