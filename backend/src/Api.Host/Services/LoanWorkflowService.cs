@@ -296,7 +296,9 @@ public sealed class LoanWorkflowService
             await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (workflowEvent is AgentResponseEvent ||
-                    (workflowEvent is ExecutorCompletedEvent completed && IsAgentExecutor(completed.ExecutorId)))
+                    (workflowEvent is ExecutorCompletedEvent completed &&
+                     IsAgentExecutor(completed.ExecutorId) &&
+                     completed.Data is not null))
                 {
                     receivedAgentResponse = true;
                 }
@@ -353,7 +355,8 @@ public sealed class LoanWorkflowService
                 break;
 
             case ExecutorCompletedEvent executorCompletedEvent:
-                if (IsAgentExecutor(executorCompletedEvent.ExecutorId))
+                if (IsAgentExecutor(executorCompletedEvent.ExecutorId) &&
+                    executorCompletedEvent.Data is not null)
                 {
                     try
                     {
