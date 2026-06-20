@@ -10,6 +10,8 @@ public sealed class LoanCaseRecord
 
     public CheckpointInfo? PendingCheckpoint { get; set; }
 
+    public CheckpointManager? WorkflowCheckpointManager { get; set; }
+
     public string? WorkflowSessionId { get; set; }
 }
 

@@ -77,6 +77,7 @@ public sealed class LoanWorkflowService
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         AddTimeline(record.State, LoanWorkflowStep.Submitted, $"Workflow started with {loadedDocuments.Count} document(s).");
         record.WorkflowSessionId = executionId;
+        record.WorkflowCheckpointManager = CheckpointManager.CreateInMemory();
         _caseStore.Save(record);
 
         List<ChatMessage> input = CreateInitialMessages(caseId, executionId, loadedDocuments);
@@ -110,7 +111,7 @@ public sealed class LoanWorkflowService
                 $"Execution '{executionId}' is not waiting for human approval. Current status: {record.State.Status}.");
         }
 
-        if (record.PendingCheckpoint is null)
+        if (record.PendingCheckpoint is null || record.WorkflowCheckpointManager is null)
         {
             throw new InvalidOperationException(
                 $"Execution '{executionId}' does not have a saved workflow checkpoint and cannot continue.");
@@ -121,10 +122,9 @@ public sealed class LoanWorkflowService
             agents,
             record.State.CaseId,
             record.State.ExecutionId);
-        CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
 
         await using StreamingRun run = await InProcessExecution
-            .ResumeStreamingAsync(workflow, record.PendingCheckpoint, checkpointManager, cancellationToken)
+            .ResumeStreamingAsync(workflow, record.PendingCheckpoint, record.WorkflowCheckpointManager, cancellationToken)
             .ConfigureAwait(false);
 
         await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
@@ -176,6 +176,7 @@ public sealed class LoanWorkflowService
                 if (!request.Approved)
                 {
                     record.PendingCheckpoint = null;
+                    record.WorkflowCheckpointManager = null;
                     _caseStore.Save(record);
                     return LoanCaseMapper.ToResponse(record.State);
                 }
@@ -240,12 +241,10 @@ public sealed class LoanWorkflowService
                         agents,
                         record.State.CaseId,
                         record.State.ExecutionId);
-                    CheckpointManager checkpointManager = CheckpointManager.CreateInMemory();
-
                     await ProcessRunAsync(
                             record,
                             workflow,
-                            checkpointManager,
+                            record.WorkflowCheckpointManager!,
                             input,
                             executionId,
                             applicationStopping)
@@ -413,6 +412,7 @@ public sealed class LoanWorkflowService
                 record.State.Status = LoanCaseStatus.Rejected;
                 record.State.CurrentStep = LoanWorkflowStep.Rejected;
                 record.PendingCheckpoint = null;
+                record.WorkflowCheckpointManager = null;
                 AddTimeline(record.State, LoanWorkflowStep.Rejected, "Workflow rejected after human decision.");
                 break;
 
@@ -421,6 +421,7 @@ public sealed class LoanWorkflowService
                 record.State.CurrentStep = LoanWorkflowStep.Completed;
                 record.State.PendingApproval = null;
                 record.PendingCheckpoint = null;
+                record.WorkflowCheckpointManager = null;
                 AddTimeline(record.State, LoanWorkflowStep.Completed, "Loan workflow completed.");
                 break;
         }
@@ -549,6 +550,7 @@ public sealed class LoanWorkflowService
         record.State.FailureReason = reason;
         record.State.PendingApproval = null;
         record.PendingCheckpoint = null;
+        record.WorkflowCheckpointManager = null;
         AddTimeline(record.State, LoanWorkflowStep.Failed, reason);
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         _caseStore.Save(record);
