@@ -20,17 +20,33 @@ public sealed class LoanSetupTools
     public BuildAccountSetupDraftResponse BuildAccountSetupDraft(
         string caseId,
         string executionId,
-        JsonElement applicationData,
-        JsonElement documentProcessingResult,
-        JsonElement underwritingResult,
-        JsonElement humanDecision,
-        JsonElement responsibleAiResult)
+        [Description("JSON object with loan application data.")]
+        string applicationData,
+        [Description("JSON object with document-processing-agent output.")]
+        string documentProcessingResult,
+        [Description("JSON object with underwriting-agent output.")]
+        string underwritingResult,
+        [Description("JSON object with the human approval decision.")]
+        string humanDecision,
+        [Description("JSON object with responsible-ai-agent output.")]
+        string responsibleAiResult)
         => _accountSetupBuilder.Build(
             caseId,
             executionId,
-            applicationData,
-            documentProcessingResult,
-            underwritingResult,
-            humanDecision,
-            responsibleAiResult);
+            ParseRequiredJson(applicationData, nameof(applicationData)),
+            ParseRequiredJson(documentProcessingResult, nameof(documentProcessingResult)),
+            ParseRequiredJson(underwritingResult, nameof(underwritingResult)),
+            ParseRequiredJson(humanDecision, nameof(humanDecision)),
+            ParseRequiredJson(responsibleAiResult, nameof(responsibleAiResult)));
+
+    private static JsonElement ParseRequiredJson(string json, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new ArgumentException($"{parameterName} is required.", parameterName);
+        }
+
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
 }

@@ -68,10 +68,13 @@ public sealed class DocumentRetrievalTools
     public async Task<IndexCaseDocumentsResponse> IndexCaseDocuments(
         string caseId,
         string executionId,
-        JsonElement documents,
-        CancellationToken cancellationToken)
+        [Description("Optional JSON array of case documents. When omitted, demo case documents are loaded automatically.")]
+        string? documentsJson = null,
+        CancellationToken cancellationToken = default)
     {
-        var normalizedDocuments = NormalizeDocuments(documents);
+        var normalizedDocuments = string.IsNullOrWhiteSpace(documentsJson)
+            ? []
+            : NormalizeDocuments(ParseJson(documentsJson));
         if (normalizedDocuments.Count == 0)
         {
             var loaded = await _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
@@ -83,6 +86,12 @@ public sealed class DocumentRetrievalTools
             executionId,
             normalizedDocuments,
             cancellationToken: cancellationToken);
+    }
+
+    private static JsonElement ParseJson(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
     }
 
     private static List<CaseDocument> NormalizeDocuments(JsonElement documents)
