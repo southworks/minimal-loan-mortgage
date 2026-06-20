@@ -10,6 +10,8 @@ namespace CohereLoanAndMortgage.Api.Host.Services;
 
 public sealed class LoanWorkflowService
 {
+    private static readonly TimeSpan WorkflowProcessingTimeout = TimeSpan.FromMinutes(20);
+
     private readonly FoundryAgentProvider _agentProvider;
     private readonly LoanMortgageWorkflowFactory _workflowFactory;
     private readonly InMemoryLoanCaseStore _caseStore;
@@ -129,6 +131,7 @@ public sealed class LoanWorkflowService
         CheckpointInfo pendingCheckpoint = record.PendingCheckpoint;
         CheckpointManager checkpointManager = record.WorkflowCheckpointManager;
 
+        record.UnderwritingDecisionSubmitted = true;
         ApplyUnderwritingDecision(record, decision, request);
         _caseStore.Save(record);
 
@@ -184,6 +187,7 @@ public sealed class LoanWorkflowService
         record.PendingCheckpoint = null;
         record.WorkflowCheckpointManager = null;
         record.PendingExternalRequest = null;
+        record.UnderwritingDecisionSubmitted = false;
     }
 
     private static LoanCaseRecord CreateBootstrapRecord(string caseId, string executionId)
@@ -219,17 +223,19 @@ public sealed class LoanWorkflowService
         _ = Task.Run(
             async () =>
             {
+                LoanCaseRecord activeRecord = _caseStore.GetRequired(executionId);
+
                 try
                 {
                     FoundryAgents agents = await _agentProvider.GetAgentsAsync(applicationStopping).ConfigureAwait(false);
                     AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
                         agents,
-                        record.State.CaseId,
-                        record.State.ExecutionId);
+                        activeRecord.State.CaseId,
+                        activeRecord.State.ExecutionId);
                     await ProcessRunAsync(
-                            record,
+                            activeRecord,
                             workflow,
-                            record.WorkflowCheckpointManager!,
+                            activeRecord.WorkflowCheckpointManager!,
                             input,
                             executionId,
                             applicationStopping)
@@ -237,13 +243,13 @@ public sealed class LoanWorkflowService
                 }
                 catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested)
                 {
-                    MarkFailed(record, "Workflow processing was cancelled because the application is stopping.");
+                    MarkFailed(activeRecord, "Workflow processing was cancelled because the application is stopping.");
                 }
                 catch (Exception ex)
                 {
-                    if (record.State.Status != LoanCaseStatus.Failed)
+                    if (activeRecord.State.Status != LoanCaseStatus.Failed)
                     {
-                        MarkFailed(record, ex.Message);
+                        MarkFailed(activeRecord, ex.Message);
                     }
 
                     _logger.LogError(
@@ -268,15 +274,17 @@ public sealed class LoanWorkflowService
         _ = Task.Run(
             async () =>
             {
+                LoanCaseRecord activeRecord = _caseStore.GetRequired(executionId);
+
                 try
                 {
                     FoundryAgents agents = await _agentProvider.GetAgentsAsync(applicationStopping).ConfigureAwait(false);
                     AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
                         agents,
-                        record.State.CaseId,
-                        record.State.ExecutionId);
+                        activeRecord.State.CaseId,
+                        activeRecord.State.ExecutionId);
                     await ProcessResumeRunAsync(
-                            record,
+                            activeRecord,
                             workflow,
                             pendingCheckpoint,
                             checkpointManager,
@@ -288,13 +296,13 @@ public sealed class LoanWorkflowService
                 }
                 catch (OperationCanceledException) when (applicationStopping.IsCancellationRequested)
                 {
-                    MarkFailed(record, "Workflow resume was cancelled because the application is stopping.");
+                    MarkFailed(activeRecord, "Workflow resume was cancelled because the application is stopping.");
                 }
                 catch (Exception ex)
                 {
-                    if (record.State.Status != LoanCaseStatus.Failed)
+                    if (activeRecord.State.Status != LoanCaseStatus.Failed)
                     {
-                        MarkFailed(record, ex.Message);
+                        MarkFailed(activeRecord, ex.Message);
                     }
 
                     _logger.LogError(
@@ -351,24 +359,24 @@ public sealed class LoanWorkflowService
 
             await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
 
+            UpdateWorkflowProgress(record, LoanWorkflowStep.ResponsibleAi, "Responsible AI review in progress.");
+
             _logger.LogInformation(
                 "Resumed workflow after human approval for execution {ExecutionId}.",
                 executionId);
 
-            await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
-            {
-                _logger.LogDebug(
-                    "Resume workflow event for execution {ExecutionId}: {EventType}",
-                    executionId,
-                    workflowEvent.GetType().Name);
-
-                ProcessWorkflowEvent(record, workflowEvent, run);
-
-                if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
-                {
-                    break;
-                }
-            }
+            await WatchWorkflowStreamAsync(record, run, executionId, cancellationToken, null)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException ex)
+        {
+            MarkFailed(record, ex.Message);
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            MarkFailed(record, "Workflow resume was cancelled.");
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -393,44 +401,40 @@ public sealed class LoanWorkflowService
 
             await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
 
+            UpdateWorkflowProgress(record, LoanWorkflowStep.DocumentProcessing, "Document processing in progress.");
+
             _logger.LogInformation(
                 "Sent TurnToken for execution {ExecutionId} to start agent processing.",
                 sessionId);
 
             bool receivedAgentResponse = false;
 
-            await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
-            {
-                if (workflowEvent is AgentResponseEvent ||
-                    (workflowEvent is ExecutorCompletedEvent completed &&
-                     IsAgentExecutor(completed.ExecutorId) &&
-                     completed.Data is not null))
-                {
-                    receivedAgentResponse = true;
-                }
-
-                _logger.LogDebug(
-                    "Workflow event for execution {ExecutionId}: {EventType}",
+            await WatchWorkflowStreamAsync(
+                    record,
+                    run,
                     sessionId,
-                    workflowEvent.GetType().Name);
-
-                ProcessWorkflowEvent(record, workflowEvent, run);
-
-                if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
-                {
-                    break;
-                }
-            }
+                    cancellationToken,
+                    value => receivedAgentResponse = receivedAgentResponse || value)
+                .ConfigureAwait(false);
 
             if (!receivedAgentResponse &&
-                record.State.Status == LoanCaseStatus.Running &&
-                record.State.CurrentStep == LoanWorkflowStep.Submitted)
+                record.State.Status == LoanCaseStatus.Running)
             {
                 const string message =
                     "Workflow completed without any agent responses. Verify hosted Foundry agents are provisioned and that a TurnToken was sent to start processing.";
                 MarkFailed(record, message);
                 throw new InvalidOperationException(message);
             }
+        }
+        catch (TimeoutException ex)
+        {
+            MarkFailed(record, ex.Message);
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            MarkFailed(record, "Workflow processing was cancelled.");
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -470,6 +474,7 @@ public sealed class LoanWorkflowService
                             record,
                             executorCompletedEvent.ExecutorId,
                             executorCompletedEvent.Data);
+                        AdvanceStepAfterExecutorCompleted(record, executorCompletedEvent.ExecutorId);
                     }
                     catch (InvalidOperationException ex)
                     {
@@ -498,17 +503,17 @@ public sealed class LoanWorkflowService
                 break;
 
             case RequestInfoEvent requestInfoEvent when requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? prompt):
-                if (record.State.Status != LoanCaseStatus.WaitingForHuman)
+                if (record.UnderwritingDecisionSubmitted)
                 {
                     _logger.LogDebug(
-                        "Ignoring re-emitted underwriting approval request for execution {ExecutionId} because status is {Status}.",
-                        record.State.ExecutionId,
-                        record.State.Status);
+                        "Ignoring re-emitted underwriting approval request for execution {ExecutionId} because a decision was already submitted.",
+                        record.State.ExecutionId);
                     break;
                 }
 
                 record.PendingExternalRequest = requestInfoEvent.Request;
                 record.PendingCheckpoint ??= run.Checkpoints.LastOrDefault();
+                record.UnderwritingDecisionSubmitted = false;
                 record.State.Status = LoanCaseStatus.WaitingForHuman;
                 record.State.CurrentStep = LoanWorkflowStep.WaitingForHumanApproval;
                 record.State.PendingApproval = new PendingApprovalInfo
@@ -543,6 +548,95 @@ public sealed class LoanWorkflowService
 
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         _caseStore.Save(record);
+    }
+
+    private async Task WatchWorkflowStreamAsync(
+        LoanCaseRecord record,
+        StreamingRun run,
+        string executionId,
+        CancellationToken cancellationToken,
+        Action<bool>? trackAgentResponse)
+    {
+        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(WorkflowProcessingTimeout);
+
+        try
+        {
+            await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(timeoutCts.Token).ConfigureAwait(false))
+            {
+                bool agentResponse = workflowEvent is AgentResponseEvent ||
+                    (workflowEvent is ExecutorCompletedEvent completed &&
+                     IsAgentExecutor(completed.ExecutorId) &&
+                     completed.Data is not null);
+
+                trackAgentResponse?.Invoke(agentResponse);
+
+                _logger.LogDebug(
+                    "Workflow event for execution {ExecutionId}: {EventType}",
+                    executionId,
+                    workflowEvent.GetType().Name);
+
+                ProcessWorkflowEvent(record, workflowEvent, run);
+
+                if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Workflow processing for execution '{executionId}' exceeded {WorkflowProcessingTimeout.TotalMinutes:0} minutes.");
+        }
+
+        if (record.State.Status == LoanCaseStatus.Running)
+        {
+            MarkFailed(record, "Workflow stream ended before reaching a terminal state.");
+        }
+    }
+
+    private void UpdateWorkflowProgress(LoanCaseRecord record, LoanWorkflowStep step, string message)
+    {
+        if (record.State.Status != LoanCaseStatus.Running)
+        {
+            return;
+        }
+
+        record.State.CurrentStep = step;
+        AddTimeline(record.State, step, message);
+        record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
+        _caseStore.Save(record);
+    }
+
+    private void AdvanceStepAfterExecutorCompleted(LoanCaseRecord record, string executorId)
+    {
+        if (!IsAgentExecutor(executorId) || record.State.Status != LoanCaseStatus.Running)
+        {
+            return;
+        }
+
+        string normalizedExecutorId = NormalizeExecutorId(executorId);
+
+        if (normalizedExecutorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateWorkflowProgress(record, LoanWorkflowStep.Underwriting, "Underwriting in progress.");
+            return;
+        }
+
+        if (normalizedExecutorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateWorkflowProgress(
+                record,
+                LoanWorkflowStep.Underwriting,
+                "Underwriting completed. Preparing human approval request.");
+            return;
+        }
+
+        if (normalizedExecutorId.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateWorkflowProgress(record, LoanWorkflowStep.LoanSetup, "Loan setup in progress.");
+        }
     }
 
     private void UpdateAgentOutput(LoanCaseRecord record, string executorId, AgentResponse response)
