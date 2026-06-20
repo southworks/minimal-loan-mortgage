@@ -19,6 +19,10 @@ public sealed class BasicWorkflowExecution
 
     public BasicWorkflowStatus Status { get; set; } = BasicWorkflowStatus.Pending;
 
+    public string? CurrentAgent { get; set; }
+
+    public Dictionary<string, AgentExecutionState> Agents { get; } = [];
+
     public Dictionary<string, string> AgentOutputs { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, StringBuilder> StreamingBuffers { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -26,6 +30,15 @@ public sealed class BasicWorkflowExecution
     public string? FailureReason { get; set; }
 
     public DateTimeOffset LastUpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AgentExecutionState
+{
+    public string AgentName { get; init; }
+
+    public BasicWorkflowStatus Status { get; set; }
+
+    public string? Output { get; set; }
 }
 
 public sealed class InMemoryBasicWorkflowStore

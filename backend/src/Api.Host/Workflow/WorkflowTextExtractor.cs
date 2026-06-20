@@ -6,6 +6,15 @@ namespace CohereLoanAndMortgage.Api.Host.Workflow;
 
 internal static class WorkflowTextExtractor
 {
+    public static string FromAgentResponseBasic(
+        AgentResponse response)
+    {
+        return response.Messages?
+            .LastOrDefault(m => m.Role == ChatRole.Assistant)?
+            .Text?
+            .Trim()
+            ?? string.Empty;
+    }
     public static string FromAgentResponse(AgentResponse response)
     {
         if (response.Messages is { Count: > 0 })

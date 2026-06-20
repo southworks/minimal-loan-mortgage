@@ -108,7 +108,7 @@ public sealed class BasicLoanWorkflowService
                     .RunStreamingAsync(workflow, input, checkpoints, executionId, stopping)
                     .ConfigureAwait(false);
 
-                await RunUntilDoneAsync(execution, run, stopping).ConfigureAwait(false);
+                await BasicRunUntilDoneAsync(execution, run, stopping).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stopping.IsCancellationRequested)
             {
@@ -122,30 +122,32 @@ public sealed class BasicLoanWorkflowService
         }, CancellationToken.None);
     }
 
-    private async Task RunUntilDoneAsync(
+    private async Task BasicRunUntilDoneAsync(
         BasicWorkflowExecution execution,
         StreamingRun run,
         CancellationToken cancellationToken)
     {
-        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using CancellationTokenSource timeoutCts =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
         timeoutCts.CancelAfter(RunTimeout);
 
         await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
 
-        while (execution.Status == BasicWorkflowStatus.Running)
+        while (!timeoutCts.IsCancellationRequested)
         {
-            bool sawEvent = false;
+            using CancellationTokenSource idleCts =
+                CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
 
-            using CancellationTokenSource idleCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
             idleCts.CancelAfter(IdleTimeout);
 
             try
             {
-                await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(idleCts.Token).ConfigureAwait(false))
+                await foreach (WorkflowEvent workflowEvent in run
+                    .WatchStreamAsync(idleCts.Token)
+                    .ConfigureAwait(false))
                 {
-                    sawEvent = true;
-                    idleCts.CancelAfter(IdleTimeout);
-                    HandleEvent(execution, workflowEvent);
+                    HandleEventBasic(execution, workflowEvent);
 
                     if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed)
                     {
@@ -153,46 +155,69 @@ public sealed class BasicLoanWorkflowService
                     }
                 }
             }
-            catch (OperationCanceledException) when (idleCts.IsCancellationRequested && !timeoutCts.IsCancellationRequested)
+            catch (OperationCanceledException)
+                when (idleCts.IsCancellationRequested && !timeoutCts.IsCancellationRequested)
             {
+                // Idle timeout; query run status and continue driving the workflow.
             }
 
-            if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed)
-            {
-                return;
-            }
+            RunStatus status = await run.GetStatusAsync(timeoutCts.Token).ConfigureAwait(false);
 
-            RunStatus runStatus = await run.GetStatusAsync(timeoutCts.Token).ConfigureAwait(false);
-            if (runStatus == RunStatus.Ended)
+            switch (status)
             {
-                if (execution.Status == BasicWorkflowStatus.Running)
-                {
+                case RunStatus.Ended:
                     execution.Status = BasicWorkflowStatus.Completed;
+                    execution.CurrentAgent = null;
                     Touch(execution);
-                }
+                    return;
 
-                return;
+                case RunStatus.PendingRequests:
+                    await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+                    break;
+
+                case RunStatus.Running:
+                case RunStatus.Idle:
+                    break;
+
+                default:
+                    return;
             }
-
-            if (!sawEvent && runStatus is not RunStatus.Running and not RunStatus.Idle and not RunStatus.PendingRequests)
-            {
-                return;
-            }
-
-            await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
         }
     }
 
-    private void HandleEvent(BasicWorkflowExecution execution, WorkflowEvent workflowEvent)
+    private void HandleEventBasic(BasicWorkflowExecution execution, WorkflowEvent workflowEvent)
     {
+        _logger.LogInformation("Event {Type}", workflowEvent.GetType().Name);
+
         switch (workflowEvent)
         {
             case AgentResponseUpdateEvent updateEvent:
-                SaveAgentText(execution, updateEvent.ExecutorId, WorkflowTextExtractor.FromAgentResponse(updateEvent.AsResponse()));
+                TryUpdateAgentOutput(
+                    execution,
+                    updateEvent.ExecutorId,
+                    updateEvent.AsResponse(),
+                    isFinal: false);
                 break;
 
             case AgentResponseEvent responseEvent:
-                SaveAgentText(execution, responseEvent.ExecutorId, WorkflowTextExtractor.FromAgentResponse(responseEvent.Response));
+                TryUpdateAgentOutput(
+                    execution,
+                    responseEvent.ExecutorId,
+                    responseEvent.Response,
+                    isFinal: true);
+                break;
+
+            case ExecutorInvokedEvent invokedEvent:
+                MarkExecutorStarted(execution, invokedEvent.ExecutorId);
+                break;
+
+            case ExecutorCompletedEvent completedEvent:
+                MarkExecutorCompleted(execution, completedEvent.ExecutorId);
+                TryUpdateAgentOutput(
+                    execution,
+                    completedEvent.ExecutorId,
+                    completedEvent.Data,
+                    isFinal: true);
                 break;
 
             case ExecutorFailedEvent failedEvent:
@@ -203,12 +228,13 @@ public sealed class BasicLoanWorkflowService
 
             case WorkflowOutputEvent:
                 execution.Status = BasicWorkflowStatus.Completed;
+                execution.CurrentAgent = null;
                 Touch(execution);
                 break;
         }
     }
 
-    private static void SaveAgentText(BasicWorkflowExecution execution, string executorId, string text)
+    private void MarkExecutorStarted(BasicWorkflowExecution execution, string executorId)
     {
         string? agentKey = MapExecutorToAgentKey(executorId);
         if (agentKey is null)
@@ -216,52 +242,138 @@ public sealed class BasicLoanWorkflowService
             return;
         }
 
-        string chunk = ExtractAssistantChunk(text);
-        if (string.IsNullOrWhiteSpace(chunk))
-        {
-            return;
-        }
+        execution.CurrentAgent = agentKey;
 
-        StringBuilder buffer = execution.StreamingBuffers.TryGetValue(agentKey, out StringBuilder? existing)
-            ? existing
-            : execution.StreamingBuffers[agentKey] = new StringBuilder();
+        AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
+        state.Status = BasicWorkflowStatus.Running;
 
-        string accumulated = buffer.ToString();
-
-        if (chunk.Contains('{') && chunk.Contains('}') && chunk.Length >= accumulated.Length)
-        {
-            execution.AgentOutputs[agentKey] = chunk;
-            Touch(execution);
-            return;
-        }
-
-        if (accumulated.EndsWith(chunk, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        if (chunk.StartsWith(accumulated, StringComparison.Ordinal) && chunk.Length > accumulated.Length)
-        {
-            buffer.Clear();
-            buffer.Append(chunk);
-        }
-        else
-        {
-            buffer.Append(chunk);
-        }
-
-        execution.AgentOutputs[agentKey] = buffer.ToString().Trim();
         Touch(execution);
     }
 
-    private static string ExtractAssistantChunk(string text)
+    private void MarkExecutorCompleted(BasicWorkflowExecution execution, string executorId)
     {
-        string trimmed = text.Trim();
-        const string prefix = "[assistant]";
-
-        if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        string? agentKey = MapExecutorToAgentKey(executorId);
+        if (agentKey is null)
         {
-            trimmed = trimmed[prefix.Length..].TrimStart();
+            return;
+        }
+
+        AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
+        state.Status = BasicWorkflowStatus.Completed;
+
+        if (string.Equals(execution.CurrentAgent, agentKey, StringComparison.OrdinalIgnoreCase))
+        {
+            execution.CurrentAgent = null;
+        }
+
+        Touch(execution);
+    }
+
+    private void TryUpdateAgentOutput(
+        BasicWorkflowExecution execution,
+        string executorId,
+        object? data,
+        bool isFinal)
+    {
+        if (data is null)
+        {
+            return;
+        }
+
+        string? rawOutput = data switch
+        {
+            AgentResponse response => GetAgentResponseText(response),
+            IList<ChatMessage> messages => WorkflowTextExtractor.FromChatMessages(messages),
+            ChatMessage message => WorkflowTextExtractor.FromChatMessages([message]),
+            string text => text,
+            _ => null
+        };
+
+        if (rawOutput is null)
+        {
+            _logger.LogDebug(
+                "Ignoring workflow payload for executor {ExecutorId} with unsupported data type {PayloadType}.",
+                executorId,
+                data.GetType().FullName);
+            return;
+        }
+
+        SaveAgentOutput(execution, executorId, rawOutput, isFinal);
+    }
+
+    private void SaveAgentOutput(
+        BasicWorkflowExecution execution,
+        string executorId,
+        string rawOutput,
+        bool isFinal)
+    {
+        string? agentKey = MapExecutorToAgentKey(executorId);
+        if (agentKey is null)
+        {
+            return;
+        }
+
+        string normalizedOutput = NormalizeAgentOutput(rawOutput);
+        if (string.IsNullOrWhiteSpace(normalizedOutput))
+        {
+            return;
+        }
+
+        AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
+        execution.StreamingBuffers.Remove(agentKey);
+
+        if (!isFinal &&
+            execution.AgentOutputs.TryGetValue(agentKey, out string? existingOutput) &&
+            normalizedOutput.Length <= existingOutput.Length)
+        {
+            return;
+        }
+
+        execution.AgentOutputs[agentKey] = normalizedOutput;
+        state.Output = normalizedOutput;
+        Touch(execution);
+    }
+
+    private static AgentExecutionState GetOrCreateAgentState(
+        BasicWorkflowExecution execution,
+        string agentKey)
+    {
+        if (execution.Agents.TryGetValue(agentKey, out AgentExecutionState? state))
+        {
+            return state;
+        }
+
+        state = new AgentExecutionState
+        {
+            AgentName = agentKey,
+            Status = BasicWorkflowStatus.Pending
+        };
+
+        execution.Agents[agentKey] = state;
+        return state;
+    }
+
+    private static string GetAgentResponseText(AgentResponse response)
+    {
+        string assistantText = WorkflowTextExtractor.FromAgentResponseBasic(response);
+        return string.IsNullOrWhiteSpace(assistantText)
+            ? WorkflowTextExtractor.FromAgentResponse(response)
+            : assistantText;
+    }
+
+    private static string NormalizeAgentOutput(string rawOutput)
+    {
+        string trimmed = rawOutput.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return string.Empty;
+        }
+
+        const string assistantPrefix = "[assistant]";
+        int assistantIndex = trimmed.LastIndexOf(assistantPrefix, StringComparison.OrdinalIgnoreCase);
+        if (assistantIndex >= 0)
+        {
+            trimmed = trimmed[(assistantIndex + assistantPrefix.Length)..].TrimStart();
         }
 
         return trimmed;
