@@ -498,6 +498,15 @@ public sealed class LoanWorkflowService
                 break;
 
             case RequestInfoEvent requestInfoEvent when requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? prompt):
+                if (record.State.Status != LoanCaseStatus.WaitingForHuman)
+                {
+                    _logger.LogDebug(
+                        "Ignoring re-emitted underwriting approval request for execution {ExecutionId} because status is {Status}.",
+                        record.State.ExecutionId,
+                        record.State.Status);
+                    break;
+                }
+
                 record.PendingExternalRequest = requestInfoEvent.Request;
                 record.PendingCheckpoint ??= run.Checkpoints.LastOrDefault();
                 record.State.Status = LoanCaseStatus.WaitingForHuman;
