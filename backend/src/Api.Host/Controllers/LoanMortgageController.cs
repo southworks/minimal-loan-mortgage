@@ -9,12 +9,86 @@ namespace CohereLoanAndMortgage.Api.Host.Controllers;
 public sealed class LoanMortgageController : ControllerBase
 {
     private readonly LoanWorkflowService _workflowService;
+    private readonly BasicLoanWorkflowService _basicWorkflowService;
     private readonly ILogger<LoanMortgageController> _logger;
 
-    public LoanMortgageController(LoanWorkflowService workflowService, ILogger<LoanMortgageController> logger)
+    public LoanMortgageController(
+        LoanWorkflowService workflowService,
+        BasicLoanWorkflowService basicWorkflowService,
+        ILogger<LoanMortgageController> logger)
     {
         _workflowService = workflowService;
+        _basicWorkflowService = basicWorkflowService;
         _logger = logger;
+    }
+
+    [HttpPost("applications/{caseId}/workflow/basic/start")]
+    public async Task<ActionResult<BasicWorkflowStatusResponse>> StartBasicWorkflowAsync(
+        string caseId,
+        CancellationToken cancellationToken)
+    {
+        string executionId = Guid.NewGuid().ToString("N");
+
+        try
+        {
+            _logger.LogInformation(
+                "Starting basic workflow for case {CaseId} with execution {ExecutionId}.",
+                caseId,
+                executionId);
+
+            BasicWorkflowStatusResponse response = await _basicWorkflowService.StartBasicWorkflowAsync(
+                caseId,
+                executionId,
+                cancellationToken);
+
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetailsResponse
+            {
+                Title = "Loan case not found.",
+                Detail = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ProblemDetailsResponse
+            {
+                Title = "Basic workflow cannot be started.",
+                Detail = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to start basic loan workflow for case {CaseId} with execution {ExecutionId}.",
+                caseId,
+                executionId);
+
+            return Problem(
+                detail: ex.Message,
+                title: "Basic loan workflow failed to start.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    [HttpGet("executions/{executionId}/basic/status")]
+    public ActionResult<BasicWorkflowStatusResponse> GetStatusBasicWorkflowAsync(string executionId)
+    {
+        try
+        {
+            return Ok(_basicWorkflowService.GetBasicWorkflowStatus(executionId));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetailsResponse
+            {
+                Title = "Basic workflow execution not found.",
+                Detail = ex.Message
+            });
+        }
     }
 
     [HttpPost("applications/{caseId}/workflow/start")]

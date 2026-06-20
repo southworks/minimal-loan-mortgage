@@ -1,0 +1,27 @@
+namespace CohereLoanAndMortgage.Api.Host.Contracts;
+
+public sealed class BasicWorkflowStatusResponse
+{
+    public required string ExecutionId { get; init; }
+
+    public required string CaseId { get; init; }
+
+    public required string Status { get; init; }
+
+    public required BasicWorkflowAgentOutputsResponse AgentOutputs { get; init; }
+
+    public string? FailureReason { get; init; }
+
+    public required DateTimeOffset LastUpdatedUtc { get; init; }
+}
+
+public sealed class BasicWorkflowAgentOutputsResponse
+{
+    public string? DocumentProcessing { get; init; }
+
+    public string? Underwriting { get; init; }
+
+    public string? ResponsibleAi { get; init; }
+
+    public string? LoanSetup { get; init; }
+}
