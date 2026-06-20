@@ -111,7 +111,9 @@ public sealed class LoanWorkflowService
                 $"Execution '{executionId}' is not waiting for human approval. Current status: {record.State.Status}.");
         }
 
-        if (record.PendingCheckpoint is null || record.WorkflowCheckpointManager is null)
+        if (record.PendingCheckpoint is null ||
+            record.WorkflowCheckpointManager is null ||
+            record.PendingExternalRequest is null)
         {
             throw new InvalidOperationException(
                 $"Execution '{executionId}' does not have a saved workflow checkpoint and cannot continue.");
@@ -123,13 +125,36 @@ public sealed class LoanWorkflowService
             record.State.CaseId,
             record.State.ExecutionId);
 
+        var decision = new UnderwritingApprovalDecision
+        {
+            Approved = request.Approved,
+            ReviewerComment = request.ReviewerComment
+        };
+
         await using StreamingRun run = await InProcessExecution
             .ResumeStreamingAsync(workflow, record.PendingCheckpoint, record.WorkflowCheckpointManager, cancellationToken)
             .ConfigureAwait(false);
 
-        await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
-
         bool responded = false;
+
+        RunStatus initialStatus = await run.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+        if (initialStatus == RunStatus.PendingRequests)
+        {
+            ApplyUnderwritingDecision(record, decision, request);
+            await run.SendResponseAsync(record.PendingExternalRequest.CreateResponse(decision)).ConfigureAwait(false);
+            record.PendingExternalRequest = null;
+            _caseStore.Save(record);
+            responded = true;
+
+            if (!request.Approved)
+            {
+                ClearWorkflowResumeState(record);
+                _caseStore.Save(record);
+                return LoanCaseMapper.ToResponse(record.State);
+            }
+
+            await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+        }
 
         await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -137,50 +162,25 @@ public sealed class LoanWorkflowService
                 workflowEvent is RequestInfoEvent requestInfoEvent &&
                 requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? _))
             {
-                var decision = new UnderwritingApprovalDecision
-                {
-                    Approved = request.Approved,
-                    ReviewerComment = request.ReviewerComment
-                };
-
-                record.State.PendingApproval = null;
-                record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
-
-                if (request.Approved)
-                {
-                    AddTimeline(record.State, LoanWorkflowStep.WaitingForHumanApproval, "Underwriting approved by human reviewer.");
-                    record.State.Status = LoanCaseStatus.Running;
-                    record.State.CurrentStep = LoanWorkflowStep.ResponsibleAi;
-                }
-                else
-                {
-                    AddTimeline(
-                        record.State,
-                        LoanWorkflowStep.Rejected,
-                        string.IsNullOrWhiteSpace(request.ReviewerComment)
-                            ? "Underwriting rejected by human reviewer."
-                            : $"Underwriting rejected by human reviewer: {request.ReviewerComment}");
-                    record.State.Status = LoanCaseStatus.Rejected;
-                    record.State.CurrentStep = LoanWorkflowStep.Rejected;
-                }
-
+                ApplyUnderwritingDecision(record, decision, request);
                 await run.SendResponseAsync(requestInfoEvent.Request.CreateResponse(decision)).ConfigureAwait(false);
-                responded = true;
+                record.PendingExternalRequest = null;
                 _caseStore.Save(record);
-
-                if (request.Approved)
-                {
-                    await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
-                }
+                responded = true;
 
                 if (!request.Approved)
                 {
-                    record.PendingCheckpoint = null;
-                    record.WorkflowCheckpointManager = null;
+                    ClearWorkflowResumeState(record);
                     _caseStore.Save(record);
                     return LoanCaseMapper.ToResponse(record.State);
                 }
 
+                await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            if (workflowEvent is RequestInfoEvent)
+            {
                 continue;
             }
 
@@ -199,6 +199,41 @@ public sealed class LoanWorkflowService
         }
 
         return LoanCaseMapper.ToResponse(record.State);
+    }
+
+    private static void ApplyUnderwritingDecision(
+        LoanCaseRecord record,
+        UnderwritingApprovalDecision decision,
+        HumanDecisionRequest request)
+    {
+        _ = decision;
+
+        record.State.PendingApproval = null;
+        record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
+
+        if (request.Approved)
+        {
+            AddTimeline(record.State, LoanWorkflowStep.WaitingForHumanApproval, "Underwriting approved by human reviewer.");
+            record.State.Status = LoanCaseStatus.Running;
+            record.State.CurrentStep = LoanWorkflowStep.ResponsibleAi;
+            return;
+        }
+
+        AddTimeline(
+            record.State,
+            LoanWorkflowStep.Rejected,
+            string.IsNullOrWhiteSpace(request.ReviewerComment)
+                ? "Underwriting rejected by human reviewer."
+                : $"Underwriting rejected by human reviewer: {request.ReviewerComment}");
+        record.State.Status = LoanCaseStatus.Rejected;
+        record.State.CurrentStep = LoanWorkflowStep.Rejected;
+    }
+
+    private static void ClearWorkflowResumeState(LoanCaseRecord record)
+    {
+        record.PendingCheckpoint = null;
+        record.WorkflowCheckpointManager = null;
+        record.PendingExternalRequest = null;
     }
 
     private static LoanCaseRecord CreateBootstrapRecord(string caseId, string executionId)
@@ -391,6 +426,7 @@ public sealed class LoanWorkflowService
                 break;
 
             case RequestInfoEvent requestInfoEvent when requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? prompt):
+                record.PendingExternalRequest = requestInfoEvent.Request;
                 record.PendingCheckpoint ??= run.Checkpoints.LastOrDefault();
                 record.State.Status = LoanCaseStatus.WaitingForHuman;
                 record.State.CurrentStep = LoanWorkflowStep.WaitingForHumanApproval;
@@ -411,8 +447,7 @@ public sealed class LoanWorkflowService
             case WorkflowOutputEvent outputEvent when outputEvent.Data is UnderwritingApprovalDecision decision && !decision.Approved:
                 record.State.Status = LoanCaseStatus.Rejected;
                 record.State.CurrentStep = LoanWorkflowStep.Rejected;
-                record.PendingCheckpoint = null;
-                record.WorkflowCheckpointManager = null;
+                ClearWorkflowResumeState(record);
                 AddTimeline(record.State, LoanWorkflowStep.Rejected, "Workflow rejected after human decision.");
                 break;
 
@@ -420,8 +455,7 @@ public sealed class LoanWorkflowService
                 record.State.Status = LoanCaseStatus.Completed;
                 record.State.CurrentStep = LoanWorkflowStep.Completed;
                 record.State.PendingApproval = null;
-                record.PendingCheckpoint = null;
-                record.WorkflowCheckpointManager = null;
+                ClearWorkflowResumeState(record);
                 AddTimeline(record.State, LoanWorkflowStep.Completed, "Loan workflow completed.");
                 break;
         }
@@ -549,8 +583,7 @@ public sealed class LoanWorkflowService
         record.State.CurrentStep = LoanWorkflowStep.Failed;
         record.State.FailureReason = reason;
         record.State.PendingApproval = null;
-        record.PendingCheckpoint = null;
-        record.WorkflowCheckpointManager = null;
+        ClearWorkflowResumeState(record);
         AddTimeline(record.State, LoanWorkflowStep.Failed, reason);
         record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
         _caseStore.Save(record);

@@ -12,6 +12,8 @@ public sealed class LoanCaseRecord
 
     public CheckpointManager? WorkflowCheckpointManager { get; set; }
 
+    public ExternalRequest? PendingExternalRequest { get; set; }
+
     public string? WorkflowSessionId { get; set; }
 }
 
