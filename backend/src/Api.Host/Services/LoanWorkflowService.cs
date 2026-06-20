@@ -631,11 +631,20 @@ public sealed class LoanWorkflowService
     private static bool IsAgentExecutor(string executorId)
     {
         string normalizedExecutorId = NormalizeExecutorId(executorId);
+
+        if (IsWorkflowControlExecutor(normalizedExecutorId))
+        {
+            return false;
+        }
+
         return normalizedExecutorId.Contains("document-processing", StringComparison.OrdinalIgnoreCase)
             || normalizedExecutorId.Contains("underwriting", StringComparison.OrdinalIgnoreCase)
             || normalizedExecutorId.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase)
             || normalizedExecutorId.Contains("loan-setup", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsWorkflowControlExecutor(string normalizedExecutorId) =>
+        normalizedExecutorId.Contains("underwriting-approval", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeExecutorId(string executorId) =>
         executorId.Replace('_', '-');
