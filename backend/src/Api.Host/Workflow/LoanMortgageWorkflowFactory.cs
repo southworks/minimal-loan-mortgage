@@ -49,14 +49,14 @@ public sealed class LoanMortgageWorkflowFactory
             id: "UnderwritingApprovalDecision",
             handlerAsync: async (decision, context, cancellationToken) =>
             {
-                List<ChatMessage>? pendingMessages = await context
-                    .ReadStateAsync<List<ChatMessage>>(
+                IList<ChatMessage>? pendingMessages = await context
+                    .ReadStateAsync<IList<ChatMessage>>(
                         LoanWorkflowConstants.PendingMessagesKey,
                         scopeName: LoanWorkflowConstants.SharedStateScope,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (pendingMessages is null)
+                if (pendingMessages is null || pendingMessages.Count == 0)
                 {
                     throw new InvalidOperationException("Underwriting messages were not available when processing the approval decision.");
                 }
@@ -69,7 +69,7 @@ public sealed class LoanMortgageWorkflowFactory
 
                 await context.SendMessageAsync(pendingMessages, cancellationToken: cancellationToken).ConfigureAwait(false);
             },
-            sentMessageTypes: [typeof(IList<ChatMessage>)],
+            sentMessageTypes: [typeof(IList<ChatMessage>), typeof(List<ChatMessage>)],
             outputTypes: [typeof(UnderwritingApprovalDecision)]);
 
         var agentHostOptions = new AIAgentHostOptions

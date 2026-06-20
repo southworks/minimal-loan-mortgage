@@ -10,6 +10,8 @@ public sealed class LoanCaseRecord
 
     public CheckpointInfo? PendingCheckpoint { get; set; }
 
+    public CheckpointInfo? HaltCheckpoint { get; set; }
+
     public CheckpointManager? WorkflowCheckpointManager { get; set; }
 
     public ExternalRequest? PendingExternalRequest { get; set; }
