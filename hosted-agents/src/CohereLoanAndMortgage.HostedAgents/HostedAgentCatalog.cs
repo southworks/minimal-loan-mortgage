@@ -124,9 +124,12 @@ public static class HostedAgentCatalog
         Return JSON only with these properties:
         - summary: concise explanation of the step outcome.
         - decision: the recommendation or outcome for this step.
-        - evidence: key facts or rationale supporting the decision.
+        - evidence: a plain string with key facts or rationale supporting the decision. Do not return an object or array for evidence.
         - memoryUpdates: always return an empty array.
 
-        Do not wrap the JSON in markdown. Do not include extra text before or after the JSON.
+        Formatting rules:
+        - Return raw JSON only. Do not wrap the JSON in markdown code fences.
+        - Do not include extra text before or after the JSON.
+        - Use valid JSON syntax. Numeric values must not include currency symbols such as $.
         """;
 }

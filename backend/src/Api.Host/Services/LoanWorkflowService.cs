@@ -295,7 +295,8 @@ public sealed class LoanWorkflowService
 
             await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (workflowEvent is AgentResponseEvent)
+                if (workflowEvent is AgentResponseEvent ||
+                    (workflowEvent is ExecutorCompletedEvent completed && IsAgentExecutor(completed.ExecutorId)))
                 {
                     receivedAgentResponse = true;
                 }
@@ -338,20 +339,7 @@ public sealed class LoanWorkflowService
         switch (workflowEvent)
         {
             case AgentResponseEvent agentResponseEvent:
-                try
-                {
-                    UpdateAgentOutput(record, agentResponseEvent.ExecutorId, agentResponseEvent.Response);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to parse structured output from executor {ExecutorId}. Raw output preview: {RawOutputPreview}",
-                        agentResponseEvent.ExecutorId,
-                        TruncateForLog(WorkflowTextExtractor.FromAgentResponse(agentResponseEvent.Response)));
-                    MarkFailed(record, ex.Message);
-                }
-
+                TryUpdateAgentOutput(record, agentResponseEvent.ExecutorId, agentResponseEvent.Response);
                 break;
 
             case AgentResponseUpdateEvent agentResponseUpdateEvent:
@@ -365,7 +353,30 @@ public sealed class LoanWorkflowService
                 break;
 
             case ExecutorCompletedEvent executorCompletedEvent:
-                TryUpdateAgentOutput(record, executorCompletedEvent.ExecutorId, executorCompletedEvent.Data);
+                if (IsAgentExecutor(executorCompletedEvent.ExecutorId))
+                {
+                    try
+                    {
+                        UpdateAgentOutputFromExecutorData(
+                            record,
+                            executorCompletedEvent.ExecutorId,
+                            executorCompletedEvent.Data);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to parse structured output from completed executor {ExecutorId}. Raw output preview: {RawOutputPreview}",
+                            executorCompletedEvent.ExecutorId,
+                            TruncateForLog(DescribeExecutorData(executorCompletedEvent.Data)));
+                        MarkFailed(record, ex.Message);
+                    }
+                }
+                else
+                {
+                    TryUpdateAgentOutput(record, executorCompletedEvent.ExecutorId, executorCompletedEvent.Data);
+                }
+
                 _logger.LogDebug(
                     "Workflow executor {ExecutorId} completed for execution {ExecutionId} with data type {DataType}.",
                     executorCompletedEvent.ExecutorId,
@@ -452,6 +463,32 @@ public sealed class LoanWorkflowService
         }
     }
 
+    private void UpdateAgentOutputFromExecutorData(LoanCaseRecord record, string executorId, object? data)
+    {
+        switch (data)
+        {
+            case AgentResponse agentResponse:
+                UpdateAgentOutput(record, executorId, agentResponse);
+                break;
+
+            case IList<ChatMessage> messages:
+                UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages(messages));
+                break;
+
+            case ChatMessage message:
+                UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages([message]));
+                break;
+
+            case string text:
+                UpdateAgentOutput(record, executorId, text);
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Executor '{executorId}' completed with unsupported data type '{data?.GetType().FullName ?? "null"}'.");
+        }
+    }
+
     private void TryUpdateAgentOutput(LoanCaseRecord record, string executorId, object? data)
     {
         if (data is null || !IsAgentExecutor(executorId))
@@ -461,24 +498,7 @@ public sealed class LoanWorkflowService
 
         try
         {
-            switch (data)
-            {
-                case AgentResponse agentResponse:
-                    UpdateAgentOutput(record, executorId, agentResponse);
-                    break;
-
-                case IList<ChatMessage> messages:
-                    UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages(messages));
-                    break;
-
-                case ChatMessage message:
-                    UpdateAgentOutput(record, executorId, WorkflowTextExtractor.FromChatMessages([message]));
-                    break;
-
-                case string text:
-                    UpdateAgentOutput(record, executorId, text);
-                    break;
-            }
+            UpdateAgentOutputFromExecutorData(record, executorId, data);
         }
         catch (InvalidOperationException ex)
         {
@@ -500,6 +520,16 @@ public sealed class LoanWorkflowService
 
     private static string NormalizeExecutorId(string executorId) =>
         executorId.Replace('_', '-');
+
+    private static string DescribeExecutorData(object? data) =>
+        data switch
+        {
+            AgentResponse agentResponse => WorkflowTextExtractor.FromAgentResponse(agentResponse),
+            IList<ChatMessage> messages => WorkflowTextExtractor.FromChatMessages(messages),
+            ChatMessage message => WorkflowTextExtractor.FromChatMessages([message]),
+            string text => text,
+            _ => data?.ToString() ?? string.Empty
+        };
 
     private static string TruncateForLog(string value)
     {

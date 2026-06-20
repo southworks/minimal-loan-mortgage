@@ -59,8 +59,9 @@ public static class AgentStructuredOutputParser
                 $"Agent '{agentName}' returned an error instead of structured JSON: {Truncate(trimmedOutput)}");
         }
 
-        AgentStructuredOutput? structured = TryDeserialize(trimmedOutput)
-            ?? TryDeserialize(ExtractJsonObject(rawOutput));
+        string normalizedJson = NormalizeJsonPayload(rawOutput);
+        AgentStepResult? structured = TryParseFlexible(agentName, normalizedJson)
+            ?? TryParseFlexible(agentName, ExtractJsonObject(rawOutput) ?? string.Empty);
 
         if (structured is null)
         {
@@ -68,32 +69,56 @@ public static class AgentStructuredOutputParser
                 $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence, memoryUpdates.");
         }
 
-        if (string.IsNullOrWhiteSpace(structured.Summary) ||
-            string.IsNullOrWhiteSpace(structured.Decision) ||
-            string.IsNullOrWhiteSpace(structured.Evidence))
-        {
-            throw new InvalidOperationException(
-                $"Agent '{agentName}' returned JSON missing required fields (summary, decision, evidence).");
-        }
-
-        return new AgentStepResult
-        {
-            AgentName = agentName,
-            Summary = structured.Summary,
-            Decision = structured.Decision,
-            Evidence = structured.Evidence,
-            MemoryUpdates = structured.MemoryUpdates,
-            CompletedAtUtc = DateTimeOffset.UtcNow
-        };
+        return structured;
     }
 
-    private static AgentStructuredOutput? TryDeserialize(string? text)
+    private static AgentStepResult? TryParseFlexible(string agentName, string json)
     {
-        if (string.IsNullOrWhiteSpace(text))
+        if (string.IsNullOrWhiteSpace(json))
         {
             return null;
         }
 
+        AgentStructuredOutput? strict = TryDeserializeStrict(json);
+        if (strict is not null &&
+            !string.IsNullOrWhiteSpace(strict.Summary) &&
+            !string.IsNullOrWhiteSpace(strict.Decision) &&
+            !string.IsNullOrWhiteSpace(strict.Evidence))
+        {
+            return ToStepResult(agentName, strict.Summary, strict.Decision, strict.Evidence, strict.MemoryUpdates);
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            JsonElement root = document.RootElement;
+            string? summary = ReadRequiredString(root, "summary");
+            string? decision = ReadRequiredString(root, "decision");
+            string? evidence = ReadEvidence(root, "evidence");
+
+            if (string.IsNullOrWhiteSpace(summary) ||
+                string.IsNullOrWhiteSpace(decision) ||
+                string.IsNullOrWhiteSpace(evidence))
+            {
+                return null;
+            }
+
+            IReadOnlyList<string> memoryUpdates = ReadMemoryUpdates(root, "memoryUpdates");
+            return ToStepResult(agentName, summary, decision, evidence, memoryUpdates);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static AgentStructuredOutput? TryDeserializeStrict(string text)
+    {
         try
         {
             return JsonSerializer.Deserialize<AgentStructuredOutput>(text, JsonOptions);
@@ -102,6 +127,115 @@ public static class AgentStructuredOutputParser
         {
             return null;
         }
+    }
+
+    private static string? ReadRequiredString(JsonElement root, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value))
+        {
+            return null;
+        }
+
+        return value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : value.GetRawText();
+    }
+
+    private static string? ReadEvidence(JsonElement root, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            _ => value.ToString()
+        };
+    }
+
+    private static IReadOnlyList<string> ReadMemoryUpdates(JsonElement root, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value) ||
+            value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var updates = new List<string>();
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                string? text = item.GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    updates.Add(text);
+                }
+            }
+        }
+
+        return updates;
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement root, string propertyName, out JsonElement value)
+    {
+        if (root.TryGetProperty(propertyName, out value))
+        {
+            return true;
+        }
+
+        foreach (JsonProperty property in root.EnumerateObject())
+        {
+            if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static AgentStepResult ToStepResult(
+        string agentName,
+        string summary,
+        string decision,
+        string evidence,
+        IReadOnlyList<string> memoryUpdates) =>
+        new()
+        {
+            AgentName = agentName,
+            Summary = summary,
+            Decision = decision,
+            Evidence = evidence,
+            MemoryUpdates = memoryUpdates,
+            CompletedAtUtc = DateTimeOffset.UtcNow
+        };
+
+    private static string NormalizeJsonPayload(string text)
+    {
+        string normalized = text.Trim();
+
+        if (normalized.StartsWith("```", StringComparison.Ordinal))
+        {
+            int firstLineBreak = normalized.IndexOf('\n');
+            if (firstLineBreak >= 0)
+            {
+                normalized = normalized[(firstLineBreak + 1)..];
+            }
+
+            if (normalized.EndsWith("```", StringComparison.Ordinal))
+            {
+                normalized = normalized[..^3].TrimEnd();
+            }
+        }
+
+        return ExtractJsonObject(normalized) ?? normalized.Trim();
     }
 
     private static string? ExtractJsonObject(string text)

@@ -74,7 +74,7 @@ public sealed class LoanMortgageWorkflowFactory
 
         var agentHostOptions = new AIAgentHostOptions
         {
-            EmitAgentResponseEvents = true
+            EmitAgentResponseEvents = false
         };
 
         var documentProcessing = agents.DocumentProcessing.BindAsExecutor(agentHostOptions);
