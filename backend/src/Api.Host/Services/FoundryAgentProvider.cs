@@ -118,7 +118,7 @@ public sealed class FoundryAgentProvider
                     .ConfigureAwait(false))
                 .Value;
 
-            Uri agentEndpoint = BuildHostedAgentResponsesEndpoint(projectEndpoint, agentName);
+            Uri agentEndpoint = BuildHostedAgentEndpoint(projectEndpoint, agentName);
             AIAgent agent = projectClient.AsAIAgent(agentEndpoint);
 
             _logger.LogInformation(
@@ -138,11 +138,12 @@ public sealed class FoundryAgentProvider
         }
     }
 
-    private static Uri BuildHostedAgentResponsesEndpoint(Uri projectEndpoint, string agentName)
+    private static Uri BuildHostedAgentEndpoint(Uri projectEndpoint, string agentName)
     {
         var projectBase = projectEndpoint.ToString().TrimEnd('/');
         var escapedAgentName = Uri.EscapeDataString(agentName);
 
-        return new Uri($"{projectBase}/agents/{escapedAgentName}/endpoint/protocols/openai/responses");
+        // MAF SDK expects exactly this suffix; it routes hosted-agent calls to the Responses surface internally.
+        return new Uri($"{projectBase}/agents/{escapedAgentName}/endpoint/protocols/openai");
     }
 }
