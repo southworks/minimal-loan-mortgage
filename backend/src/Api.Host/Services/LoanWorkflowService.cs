@@ -132,6 +132,7 @@ public sealed class LoanWorkflowService
         CheckpointManager checkpointManager = record.WorkflowCheckpointManager;
 
         record.UnderwritingDecisionSubmitted = true;
+        record.PendingUnderwritingDecision = decision;
         ApplyUnderwritingDecision(record, decision, request);
         _caseStore.Save(record);
 
@@ -187,6 +188,7 @@ public sealed class LoanWorkflowService
         record.PendingCheckpoint = null;
         record.WorkflowCheckpointManager = null;
         record.PendingExternalRequest = null;
+        record.PendingUnderwritingDecision = null;
         record.UnderwritingDecisionSubmitted = false;
     }
 
@@ -353,14 +355,10 @@ public sealed class LoanWorkflowService
                 .ResumeStreamingAsync(workflow, pendingCheckpoint, checkpointManager, cancellationToken)
                 .ConfigureAwait(false);
 
-            await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
-            record.PendingExternalRequest = null;
-            _caseStore.Save(record);
-
             UpdateWorkflowProgress(record, LoanWorkflowStep.ResponsibleAi, "Responsible AI review in progress.");
 
             _logger.LogInformation(
-                "Resumed workflow after human approval for execution {ExecutionId}.",
+                "Resumed workflow after human approval for execution {ExecutionId}. Waiting for re-emitted RequestInfoEvent.",
                 executionId);
 
             await RunWorkflowStreamUntilTerminalAsync(
@@ -368,7 +366,7 @@ public sealed class LoanWorkflowService
                     run,
                     executionId,
                     cancellationToken,
-                    sendInitialTurnToken: true,
+                    sendInitialTurnToken: false,
                     trackAgentResponse: null)
                 .ConfigureAwait(false);
         }
@@ -557,6 +555,34 @@ public sealed class LoanWorkflowService
         _caseStore.Save(record);
     }
 
+    private async Task<bool> TrySendPendingUnderwritingResponseAsync(
+        LoanCaseRecord record,
+        WorkflowEvent workflowEvent,
+        StreamingRun run,
+        CancellationToken cancellationToken)
+    {
+        if (workflowEvent is not RequestInfoEvent requestInfoEvent ||
+            !record.UnderwritingDecisionSubmitted ||
+            record.PendingUnderwritingDecision is not UnderwritingApprovalDecision decision ||
+            !requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? _))
+        {
+            return false;
+        }
+
+        await run.SendResponseAsync(requestInfoEvent.Request.CreateResponse(decision)).ConfigureAwait(false);
+        record.PendingExternalRequest = null;
+        record.PendingUnderwritingDecision = null;
+        record.State.LastUpdatedUtc = DateTimeOffset.UtcNow;
+        _caseStore.Save(record);
+
+        _logger.LogInformation(
+            "Sent saved underwriting decision in response to re-emitted RequestInfoEvent for execution {ExecutionId}.",
+            record.State.ExecutionId);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return true;
+    }
+
     private async Task RunWorkflowStreamUntilTerminalAsync(
         LoanCaseRecord record,
         StreamingRun run,
@@ -579,6 +605,12 @@ public sealed class LoanWorkflowService
             {
                 await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(timeoutCts.Token).ConfigureAwait(false))
                 {
+                    if (await TrySendPendingUnderwritingResponseAsync(record, workflowEvent, run, timeoutCts.Token)
+                            .ConfigureAwait(false))
+                    {
+                        continue;
+                    }
+
                     bool agentResponse = workflowEvent is AgentResponseEvent ||
                         (workflowEvent is ExecutorCompletedEvent completed &&
                          IsAgentExecutor(completed.ExecutorId) &&

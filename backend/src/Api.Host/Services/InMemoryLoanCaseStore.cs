@@ -14,6 +14,8 @@ public sealed class LoanCaseRecord
 
     public ExternalRequest? PendingExternalRequest { get; set; }
 
+    public UnderwritingApprovalDecision? PendingUnderwritingDecision { get; set; }
+
     public bool UnderwritingDecisionSubmitted { get; set; }
 
     public string? WorkflowSessionId { get; set; }
