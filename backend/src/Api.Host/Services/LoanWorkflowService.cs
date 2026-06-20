@@ -131,71 +131,34 @@ public sealed class LoanWorkflowService
             ReviewerComment = request.ReviewerComment
         };
 
+        ExternalRequest pendingRequest = record.PendingExternalRequest;
+
         await using StreamingRun run = await InProcessExecution
             .ResumeStreamingAsync(workflow, record.PendingCheckpoint, record.WorkflowCheckpointManager, cancellationToken)
             .ConfigureAwait(false);
 
-        bool responded = false;
+        ApplyUnderwritingDecision(record, decision, request);
+        await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
+        record.PendingExternalRequest = null;
+        _caseStore.Save(record);
 
-        RunStatus initialStatus = await run.GetStatusAsync(cancellationToken).ConfigureAwait(false);
-        if (initialStatus == RunStatus.PendingRequests)
+        if (!request.Approved)
         {
-            ApplyUnderwritingDecision(record, decision, request);
-            await run.SendResponseAsync(record.PendingExternalRequest.CreateResponse(decision)).ConfigureAwait(false);
-            record.PendingExternalRequest = null;
+            ClearWorkflowResumeState(record);
             _caseStore.Save(record);
-            responded = true;
-
-            if (!request.Approved)
-            {
-                ClearWorkflowResumeState(record);
-                _caseStore.Save(record);
-                return LoanCaseMapper.ToResponse(record.State);
-            }
-
-            await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
+            return LoanCaseMapper.ToResponse(record.State);
         }
+
+        await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
 
         await foreach (WorkflowEvent workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (!responded &&
-                workflowEvent is RequestInfoEvent requestInfoEvent &&
-                requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? _))
-            {
-                ApplyUnderwritingDecision(record, decision, request);
-                await run.SendResponseAsync(requestInfoEvent.Request.CreateResponse(decision)).ConfigureAwait(false);
-                record.PendingExternalRequest = null;
-                _caseStore.Save(record);
-                responded = true;
-
-                if (!request.Approved)
-                {
-                    ClearWorkflowResumeState(record);
-                    _caseStore.Save(record);
-                    return LoanCaseMapper.ToResponse(record.State);
-                }
-
-                await SendTurnTokenAsync(run, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
-
-            if (workflowEvent is RequestInfoEvent)
-            {
-                continue;
-            }
-
             ProcessWorkflowEvent(record, workflowEvent, run);
 
             if (record.State.Status is LoanCaseStatus.Completed or LoanCaseStatus.Rejected or LoanCaseStatus.WaitingForHuman or LoanCaseStatus.Failed)
             {
                 break;
             }
-        }
-
-        if (!responded)
-        {
-            throw new InvalidOperationException(
-                "The workflow did not re-emit an underwriting approval request after the human decision was submitted.");
         }
 
         return LoanCaseMapper.ToResponse(record.State);
