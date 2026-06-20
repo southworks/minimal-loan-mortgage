@@ -11,4 +11,7 @@ public sealed class AzureSearchOptions
     public string PolicyIndexName { get; set; } = "loan-policy-knowledge";
 
     public int VectorDimensions { get; set; } = 1024;
+
+    // Optional: admin API key fallback for local development
+    public string ApiKey { get; set; } = string.Empty;
 }

@@ -91,6 +91,47 @@ public sealed class LoanMortgageController : ControllerBase
         }
     }
 
+    [HttpPost("executions/{executionId}/basic/decisions")]
+    public async Task<ActionResult<BasicWorkflowStatusResponse>> SubmitBasicDecisionAsync(
+        string executionId,
+        [FromBody] HumanDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            BasicWorkflowStatusResponse response = await _basicWorkflowService.SubmitBasicDecisionAsync(
+                executionId,
+                request,
+                cancellationToken);
+
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetailsResponse
+            {
+                Title = "Basic workflow execution not found.",
+                Detail = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ProblemDetailsResponse
+            {
+                Title = "Decision cannot be submitted.",
+                Detail = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process basic workflow human decision for execution {ExecutionId}.", executionId);
+            return Problem(
+                detail: ex.Message,
+                title: "Basic workflow failed after human decision.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
     [HttpPost("applications/{caseId}/workflow/start")]
     public async Task<ActionResult<LoanCaseResponse>> StartWorkflowAsync(
         string caseId,

@@ -145,6 +145,13 @@ public static class SearchClientFactory
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Endpoint);
 
         var endpoint = new Uri(options.Endpoint);
+
+        // Prefer API key if provided (local dev fallback), otherwise use AAD DefaultAzureCredential
+        if (!string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            return new SearchIndexClient(endpoint, new Azure.AzureKeyCredential(options.ApiKey));
+        }
+
         return new SearchIndexClient(endpoint, new DefaultAzureCredential());
     }
 
@@ -153,6 +160,12 @@ public static class SearchClientFactory
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Endpoint);
 
         var endpoint = new Uri(options.Endpoint);
+
+        if (!string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            return new SearchClient(endpoint, indexName, new Azure.AzureKeyCredential(options.ApiKey));
+        }
+
         return new SearchClient(endpoint, indexName, new DefaultAzureCredential());
     }
 }

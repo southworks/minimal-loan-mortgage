@@ -1,24 +1,39 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-name: cohereloan-hosted-agents
+name: cohereloan-loan-setup-agent
 
 metadata:
-  template: cohereloan-loan-mortgage-hosted-agents
+  template: cohereloan-loan-mortgage-hosted-agent
 
 requiredVersions:
   extensions:
-    azure.ai.agents: latest
+    azure.ai.agents: '>=0.1.0-preview'
+
+# Deploy-only into an existing Foundry project. Do not run `azd provision`.
+# Configure hosted-agents/deploy.local.json once, then: azd deploy
+
+hooks:
+  predeploy:
+    windows:
+      shell: pwsh
+      run: ./scripts/Prepare-LoanSetupDeploy.ps1
+      interactive: false
+      continueOnError: false
+    posix:
+      shell: sh
+      run: ./scripts/prepare-loan-setup-deploy.sh
+      interactive: false
+      continueOnError: false
 
 services:
-  document-processing-agent:
-    project: agents/document-processing-agent
-    host: azure.ai.agent
-  underwriting-agent:
-    project: agents/underwriting-agent
-    host: azure.ai.agent
-  responsible-ai-agent:
-    project: agents/responsible-ai-agent
-    host: azure.ai.agent
   loan-setup-agent:
-    project: agents/loan-setup-agent
+    project: src/loan-setup-agent
     host: azure.ai.agent
+    language: csharp
+    config:
+      container:
+        resources:
+          cpu: "0.5"
+          memory: 1Gi
+
+# Other agents: add services here when ready, or run `azd deploy <service-name>` after uncommenting.

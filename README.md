@@ -130,7 +130,7 @@ cd backend/src/LoanWorkflow.Mcp
 dotnet run -- --seed-policies
 ```
 
-For hosted-agent code, see [hosted-agents](hosted-agents). `azd ai agent` is useful for local hosted-agent experiments, but it is not required for the one-click Azure deployment.
+For hosted-agent code, see [hosted-agents](hosted-agents). Use `azd deploy` against your existing Foundry project (no `azd provision` required). The one-click Azure deployment still registers agents via ARM/Bicep separately.
 
 ## Packages
 

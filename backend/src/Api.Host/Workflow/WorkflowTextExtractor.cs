@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
@@ -6,6 +7,10 @@ namespace CohereLoanAndMortgage.Api.Host.Workflow;
 
 internal static class WorkflowTextExtractor
 {
+    private static readonly Regex JsonFenceRegex = new(
+        @"```json\s*(\{.*?\})\s*```",
+        RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
     public static string FromAgentResponse(AgentResponse response)
     {
         if (response.Messages is { Count: > 0 })
@@ -26,6 +31,29 @@ internal static class WorkflowTextExtractor
         }
 
         return builder.ToString().Trim();
+    }
+
+    public static string ExtractAgentPayload(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        MatchCollection matches = JsonFenceRegex.Matches(raw);
+        if (matches.Count > 0)
+        {
+            return matches[^1].Groups[1].Value.Trim();
+        }
+
+        int lastClose = raw.LastIndexOf('}');
+        int lastOpen = raw.LastIndexOf('{');
+        if (lastOpen >= 0 && lastClose > lastOpen)
+        {
+            return raw[lastOpen..(lastClose + 1)].Trim();
+        }
+
+        return raw.Trim();
     }
 
     private static void AppendMessageContent(StringBuilder builder, ChatMessage message)
@@ -90,6 +118,12 @@ internal static class WorkflowTextExtractor
                 }
 
                 builder.AppendLine(textContent.Text);
+                continue;
+            }
+
+            // Skip tool-call artifacts; downstream agents only need assistant text/JSON.
+            if (content is FunctionCallContent or FunctionResultContent)
+            {
                 continue;
             }
 

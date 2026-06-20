@@ -8,6 +8,8 @@ public sealed class BasicWorkflowStatusResponse
 
     public required string Status { get; init; }
 
+    public PendingApprovalResponse? PendingApproval { get; init; }
+
     public required BasicWorkflowAgentOutputsResponse AgentOutputs { get; init; }
 
     public string? FailureReason { get; init; }

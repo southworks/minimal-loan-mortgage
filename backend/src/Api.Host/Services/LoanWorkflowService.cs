@@ -492,6 +492,15 @@ public sealed class LoanWorkflowService
             case ExecutorFailedEvent executorFailedEvent:
                 string errorMessage = executorFailedEvent.Data?.Message
                     ?? $"Workflow executor '{executorFailedEvent.ExecutorId}' failed without an exception message.";
+                if (executorFailedEvent.Data is not null)
+                {
+                    _logger.LogError(
+                        executorFailedEvent.Data,
+                        "Workflow executor {ExecutorId} failed for execution {ExecutionId}.",
+                        executorFailedEvent.ExecutorId,
+                        record.State.ExecutionId);
+                }
+
                 MarkFailed(record, $"Executor '{executorFailedEvent.ExecutorId}' failed: {errorMessage}");
                 break;
 

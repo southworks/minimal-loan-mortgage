@@ -77,7 +77,8 @@ public sealed class BasicLoanWorkflowService
         {
             ExecutionId = executionId,
             CaseId = caseId.Trim(),
-            Status = BasicWorkflowStatus.Running
+            Status = BasicWorkflowStatus.Running,
+            WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
         };
         _store.Save(execution);
 
@@ -90,6 +91,73 @@ public sealed class BasicLoanWorkflowService
     public BasicWorkflowStatusResponse GetBasicWorkflowStatus(string executionId) =>
         ToResponse(_store.GetRequired(executionId));
 
+    public async Task<BasicWorkflowStatusResponse> SubmitBasicDecisionAsync(
+        string executionId,
+        HumanDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(request.DecisionType, ApprovalType.Underwriting.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Decision type '{request.DecisionType}' is not supported. Supported types: {ApprovalType.Underwriting}.");
+        }
+
+        BasicWorkflowExecution execution = _store.GetRequired(executionId);
+
+        if (execution.Status != BasicWorkflowStatus.WaitingForHuman)
+        {
+            throw new InvalidOperationException(
+                $"Execution '{executionId}' is not waiting for human approval. Current status: {execution.Status}.");
+        }
+
+        if (execution.PendingCheckpoint is null ||
+            execution.WorkflowCheckpointManager is null ||
+            execution.PendingExternalRequest is null)
+        {
+            throw new InvalidOperationException(
+                $"Execution '{executionId}' does not have a saved workflow checkpoint and cannot continue.");
+        }
+
+        var decision = new UnderwritingApprovalDecision
+        {
+            Approved = request.Approved,
+            ReviewerComment = request.ReviewerComment
+        };
+
+        ExternalRequest pendingRequest = execution.PendingExternalRequest;
+        CheckpointInfo pendingCheckpoint = execution.PendingCheckpoint;
+        CheckpointManager checkpointManager = execution.WorkflowCheckpointManager;
+
+        execution.UnderwritingDecisionSubmitted = true;
+        execution.PendingApproval = null;
+        execution.LastUpdatedUtc = DateTimeOffset.UtcNow;
+
+        if (!request.Approved)
+        {
+            execution.Status = BasicWorkflowStatus.Rejected;
+            _store.Save(execution);
+
+            await SendRejectionResponseAsync(
+                    execution,
+                    pendingCheckpoint,
+                    checkpointManager,
+                    pendingRequest,
+                    decision,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            ClearWorkflowResumeState(execution);
+            _store.Save(execution);
+            return ToResponse(execution);
+        }
+
+        execution.Status = BasicWorkflowStatus.Running;
+        _store.Save(execution);
+        StartResumeProcessing(execution, pendingCheckpoint, checkpointManager, pendingRequest, decision);
+
+        return ToResponse(execution);
+    }
+
     private void RunInBackground(string executionId, IList<ChatMessage> input)
     {
         CancellationToken stopping = _applicationLifetime.ApplicationStopping;
@@ -101,8 +169,10 @@ public sealed class BasicLoanWorkflowService
             try
             {
                 FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
-                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, executionId);
-                CheckpointManager checkpoints = CheckpointManager.CreateInMemory();
+                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, executionId);
+                CheckpointManager checkpoints = execution.WorkflowCheckpointManager
+                    ?? CheckpointManager.CreateInMemory();
+                execution.WorkflowCheckpointManager = checkpoints;
 
                 await using StreamingRun run = await InProcessExecution
                     .RunStreamingAsync(workflow, input, checkpoints, executionId, stopping)
@@ -122,19 +192,127 @@ public sealed class BasicLoanWorkflowService
         }, CancellationToken.None);
     }
 
+    private void StartResumeProcessing(
+        BasicWorkflowExecution execution,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision)
+    {
+        CancellationToken stopping = _applicationLifetime.ApplicationStopping;
+        string executionId = execution.ExecutionId;
+
+        _ = Task.Run(async () =>
+        {
+            BasicWorkflowExecution activeExecution = _store.GetRequired(executionId);
+
+            try
+            {
+                FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
+                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+                    agents,
+                    activeExecution.CaseId,
+                    activeExecution.ExecutionId);
+
+                await ProcessResumeRunAsync(
+                        activeExecution,
+                        workflow,
+                        pendingCheckpoint,
+                        checkpointManager,
+                        pendingRequest,
+                        decision,
+                        stopping)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+            {
+                MarkFailed(activeExecution, "Workflow resume was cancelled because the application is stopping.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Basic workflow resume failed for execution {ExecutionId}.", executionId);
+                MarkFailed(activeExecution, ex.Message);
+            }
+        }, CancellationToken.None);
+    }
+
+    private async Task ProcessResumeRunAsync(
+        BasicWorkflowExecution execution,
+        AgentWorkflow workflow,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision,
+        CancellationToken cancellationToken)
+    {
+        await using StreamingRun run = await InProcessExecution
+            .ResumeStreamingAsync(workflow, pendingCheckpoint, checkpointManager, cancellationToken)
+            .ConfigureAwait(false);
+
+        var resumeApproval = new ResumeApprovalState
+        {
+            PendingRequest = pendingRequest,
+            Decision = decision
+        };
+
+        _logger.LogInformation(
+            "Resumed basic workflow after human approval for execution {ExecutionId}.",
+            execution.ExecutionId);
+
+        await RunUntilDoneAsync(execution, run, cancellationToken, resumeApproval).ConfigureAwait(false);
+
+        if (!resumeApproval.ResponseSent &&
+            execution.Status is not BasicWorkflowStatus.Completed
+                and not BasicWorkflowStatus.Rejected
+                and not BasicWorkflowStatus.Failed)
+        {
+            MarkFailed(
+                execution,
+                $"Resume for execution '{execution.ExecutionId}' did not receive a re-emitted underwriting approval request.");
+        }
+    }
+
+    private async Task SendRejectionResponseAsync(
+        BasicWorkflowExecution execution,
+        CheckpointInfo pendingCheckpoint,
+        CheckpointManager checkpointManager,
+        ExternalRequest pendingRequest,
+        UnderwritingApprovalDecision decision,
+        CancellationToken cancellationToken)
+    {
+        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
+        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(
+            agents,
+            execution.CaseId,
+            execution.ExecutionId);
+
+        await using StreamingRun run = await InProcessExecution
+            .ResumeStreamingAsync(workflow, pendingCheckpoint, checkpointManager, cancellationToken)
+            .ConfigureAwait(false);
+
+        await run.SendResponseAsync(pendingRequest.CreateResponse(decision)).ConfigureAwait(false);
+        execution.PendingExternalRequest = null;
+        _store.Save(execution);
+    }
+
     private async Task RunUntilDoneAsync(
         BasicWorkflowExecution execution,
         StreamingRun run,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ResumeApprovalState? resumeApproval = null)
     {
         using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(RunTimeout);
 
-        await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+        if (resumeApproval is null)
+        {
+            await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+        }
 
         while (execution.Status == BasicWorkflowStatus.Running)
         {
             bool sawEvent = false;
+            bool exitAfterBatch = false;
 
             using CancellationTokenSource idleCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
             idleCts.CancelAfter(IdleTimeout);
@@ -145,11 +323,40 @@ public sealed class BasicLoanWorkflowService
                 {
                     sawEvent = true;
                     idleCts.CancelAfter(IdleTimeout);
+
+                    if (resumeApproval is { ResponseSent: false } &&
+                        workflowEvent is RequestInfoEvent requestInfoEvent &&
+                        requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? _))
+                    {
+                        ExternalRequest requestToAnswer = requestInfoEvent.Request.RequestId == resumeApproval.PendingRequest.RequestId
+                            ? requestInfoEvent.Request
+                            : resumeApproval.PendingRequest;
+
+                        await run.SendResponseAsync(requestToAnswer.CreateResponse(resumeApproval.Decision))
+                            .ConfigureAwait(false);
+
+                        execution.PendingExternalRequest = null;
+                        execution.PendingApproval = null;
+                        execution.LastUpdatedUtc = DateTimeOffset.UtcNow;
+                        _store.Save(execution);
+                        resumeApproval.ResponseSent = true;
+
+                        _logger.LogInformation(
+                            "Sent saved underwriting decision for basic workflow execution {ExecutionId}.",
+                            execution.ExecutionId);
+                    }
+
                     HandleEvent(execution, workflowEvent);
 
-                    if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed)
+                    if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed or BasicWorkflowStatus.Rejected)
                     {
                         return;
+                    }
+
+                    if (execution.Status == BasicWorkflowStatus.WaitingForHuman &&
+                        resumeApproval is not { ResponseSent: true })
+                    {
+                        exitAfterBatch = true;
                     }
                 }
             }
@@ -157,7 +364,20 @@ public sealed class BasicLoanWorkflowService
             {
             }
 
-            if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed)
+            if (exitAfterBatch)
+            {
+                FinalizeHumanApprovalCheckpoint(execution, run);
+                return;
+            }
+
+            if (resumeApproval is { ResponseSent: true, ContinuationTurnTokenSent: false })
+            {
+                await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+                resumeApproval.ContinuationTurnTokenSent = true;
+                continue;
+            }
+
+            if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed or BasicWorkflowStatus.Rejected)
             {
                 return;
             }
@@ -198,14 +418,101 @@ public sealed class BasicLoanWorkflowService
             case ExecutorFailedEvent failedEvent:
                 string message = failedEvent.Data?.Message
                     ?? $"Executor '{failedEvent.ExecutorId}' failed.";
+                if (failedEvent.Data is not null)
+                {
+                    _logger.LogError(
+                        failedEvent.Data,
+                        "Basic workflow executor {ExecutorId} failed for execution {ExecutionId}.",
+                        failedEvent.ExecutorId,
+                        execution.ExecutionId);
+                }
+
                 MarkFailed(execution, message);
+                break;
+
+            case SuperStepCompletedEvent superStepCompleted when superStepCompleted.CompletionInfo?.Checkpoint is not null:
+                execution.PendingCheckpoint = superStepCompleted.CompletionInfo.Checkpoint;
+                if (superStepCompleted.CompletionInfo.HasPendingRequests)
+                {
+                    execution.HaltCheckpoint = superStepCompleted.CompletionInfo.Checkpoint;
+                }
+
+                Touch(execution);
+                break;
+
+            case RequestInfoEvent requestInfoEvent when requestInfoEvent.Request.TryGetDataAs(out UnderwritingApprovalPrompt? prompt):
+                if (execution.UnderwritingDecisionSubmitted)
+                {
+                    break;
+                }
+
+                if (execution.Status == BasicWorkflowStatus.WaitingForHuman)
+                {
+                    execution.PendingExternalRequest ??= requestInfoEvent.Request;
+                    Touch(execution);
+                    break;
+                }
+
+                execution.PendingExternalRequest = requestInfoEvent.Request;
+                execution.UnderwritingDecisionSubmitted = false;
+                execution.Status = BasicWorkflowStatus.WaitingForHuman;
+                execution.PendingApproval = new PendingApprovalInfo
+                {
+                    ApprovalType = ApprovalType.Underwriting,
+                    Summary = prompt!.Summary,
+                    AgentOutput = prompt.UnderwritingOutput,
+                    RecommendedAction = "Review the underwriting output and approve or reject to continue."
+                };
+
+                _logger.LogInformation(
+                    "Basic workflow execution {ExecutionId} paused for underwriting approval.",
+                    execution.ExecutionId);
+                Touch(execution);
+                break;
+
+            case WorkflowOutputEvent outputEvent when outputEvent.Data is UnderwritingApprovalDecision decision && !decision.Approved:
+                execution.Status = BasicWorkflowStatus.Rejected;
+                execution.PendingApproval = null;
+                ClearWorkflowResumeState(execution);
+                Touch(execution);
                 break;
 
             case WorkflowOutputEvent:
                 execution.Status = BasicWorkflowStatus.Completed;
+                execution.PendingApproval = null;
+                ClearWorkflowResumeState(execution);
                 Touch(execution);
                 break;
         }
+    }
+
+    private void FinalizeHumanApprovalCheckpoint(BasicWorkflowExecution execution, StreamingRun run)
+    {
+        CheckpointInfo? resolvedCheckpoint = execution.HaltCheckpoint
+            ?? run.LastCheckpoint
+            ?? run.Checkpoints.LastOrDefault()
+            ?? execution.PendingCheckpoint;
+
+        if (resolvedCheckpoint is not null)
+        {
+            execution.PendingCheckpoint = resolvedCheckpoint;
+        }
+
+        _logger.LogInformation(
+            "Finalized HITL checkpoint for basic workflow execution {ExecutionId}. CheckpointId={CheckpointId}.",
+            execution.ExecutionId,
+            execution.PendingCheckpoint?.CheckpointId ?? "<none>");
+
+        _store.Save(execution);
+    }
+
+    private static void ClearWorkflowResumeState(BasicWorkflowExecution execution)
+    {
+        execution.PendingCheckpoint = null;
+        execution.HaltCheckpoint = null;
+        execution.WorkflowCheckpointManager = null;
+        execution.PendingExternalRequest = null;
+        execution.UnderwritingDecisionSubmitted = false;
     }
 
     private static void SaveAgentText(BasicWorkflowExecution execution, string executorId, string text)
@@ -271,6 +578,11 @@ public sealed class BasicLoanWorkflowService
     {
         string id = executorId.Replace("_", "-");
 
+        if (id.Contains("UnderwritingApproval", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
         if (id.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
         {
             return DocumentProcessingKey;
@@ -304,6 +616,7 @@ public sealed class BasicLoanWorkflowService
     private static void Touch(BasicWorkflowExecution execution)
     {
         execution.LastUpdatedUtc = DateTimeOffset.UtcNow;
+        // Caller persists via ToResponse or explicit Save.
     }
 
     private BasicWorkflowStatusResponse ToResponse(BasicWorkflowExecution execution)
@@ -315,6 +628,15 @@ public sealed class BasicLoanWorkflowService
             ExecutionId = execution.ExecutionId,
             CaseId = execution.CaseId,
             Status = execution.Status.ToString(),
+            PendingApproval = execution.PendingApproval is null
+                ? null
+                : new PendingApprovalResponse
+                {
+                    ApprovalType = execution.PendingApproval.ApprovalType.ToString(),
+                    Summary = execution.PendingApproval.Summary,
+                    AgentOutput = execution.PendingApproval.AgentOutput,
+                    RecommendedAction = execution.PendingApproval.RecommendedAction
+                },
             AgentOutputs = new BasicWorkflowAgentOutputsResponse
             {
                 DocumentProcessing = GetOutput(execution, DocumentProcessingKey),
@@ -369,5 +691,16 @@ public sealed class BasicLoanWorkflowService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private sealed class ResumeApprovalState
+    {
+        public required ExternalRequest PendingRequest { get; init; }
+
+        public required UnderwritingApprovalDecision Decision { get; init; }
+
+        public bool ResponseSent { get; set; }
+
+        public bool ContinuationTurnTokenSent { get; set; }
     }
 }
