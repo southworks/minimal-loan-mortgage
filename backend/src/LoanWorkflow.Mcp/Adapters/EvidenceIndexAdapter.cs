@@ -197,7 +197,7 @@ public sealed class EvidenceIndexAdapter
         return await RerankEvidenceAsync(query, candidates, topK, cancellationToken);
     }
 
-    private async Task<IReadOnlyList<EvidenceChunkDocument>> SearchCandidatesAsync(
+    private async Task<IReadOnlyList<EvidenceSearchCandidate>> SearchCandidatesAsync(
         string caseId,
         string executionId,
         string query,
@@ -232,8 +232,8 @@ public sealed class EvidenceIndexAdapter
             }
         };
 
-        var response = await _searchClient.SearchAsync<EvidenceChunkDocument>(null, searchOptions, cancellationToken);
-        var candidates = new List<EvidenceChunkDocument>();
+        var response = await _searchClient.SearchAsync<EvidenceSearchCandidate>(null, searchOptions, cancellationToken);
+        var candidates = new List<EvidenceSearchCandidate>();
 
         await foreach (var result in response.Value.GetResultsAsync())
         {
@@ -248,7 +248,7 @@ public sealed class EvidenceIndexAdapter
 
     private async Task<IReadOnlyList<EvidenceMatch>> RerankEvidenceAsync(
         string query,
-        IReadOnlyList<EvidenceChunkDocument> candidates,
+        IReadOnlyList<EvidenceSearchCandidate> candidates,
         int topK,
         CancellationToken cancellationToken)
     {
@@ -262,10 +262,10 @@ public sealed class EvidenceIndexAdapter
             return candidates
                 .Select(candidate => new EvidenceMatch
                 {
-                    DocumentId = candidate.DocumentId,
-                    DocumentType = candidate.DocumentType,
-                    Category = candidate.Category,
-                    Snippet = candidate.ChunkText,
+                    DocumentId = candidate.DocumentId ?? string.Empty,
+                    DocumentType = candidate.DocumentType ?? string.Empty,
+                    Category = candidate.Category ?? string.Empty,
+                    Snippet = candidate.ChunkText ?? string.Empty,
                     Score = 1
                 })
                 .ToArray();
@@ -273,17 +273,17 @@ public sealed class EvidenceIndexAdapter
 
         var reranked = await _rerankService.RerankAsync(
             query,
-            candidates.Select(candidate => candidate.ChunkText).ToArray(),
+            candidates.Select(candidate => candidate.ChunkText ?? string.Empty).ToArray(),
             topK,
             cancellationToken);
 
         return reranked
             .Select(result => new EvidenceMatch
             {
-                DocumentId = candidates[result.Index].DocumentId,
-                DocumentType = candidates[result.Index].DocumentType,
-                Category = candidates[result.Index].Category,
-                Snippet = candidates[result.Index].ChunkText,
+                DocumentId = candidates[result.Index].DocumentId ?? string.Empty,
+                DocumentType = candidates[result.Index].DocumentType ?? string.Empty,
+                Category = candidates[result.Index].Category ?? string.Empty,
+                Snippet = candidates[result.Index].ChunkText ?? string.Empty,
                 Score = result.Score
             })
             .ToArray();
@@ -433,6 +433,17 @@ public sealed class EvidenceIndexAdapter
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
         return Convert.ToHexString(bytes);
+    }
+
+    private sealed class EvidenceSearchCandidate
+    {
+        public string? DocumentId { get; set; }
+
+        public string? DocumentType { get; set; }
+
+        public string? Category { get; set; }
+
+        public string? ChunkText { get; set; }
     }
 
     public sealed class EvidenceChunkDocument
