@@ -283,7 +283,9 @@ public sealed class BasicLoanWorkflowService
         string? rawOutput = data switch
         {
             AgentResponse response => GetAgentResponseText(response),
+            ChatMessage[] messages => WorkflowTextExtractor.FromChatMessages(messages),
             IList<ChatMessage> messages => WorkflowTextExtractor.FromChatMessages(messages),
+            IEnumerable<ChatMessage> messages => WorkflowTextExtractor.FromChatMessages(messages),
             ChatMessage message => WorkflowTextExtractor.FromChatMessages([message]),
             string text => text,
             _ => null
@@ -353,13 +355,8 @@ public sealed class BasicLoanWorkflowService
         return state;
     }
 
-    private static string GetAgentResponseText(AgentResponse response)
-    {
-        string assistantText = WorkflowTextExtractor.FromAgentResponseBasic(response);
-        return string.IsNullOrWhiteSpace(assistantText)
-            ? WorkflowTextExtractor.FromAgentResponse(response)
-            : assistantText;
-    }
+    private static string GetAgentResponseText(AgentResponse response) =>
+        WorkflowTextExtractor.GetAgentResponseText(response);
 
     private static string NormalizeAgentOutput(string rawOutput)
     {

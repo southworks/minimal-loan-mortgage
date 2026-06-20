@@ -46,6 +46,12 @@ public static class AgentStructuredOutputParser
 
     public static AgentStepResult Parse(string agentName, string rawOutput)
     {
+        AgentStepResult? structured = TryParse(agentName, rawOutput);
+        if (structured is not null)
+        {
+            return structured;
+        }
+
         if (string.IsNullOrWhiteSpace(rawOutput))
         {
             throw new InvalidOperationException(
@@ -59,17 +65,26 @@ public static class AgentStructuredOutputParser
                 $"Agent '{agentName}' returned an error instead of structured JSON: {Truncate(trimmedOutput)}");
         }
 
-        string normalizedJson = NormalizeJsonPayload(rawOutput);
-        AgentStepResult? structured = TryParseFlexible(agentName, normalizedJson)
-            ?? TryParseFlexible(agentName, ExtractJsonObject(rawOutput) ?? string.Empty);
+        throw new InvalidOperationException(
+            $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence, memoryUpdates.");
+    }
 
-        if (structured is null)
+    public static AgentStepResult? TryParse(string agentName, string rawOutput)
+    {
+        if (string.IsNullOrWhiteSpace(rawOutput))
         {
-            throw new InvalidOperationException(
-                $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence, memoryUpdates.");
+            return null;
         }
 
-        return structured;
+        string trimmedOutput = rawOutput.Trim();
+        if (trimmedOutput.Contains("Error (", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        string normalizedJson = NormalizeJsonPayload(rawOutput);
+        return TryParseFlexible(agentName, normalizedJson)
+            ?? TryParseFlexible(agentName, ExtractJsonObject(rawOutput) ?? string.Empty);
     }
 
     private static AgentStepResult? TryParseFlexible(string agentName, string json)
