@@ -7,7 +7,7 @@ on:
     paths:
       - 'backend/src/Api.Host/**'
       - 'backend/src/LoanWorkflow.Mcp/**'
-      - 'hosted-agents/**'
+      - 'agent-provisioning/**'
       - 'dataset-seed/**'
       - '.github/workflows/publish-container-images.yml'
   workflow_dispatch:
@@ -31,8 +31,8 @@ jobs:
             dockerfile: backend/src/Api.Host/Dockerfile
           - image: cohereloan-mcp
             dockerfile: backend/src/LoanWorkflow.Mcp/Dockerfile
-          - image: cohereloan-hosted-agents
-            dockerfile: hosted-agents/Dockerfile
+          - image: cohereloan-provisioning
+            dockerfile: agent-provisioning/Dockerfile
 
     steps:
       - name: Checkout

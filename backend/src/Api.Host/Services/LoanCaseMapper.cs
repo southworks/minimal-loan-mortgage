@@ -79,7 +79,6 @@ public static class LoanCaseMapper
                 Summary = output.Summary,
                 Decision = output.Decision,
                 Evidence = output.Evidence,
-                MemoryUpdates = output.MemoryUpdates,
                 CompletedAtUtc = output.CompletedAtUtc
             };
 

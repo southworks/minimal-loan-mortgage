@@ -105,8 +105,6 @@ public sealed class AgentStepResultResponse
 
     public required string Evidence { get; init; }
 
-    public required IReadOnlyList<string> MemoryUpdates { get; init; }
-
     public required DateTimeOffset CompletedAtUtc { get; init; }
 }
 

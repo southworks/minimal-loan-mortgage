@@ -1,0 +1,15 @@
+{
+  "name": "document-processing-agent",
+  "description": "Processes loan documents and returns structured JSON.",
+  "instructionsFile": "instructions.md",
+  "outputSchemaFile": "../../shared/agent-structured-output.schema.json",
+  "allowedDecisions": [
+    "Complete",
+    "Incomplete",
+    "Missing Information",
+    "Validation Failed",
+    "Inconsistent Documents",
+    "Suspicious Content",
+    "Manual Review Required"
+  ]
+}

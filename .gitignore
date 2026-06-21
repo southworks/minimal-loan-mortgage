@@ -6,6 +6,7 @@ publish-test/
 *.user
 *.swp
 appsettings.*.local.json
+backend/src/Api.Host/.env.local
 backend/src/LoanWorkflow.Mcp/appsettings.Deployment.local.json
 hosted-agents/.env
 deployment-outputs.json

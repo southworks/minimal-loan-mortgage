@@ -1,0 +1,14 @@
+{
+  "name": "responsible-ai-agent",
+  "description": "Reviews fairness, governance, and responsible AI concerns.",
+  "instructionsFile": "instructions.md",
+  "outputSchemaFile": "../../shared/agent-structured-output.schema.json",
+  "allowedDecisions": [
+    "Passed",
+    "Passed with Recommendations",
+    "Policy Warning",
+    "Fairness Concern",
+    "Compliance Concern",
+    "Escalation Required"
+  ]
+}

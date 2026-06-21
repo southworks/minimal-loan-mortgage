@@ -452,7 +452,7 @@ public sealed class LoanWorkflowService
                 !record.UnderwritingDecisionSubmitted)
             {
                 const string message =
-                    "Workflow completed without any agent responses. Verify hosted Foundry agents are provisioned and that a TurnToken was sent to start processing.";
+                    "Workflow completed without any agent responses. Verify Foundry prompt agents are provisioned and that a TurnToken was sent to start processing.";
                 MarkFailed(record, message);
                 throw new InvalidOperationException(message);
             }
@@ -1015,7 +1015,7 @@ public sealed class LoanWorkflowService
         string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
         string prompt =
             """
-            Process this loan case using the loaded documents below. Documents were loaded once from Blob Storage at workflow start. Only the document-processing step should consume raw document content. Later steps must use processed outputs only. Each agent step must return JSON with summary, decision, evidence, and optional memoryUpdates. Use executionId for any unique indexing or embedding identity.
+            Process this loan case using the loaded documents below. Documents were loaded once from Blob Storage at workflow start. Only the document-processing step should consume raw document content. Later steps must use processed outputs only. Each agent step must return JSON with summary, decision, and evidence. Use executionId for any unique indexing or embedding identity.
 
             Case payload:
             """ + json;

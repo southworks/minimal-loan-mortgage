@@ -17,9 +17,6 @@ public sealed class AgentStructuredOutput
 
     [JsonPropertyName("evidence")]
     public required string Evidence { get; init; }
-
-    [JsonPropertyName("memoryUpdates")]
-    public IReadOnlyList<string> MemoryUpdates { get; init; } = [];
 }
 
 public sealed class AgentStepResult
@@ -31,8 +28,6 @@ public sealed class AgentStepResult
     public required string Decision { get; init; }
 
     public required string Evidence { get; init; }
-
-    public IReadOnlyList<string> MemoryUpdates { get; init; } = [];
 
     public required DateTimeOffset CompletedAtUtc { get; init; }
 }
@@ -55,7 +50,7 @@ public static class AgentStructuredOutputParser
         if (string.IsNullOrWhiteSpace(rawOutput))
         {
             throw new InvalidOperationException(
-                $"Agent '{agentName}' returned empty output. Expected JSON with summary, decision, evidence, and optional memoryUpdates.");
+                $"Agent '{agentName}' returned empty output. Expected JSON with summary, decision, and evidence.");
         }
 
         string trimmedOutput = rawOutput.Trim();
@@ -66,7 +61,7 @@ public static class AgentStructuredOutputParser
         }
 
         throw new InvalidOperationException(
-            $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence, memoryUpdates.");
+            $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence.");
     }
 
     public static AgentStepResult? TryParse(string agentName, string rawOutput)
@@ -100,7 +95,7 @@ public static class AgentStructuredOutputParser
             !string.IsNullOrWhiteSpace(strict.Decision) &&
             !string.IsNullOrWhiteSpace(strict.Evidence))
         {
-            return ToStepResult(agentName, strict.Summary, strict.Decision, strict.Evidence, strict.MemoryUpdates);
+            return ToStepResult(agentName, strict.Summary, strict.Decision, strict.Evidence);
         }
 
         try
@@ -123,8 +118,7 @@ public static class AgentStructuredOutputParser
                 return null;
             }
 
-            IReadOnlyList<string> memoryUpdates = ReadMemoryUpdates(root, "memoryUpdates");
-            return ToStepResult(agentName, summary, decision, evidence, memoryUpdates);
+            return ToStepResult(agentName, summary, decision, evidence);
         }
         catch (JsonException)
         {
@@ -172,30 +166,6 @@ public static class AgentStructuredOutputParser
         };
     }
 
-    private static IReadOnlyList<string> ReadMemoryUpdates(JsonElement root, string propertyName)
-    {
-        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value) ||
-            value.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        var updates = new List<string>();
-        foreach (JsonElement item in value.EnumerateArray())
-        {
-            if (item.ValueKind == JsonValueKind.String)
-            {
-                string? text = item.GetString();
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    updates.Add(text);
-                }
-            }
-        }
-
-        return updates;
-    }
-
     private static bool TryGetPropertyIgnoreCase(JsonElement root, string propertyName, out JsonElement value)
     {
         if (root.TryGetProperty(propertyName, out value))
@@ -220,15 +190,13 @@ public static class AgentStructuredOutputParser
         string agentName,
         string summary,
         string decision,
-        string evidence,
-        IReadOnlyList<string> memoryUpdates) =>
+        string evidence) =>
         new()
         {
             AgentName = agentName,
             Summary = summary,
             Decision = decision,
             Evidence = evidence,
-            MemoryUpdates = memoryUpdates,
             CompletedAtUtc = DateTimeOffset.UtcNow
         };
 

@@ -1,6 +1,6 @@
 # CohereLoanAndMortgage API
 
-Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry hosted agents, with multipart document upload to Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
+Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry prompt agents, with multipart document upload to Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
 
@@ -12,10 +12,9 @@ When you deploy:
 
 1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
 2. The API and MCP hosts start as Azure Container Apps.
-3. Foundry MCP connections are wired to the deployed MCP host.
-4. A Container Apps Job seeds the policy index.
-5. A deployment script registers the Foundry hosted agent versions.
-6. The deployment outputs the live API URL.
+3. A Container Apps Job seeds the policy index.
+4. A deployment script starts the agent provisioning Container Apps Job.
+5. The deployment outputs the live API URL.
 
 You do **not** need to run a separate agent CLI after deployment.
 
@@ -23,7 +22,7 @@ Container images are published automatically to GitHub Container Registry by [.g
 
 - `ghcr.io/southworks/cohereloan-api:demo`
 - `ghcr.io/southworks/cohereloan-mcp:demo`
-- `ghcr.io/southworks/cohereloan-hosted-agents:demo`
+- `ghcr.io/southworks/cohereloan-provisioning:demo`
 
 Make the GHCR packages public after the first workflow run so Azure Container Apps can pull them without registry credentials.
 
@@ -35,9 +34,9 @@ Open the `apiUrl` output from the deployment and use the API endpoints below. Se
 
 `document-processing-agent` -> `underwriting-agent` -> human approval -> `responsible-ai-agent` -> `loan-setup-agent`
 
-The API orchestrates the workflow. Foundry hosted agents execute the steps and attach their own Foundry Toolboxes backed by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md). Hosted agent code and minimal manifests live in [hosted-agents](hosted-agents).
+The API orchestrates the workflow. Foundry prompt agents execute each step and call the public MCP endpoints exposed by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md).
 
-Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During agent execution, each hosted agent uses only the toolbox assigned to that agent. Policy knowledge is still indexed by the deploy-time seed job.
+Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During agent execution, each prompt agent connects directly to its dedicated MCP endpoint. Policy knowledge is still indexed by the deploy-time seed job.
 
 ## Demo limitations
 
@@ -45,7 +44,7 @@ This is intentionally a simple demo:
 
 - Paused workflow cases are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
-- MCP auth is open for the demo host. The API uses the same MCP services internally to prepare hosted-agent context.
+- MCP auth is open for the demo host. The API uses the same MCP services internally to prepare case evidence.
 
 ## API Endpoints
 
@@ -87,8 +86,7 @@ Each Foundry agent must return JSON compatible with:
 {
   "summary": "Concise explanation of the step outcome.",
   "decision": "The agent recommendation or outcome.",
-  "evidence": "Key facts or rationale supporting the decision.",
-  "memoryUpdates": ["Optional memory-oriented updates."]
+  "evidence": "Key facts or rationale supporting the decision."
 }
 ```
 
@@ -102,7 +100,7 @@ Local development is optional and separate from the Azure deployment path.
 
 - .NET 9 SDK
 - Azure CLI login or another credential available to `DefaultAzureCredential`
-- An Azure AI Foundry project with the four demo hosted agents already deployed
+- An Azure AI Foundry project with the four demo prompt agents already deployed
 - Azure Storage account with a blob container for document uploads
 
 ### Run locally
@@ -130,7 +128,9 @@ cd backend/src/LoanWorkflow.Mcp
 dotnet run -- --seed-policies
 ```
 
-For hosted-agent code, see [hosted-agents](hosted-agents). `azd ai agent` is useful for local hosted-agent experiments, but it is not required for the one-click Azure deployment.
+Prompt agent definitions are provisioned by [agent-provisioning/](agent-provisioning/README.md) during Azure deployment. For local experiments, run the provisioning CLI against your project endpoint and MCP base URL.
+
+The legacy hosted-agent sample under [hosted-agents](hosted-agents) is kept for reference only and is not part of the active deployment path.
 
 ## Packages
 

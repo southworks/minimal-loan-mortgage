@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Azure.Core;
@@ -178,7 +177,7 @@ public sealed class FoundryRerankService
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             await ApplyAuthorizationAsync(request, cancellationToken);
-            request.Content = CreateRerankJsonContent(new RerankRequest
+            request.Content = JsonContent.Create(new RerankRequest
             {
                 Model = _options.RerankModelName,
                 Query = query,
@@ -223,12 +222,6 @@ public sealed class FoundryRerankService
         {
             throw new InvalidOperationException($"AzureFoundryModels:{settingName} is required.");
         }
-    }
-
-    private static StringContent CreateRerankJsonContent(RerankRequest payload)
-    {
-        string json = JsonSerializer.Serialize(payload);
-        return new StringContent(json, Encoding.UTF8, "application/json");
     }
 
     public sealed record RerankResult(int Index, double Score);

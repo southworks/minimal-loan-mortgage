@@ -9,13 +9,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8B2E58CE-72D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.Api.Host", "backend\src\Api.Host\CohereLoanAndMortgage.Api.Host.csproj", "{5E32973F-9CED-4513-A4F0-B71A8DE0C432}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hosted-agents", "hosted-agents", "{A72BC714-CCCA-423F-B2E7-1AA2F7864FF6}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FD0E0C09-EB13-48A8-A486-D9306CE2233C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.HostedAgents", "hosted-agents\src\CohereLoanAndMortgage.HostedAgents\CohereLoanAndMortgage.HostedAgents.csproj", "{762E2B05-5009-422B-82D9-BB82AD07D88E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoanWorkflow.Mcp", "backend\src\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj", "{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "agent-provisioning", "agent-provisioning", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CohereLoanAndMortgage.AgentProvisioning", "agent-provisioning\src\CohereLoanAndMortgage.AgentProvisioning\CohereLoanAndMortgage.AgentProvisioning.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,20 +28,19 @@ Global
 		{5E32973F-9CED-4513-A4F0-B71A8DE0C432}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E32973F-9CED-4513-A4F0-B71A8DE0C432}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E32973F-9CED-4513-A4F0-B71A8DE0C432}.Release|Any CPU.Build.0 = Release|Any CPU
-		{762E2B05-5009-422B-82D9-BB82AD07D88E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{762E2B05-5009-422B-82D9-BB82AD07D88E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{762E2B05-5009-422B-82D9-BB82AD07D88E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{762E2B05-5009-422B-82D9-BB82AD07D88E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2C3D4E5-F6A7-8901-BCDE-F12345678901}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8B2E58CE-72DB-4727-82A4-045B6AE5B565} = {4F16AFC4-6A1E-4408-B2AA-C3D6AEA253D1}
 		{5E32973F-9CED-4513-A4F0-B71A8DE0C432} = {8B2E58CE-72DB-4727-82A4-045B6AE5B565}
-		{FD0E0C09-EB13-48A8-A486-D9306CE2233C} = {A72BC714-CCCA-423F-B2E7-1AA2F7864FF6}
-		{762E2B05-5009-422B-82D9-BB82AD07D88E} = {FD0E0C09-EB13-48A8-A486-D9306CE2233C}
 		{492F5E3A-C74B-48D9-BD35-B8099AFDEFBE} = {8B2E58CE-72DB-4727-82A4-045B6AE5B565}
+		{B2C3D4E5-F6A7-8901-BCDE-F12345678901} = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 	EndGlobalSection
 EndGlobal

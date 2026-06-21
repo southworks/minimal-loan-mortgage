@@ -231,6 +231,14 @@ public sealed class BasicLoanWorkflowService
                 execution.CurrentAgent = null;
                 Touch(execution);
                 break;
+
+            case SuperStepCompletedEvent superStepCompletedEvent:
+                if (!(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
+                    execution.Status = BasicWorkflowStatus.Completed;
+                    execution.CurrentAgent = null;
+                    Touch(execution);
+                }
+                break;
         }
     }
 
@@ -462,7 +470,7 @@ public sealed class BasicLoanWorkflowService
         string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
         string prompt =
             """
-            Process this loan case using the loaded documents below. Each agent step must return JSON with summary, decision, evidence, and optional memoryUpdates.
+            Process this loan case using the loaded documents below. Each agent step must return JSON with summary, decision, and evidence.
 
             Case payload:
             """ + json;

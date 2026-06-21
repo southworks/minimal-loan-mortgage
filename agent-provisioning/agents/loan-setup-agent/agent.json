@@ -1,0 +1,14 @@
+{
+  "name": "loan-setup-agent",
+  "description": "Prepares the final loan setup package.",
+  "instructionsFile": "instructions.md",
+  "outputSchemaFile": "../../shared/agent-structured-output.schema.json",
+  "allowedDecisions": [
+    "Ready for Setup",
+    "Ready with Conditions",
+    "Additional Information Required",
+    "Setup Blocked",
+    "Operational Review Required",
+    "Setup Completed"
+  ]
+}

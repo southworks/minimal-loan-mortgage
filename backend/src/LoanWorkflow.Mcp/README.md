@@ -2,7 +2,7 @@
 
 Demo-grade MCP tool provider for the four-agent loan and mortgage workflow.
 
-In the standard Azure deployment flow, this host runs as an Azure Container App. Foundry agents call its public HTTPS endpoints through Foundry project MCP connections.
+In the standard Azure deployment flow, this host runs as an Azure Container App. Foundry prompt agents call its public HTTPS MCP endpoints directly.
 
 ## MCP Endpoints
 

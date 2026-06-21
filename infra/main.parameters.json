@@ -44,8 +44,8 @@
     "mcpContainerImage": {
       "value": "ghcr.io/southworks/cohereloan-mcp:demo"
     },
-    "hostedAgentContainerImage": {
-      "value": "ghcr.io/southworks/cohereloan-hosted-agents:demo"
+    "provisioningContainerImage": {
+      "value": "ghcr.io/southworks/cohereloan-provisioning:demo"
     }
   }
 }
