@@ -77,9 +77,16 @@ public static class AgentStructuredOutputParser
             return null;
         }
 
-        string normalizedJson = NormalizeJsonPayload(rawOutput);
-        return TryParseFlexible(agentName, normalizedJson)
-            ?? TryParseFlexible(agentName, ExtractJsonObject(rawOutput) ?? string.Empty);
+        foreach (string candidate in CollectJsonCandidates(rawOutput))
+        {
+            AgentStepResult? parsed = TryParseFlexible(agentName, candidate);
+            if (parsed is not null)
+            {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 
     private static AgentStepResult? TryParseFlexible(string agentName, string json)
@@ -219,6 +226,82 @@ public static class AgentStructuredOutputParser
         }
 
         return ExtractJsonObject(normalized) ?? normalized.Trim();
+    }
+
+    private static IReadOnlyList<string> CollectJsonCandidates(string rawOutput)
+    {
+        var candidates = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        void AddCandidate(string? candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return;
+            }
+
+            string trimmed = candidate.Trim();
+            if (seen.Add(trimmed))
+            {
+                candidates.Add(trimmed);
+            }
+        }
+
+        AddCandidate(NormalizeJsonPayload(rawOutput));
+        AddCandidate(ExtractJsonObject(rawOutput));
+
+        string normalized = rawOutput.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+        const string jsonFence = "```json\n";
+        if (normalized.Contains(jsonFence, StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (string segment in normalized.Split(
+                         jsonFence,
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                int closingFenceIndex = segment.IndexOf("\n```", StringComparison.Ordinal);
+                if (closingFenceIndex > 0)
+                {
+                    AddCandidate(segment[..closingFenceIndex].Trim());
+                }
+            }
+        }
+
+        foreach (string isolated in ExtractAllJsonObjects(rawOutput))
+        {
+            AddCandidate(isolated);
+        }
+
+        return candidates;
+    }
+
+    private static IEnumerable<string> ExtractAllJsonObjects(string text)
+    {
+        for (int start = 0; start < text.Length; start++)
+        {
+            if (text[start] != '{')
+            {
+                continue;
+            }
+
+            int depth = 0;
+            for (int index = start; index < text.Length; index++)
+            {
+                char current = text[index];
+                if (current == '{')
+                {
+                    depth++;
+                }
+                else if (current == '}')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        yield return text[start..(index + 1)];
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     private static string? ExtractJsonObject(string text)

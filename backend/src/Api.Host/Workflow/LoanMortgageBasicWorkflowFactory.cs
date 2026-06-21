@@ -73,57 +73,6 @@ public sealed class LoanMortgageBasicWorkflowFactory
             sentMessageTypes: [typeof(ChatMessage), typeof(TurnToken)]);
     }
 
-    private static AgentStepResult ParseBridgeOutput(string sourceAgentName, string rawOutput)
-    {
-        AgentStepResult? parsed = AgentStructuredOutputParser.TryParse(sourceAgentName, rawOutput);
-        if (parsed is not null)
-        {
-            return parsed;
-        }
-
-        string? duplicatedFencedPayload = TryExtractDuplicatedFencedJsonPayload(rawOutput);
-        if (!string.IsNullOrWhiteSpace(duplicatedFencedPayload))
-        {
-            parsed = AgentStructuredOutputParser.TryParse(sourceAgentName, duplicatedFencedPayload);
-            if (parsed is not null)
-            {
-                return parsed;
-            }
-        }
-
-        return AgentStructuredOutputParser.Parse(sourceAgentName, rawOutput);
-    }
-
-    private static string? TryExtractDuplicatedFencedJsonPayload(string rawOutput)
-    {
-        if (string.IsNullOrWhiteSpace(rawOutput))
-        {
-            return null;
-        }
-
-        string normalized = rawOutput.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
-        const string jsonFence = "```json\n";
-        if (!normalized.StartsWith(jsonFence, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        string[] segments = normalized.Split(jsonFence, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        foreach (string segment in segments)
-        {
-            int closingFenceIndex = segment.IndexOf("\n```", StringComparison.Ordinal);
-            if (closingFenceIndex <= 0)
-            {
-                continue;
-            }
-
-            string candidate = segment[..closingFenceIndex].Trim();
-            if (!string.IsNullOrWhiteSpace(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return null;
-    }
+    private static AgentStepResult ParseBridgeOutput(string sourceAgentName, string rawOutput) =>
+        AgentStructuredOutputParser.Parse(sourceAgentName, rawOutput);
 }

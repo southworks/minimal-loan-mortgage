@@ -123,7 +123,7 @@ public sealed class BasicLoanWorkflowService
                 await using StreamingRun run = await InProcessExecution
                     .RunStreamingAsync(workflow, input, checkpoints, executionId, stopping)
                     .ConfigureAwait(false);
-
+                
                 await BasicRunUntilDoneAsync(execution, run, stopping).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stopping.IsCancellationRequested)

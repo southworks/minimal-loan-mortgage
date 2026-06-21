@@ -195,6 +195,11 @@ internal static class WorkflowTextExtractor
         {
             if (content is TextContent textContent && !string.IsNullOrWhiteSpace(textContent.Text))
             {
+                if (string.Equals(textContent.Text.Trim(), message.Text?.Trim(), StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
                 builder.AppendLine(textContent.Text);
                 continue;
             }
