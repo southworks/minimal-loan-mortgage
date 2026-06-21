@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
+using Microsoft.Agents.AI.Workflows;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
 
@@ -7,6 +8,7 @@ public enum BasicWorkflowStatus
 {
     Pending,
     Running,
+    AwaitingHumanApproval,
     Completed,
     Failed
 }
@@ -26,6 +28,12 @@ public sealed class BasicWorkflowExecution
     public Dictionary<string, string> AgentOutputs { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, StringBuilder> StreamingBuffers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public CheckpointManager? WorkflowCheckpointManager { get; set; }
+
+    public CheckpointInfo? PendingCheckpoint { get; set; }
+
+    public ExternalRequest? PendingApprovalRequest { get; set; }
 
     public string? FailureReason { get; set; }
 

@@ -15,6 +15,11 @@ public sealed class BasicWorkflowStatusResponse
     public required DateTimeOffset LastUpdatedUtc { get; init; }
 }
 
+public sealed class BasicWorkflowApprovalRequest
+{
+    public required bool Approved { get; init; }
+}
+
 public sealed class BasicWorkflowAgentOutputsResponse
 {
     public string? DocumentProcessing { get; init; }

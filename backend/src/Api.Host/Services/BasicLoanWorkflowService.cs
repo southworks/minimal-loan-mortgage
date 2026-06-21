@@ -89,7 +89,8 @@ public sealed class BasicLoanWorkflowService
         {
             ExecutionId = executionId,
             CaseId = caseId.Trim(),
-            Status = BasicWorkflowStatus.Running
+            Status = BasicWorkflowStatus.Running,
+            WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
         };
         _store.Save(execution);
 
@@ -106,6 +107,49 @@ public sealed class BasicLoanWorkflowService
     public BasicWorkflowStatusResponse GetBasicWorkflowStatus(string executionId) =>
         ToResponse(_store.GetRequired(executionId));
 
+    public async Task<BasicWorkflowStatusResponse> ResumeBasicWorkflowAsync(
+        string caseId,
+        string executionId,
+        bool approved,
+        CancellationToken cancellationToken)
+    {
+        BasicWorkflowExecution execution = _store.GetRequired(executionId);
+
+        if (!string.Equals(execution.CaseId, caseId.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Execution '{executionId}' does not belong to case '{caseId}'.");
+        }
+
+        if (execution.Status != BasicWorkflowStatus.AwaitingHumanApproval ||
+            execution.PendingCheckpoint is null ||
+            execution.PendingApprovalRequest is null ||
+            execution.WorkflowCheckpointManager is null)
+        {
+            throw new InvalidOperationException(
+                "Basic workflow is not waiting for human approval.");
+        }
+
+        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
+        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, execution.ExecutionId);
+
+        await using StreamingRun run = await InProcessExecution
+            .ResumeStreamingAsync(
+                workflow,
+                execution.PendingCheckpoint,
+                execution.WorkflowCheckpointManager,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        execution.Status = BasicWorkflowStatus.Running;
+        execution.FailureReason = null;
+        Touch(execution);
+
+        await ResumeBasicWorkflowRunAsync(execution, run, approved, cancellationToken).ConfigureAwait(false);
+
+        return ToResponse(execution);
+    }
+
     private void RunInBackground(string executionId, IList<ChatMessage> input)
     {
         CancellationToken stopping = _applicationLifetime.ApplicationStopping;
@@ -118,13 +162,17 @@ public sealed class BasicLoanWorkflowService
             {
                 FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
                 AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, executionId);
-                CheckpointManager checkpoints = CheckpointManager.CreateInMemory();
 
                 await using StreamingRun run = await InProcessExecution
-                    .RunStreamingAsync(workflow, input, checkpoints, executionId, stopping)
+                    .RunStreamingAsync(
+                        workflow,
+                        input,
+                        execution.WorkflowCheckpointManager ?? throw new InvalidOperationException("Checkpoint manager was not initialized."),
+                        executionId,
+                        stopping)
                     .ConfigureAwait(false);
                 
-                await BasicRunUntilDoneAsync(execution, run, stopping).ConfigureAwait(false);
+                await BasicRunUntilDoneAsync(execution, run, stopping, sendInitialTurnToken: true).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stopping.IsCancellationRequested)
             {
@@ -141,14 +189,18 @@ public sealed class BasicLoanWorkflowService
     private async Task BasicRunUntilDoneAsync(
         BasicWorkflowExecution execution,
         StreamingRun run,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool sendInitialTurnToken)
     {
         using CancellationTokenSource timeoutCts =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         timeoutCts.CancelAfter(RunTimeout);
 
-        await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+        if (sendInitialTurnToken)
+        {
+            await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
+        }
 
         while (!timeoutCts.IsCancellationRequested)
         {
@@ -165,7 +217,7 @@ public sealed class BasicLoanWorkflowService
                 {
                     HandleEventBasic(execution, workflowEvent);
 
-                    if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed)
+                    if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed or BasicWorkflowStatus.AwaitingHumanApproval)
                     {
                         return;
                     }
@@ -177,6 +229,11 @@ public sealed class BasicLoanWorkflowService
                 // Idle timeout; query run status and continue driving the workflow.
             }
 
+            if (execution.Status == BasicWorkflowStatus.AwaitingHumanApproval)
+            {
+                return;
+            }
+
             RunStatus status = await run.GetStatusAsync(timeoutCts.Token).ConfigureAwait(false);
 
             switch (status)
@@ -184,15 +241,117 @@ public sealed class BasicLoanWorkflowService
                 case RunStatus.Ended:
                     execution.Status = BasicWorkflowStatus.Completed;
                     execution.CurrentAgent = null;
+                    execution.PendingApprovalRequest = null;
+                    execution.PendingCheckpoint = null;
                     Touch(execution);
                     return;
 
                 case RunStatus.PendingRequests:
+                    if (execution.Status == BasicWorkflowStatus.AwaitingHumanApproval)
+                    {
+                        return;
+                    }
+
                     await SendTurnTokenAsync(run, timeoutCts.Token).ConfigureAwait(false);
                     break;
 
                 case RunStatus.Running:
                 case RunStatus.Idle:
+                    break;
+
+                default:
+                    return;
+            }
+        }
+    }
+
+    private async Task ResumeBasicWorkflowRunAsync(
+        BasicWorkflowExecution execution,
+        StreamingRun run,
+        bool approved,
+        CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource timeoutCts =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        timeoutCts.CancelAfter(RunTimeout);
+
+        bool responseSent = false;
+
+        while (!timeoutCts.IsCancellationRequested)
+        {
+            using CancellationTokenSource idleCts =
+                CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
+
+            idleCts.CancelAfter(IdleTimeout);
+
+            try
+            {
+                await foreach (WorkflowEvent workflowEvent in run
+                    .WatchStreamAsync(idleCts.Token)
+                    .ConfigureAwait(false))
+                {
+                    if (!responseSent &&
+                        workflowEvent is RequestInfoEvent requestInfoEvent &&
+                        requestInfoEvent.Request.TryGetDataAs(out BasicWorkflowApprovalPrompt? _))
+                    {
+                        ExternalResponse response = requestInfoEvent.Request.CreateResponse(
+                            new BasicWorkflowApprovalDecision
+                            {
+                                Approved = approved
+                            });
+
+                        await run.SendResponseAsync(response).ConfigureAwait(false);
+                        execution.PendingApprovalRequest = null;
+                        execution.PendingCheckpoint = null;
+                        execution.Status = BasicWorkflowStatus.Running;
+                        execution.FailureReason = null;
+                        Touch(execution);
+                        responseSent = true;
+                        continue;
+                    }
+
+                    HandleEventBasic(execution, workflowEvent);
+
+                    if (execution.Status is BasicWorkflowStatus.Completed or BasicWorkflowStatus.Failed or BasicWorkflowStatus.AwaitingHumanApproval)
+                    {
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+                when (idleCts.IsCancellationRequested && !timeoutCts.IsCancellationRequested)
+            {
+                // Idle timeout; query run status and continue driving the resumed workflow.
+            }
+
+            RunStatus status = await run.GetStatusAsync(timeoutCts.Token).ConfigureAwait(false);
+
+            switch (status)
+            {
+                case RunStatus.Ended:
+                    execution.Status = BasicWorkflowStatus.Completed;
+                    execution.CurrentAgent = null;
+                    execution.PendingApprovalRequest = null;
+                    execution.PendingCheckpoint = null;
+                    Touch(execution);
+                    return;
+
+                case RunStatus.PendingRequests:
+                    if (execution.Status == BasicWorkflowStatus.AwaitingHumanApproval)
+                    {
+                        return;
+                    }
+
+                    break;
+
+                case RunStatus.Running:
+                case RunStatus.Idle:
+                    if (!responseSent)
+                    {
+                        continue;
+                    }
+
                     break;
 
                 default:
@@ -245,15 +404,23 @@ public sealed class BasicLoanWorkflowService
             case WorkflowOutputEvent:
                 execution.Status = BasicWorkflowStatus.Completed;
                 execution.CurrentAgent = null;
+                execution.PendingApprovalRequest = null;
+                execution.PendingCheckpoint = null;
                 Touch(execution);
                 break;
 
-            case SuperStepCompletedEvent superStepCompletedEvent:
-                //if (!(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
-                //    execution.Status = BasicWorkflowStatus.Completed;
-                //    execution.CurrentAgent = null;
-                //    Touch(execution);
-                //}
+            case RequestInfoEvent requestInfoEvent
+                when requestInfoEvent.Request.TryGetDataAs(out BasicWorkflowApprovalPrompt? prompt):
+                execution.Status = BasicWorkflowStatus.AwaitingHumanApproval;
+                execution.CurrentAgent = null;
+                execution.PendingApprovalRequest = requestInfoEvent.Request;
+                Touch(execution);
+                break;
+
+            case SuperStepCompletedEvent superStepCompletedEvent
+                when superStepCompletedEvent.CompletionInfo?.Checkpoint is not null:
+                execution.PendingCheckpoint = superStepCompletedEvent.CompletionInfo.Checkpoint;
+                Touch(execution);
                 break;
         }
     }
@@ -431,6 +598,8 @@ public sealed class BasicLoanWorkflowService
     {
         execution.Status = BasicWorkflowStatus.Failed;
         execution.FailureReason = reason;
+        execution.PendingApprovalRequest = null;
+        execution.PendingCheckpoint = null;
         Touch(execution);
     }
 

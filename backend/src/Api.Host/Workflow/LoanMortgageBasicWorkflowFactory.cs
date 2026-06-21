@@ -6,10 +6,22 @@ using AgentWorkflow = Microsoft.Agents.AI.Workflows.Workflow;
 
 namespace CohereLoanAndMortgage.Api.Host.Workflow;
 
+public static class BasicLoanWorkflowConstants
+{
+    public const string SharedStateScope = "BasicLoanWorkflowState";
+
+    public const string PendingMessagesKey = "PendingMessages";
+
+    public const string ApprovalPortId = "BasicHumanApproval";
+}
+
 public sealed class LoanMortgageBasicWorkflowFactory
 {
     public AgentWorkflow CreateWorkflow(FoundryAgents agents, string caseId, string executionId)
     {
+        RequestPort approvalPort = RequestPort.Create<BasicWorkflowApprovalPrompt, BasicWorkflowApprovalDecision>(
+            BasicLoanWorkflowConstants.ApprovalPortId);
+
         var agentHostOptions = new AIAgentHostOptions
         {
             EmitAgentResponseEvents = true,
@@ -30,6 +42,12 @@ public sealed class LoanMortgageBasicWorkflowFactory
             caseId: caseId,
             executionId: executionId,
             sourceAgentName: "underwriting-agent");
+        FunctionExecutor<ChatMessage> requestHumanApproval = CreateHumanApprovalRequestExecutor(
+            id: "BasicWorkflowApprovalRequest",
+            caseId: caseId,
+            executionId: executionId);
+        FunctionExecutor<BasicWorkflowApprovalDecision> applyHumanApprovalDecision = CreateHumanApprovalDecisionExecutor(
+            id: "BasicWorkflowApprovalDecision");
         FunctionExecutor<IList<ChatMessage>> bridge03 = CreatePayloadBridgeExecutor(
             id: "BasicWorkflowBridge03",
             caseId: caseId,
@@ -40,13 +58,80 @@ public sealed class LoanMortgageBasicWorkflowFactory
             .AddEdge(documentProcessing, bridge01)
             .AddEdge(bridge01, underwriting)
             .AddEdge(underwriting, bridge02)
-            .AddEdge(bridge02, responsibleAi)
+            .AddEdge(bridge02, requestHumanApproval)
+            .AddEdge(requestHumanApproval, approvalPort)
+            .AddEdge(approvalPort, applyHumanApprovalDecision)
+            .AddEdge(applyHumanApprovalDecision, responsibleAi)
             .AddEdge(responsibleAi, bridge03)
             .AddEdge(bridge03, loanSetup)
             .WithOutputFrom(loanSetup)
             .WithName($"loan-mortgage-basic-{executionId}")
-            .WithDescription("Basic loan workflow with 4 agents and no human-in-the-loop.")
+            .WithDescription("Basic loan workflow with human approval between underwriting and responsible AI.")
             .Build();
+    }
+
+    private static FunctionExecutor<ChatMessage> CreateHumanApprovalRequestExecutor(
+        string id,
+        string caseId,
+        string executionId)
+    {
+        return new FunctionExecutor<ChatMessage>(
+            id: id,
+            handlerAsync: async (message, context, cancellationToken) =>
+            {
+                string rawOutput = WorkflowTextExtractor.FromMessage(message);
+                AgentStepResult result = ParseBridgeOutput("underwriting-agent", rawOutput);
+                ChatMessage payload = CaseWorkflowPayloadBuilder.CreateAgentTransitionMessage(
+                    caseId,
+                    executionId,
+                    result);
+
+                await context.QueueStateUpdateAsync(
+                    BasicLoanWorkflowConstants.PendingMessagesKey,
+                    new List<ChatMessage> { payload },
+                    scopeName: BasicLoanWorkflowConstants.SharedStateScope,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                var prompt = new BasicWorkflowApprovalPrompt
+                {
+                    CaseId = caseId,
+                    ExecutionId = executionId,
+                    Summary = "Underwriting completed. Approve to continue with responsible AI and loan setup.",
+                    UnderwritingOutput = rawOutput
+                };
+
+                await context.SendMessageAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
+            },
+            sentMessageTypes: [typeof(BasicWorkflowApprovalPrompt)]);
+    }
+
+    private static FunctionExecutor<BasicWorkflowApprovalDecision> CreateHumanApprovalDecisionExecutor(string id)
+    {
+        return new FunctionExecutor<BasicWorkflowApprovalDecision>(
+            id: id,
+            handlerAsync: async (decision, context, cancellationToken) =>
+            {
+                if (!decision.Approved)
+                {
+                    throw new InvalidOperationException("Basic workflow was rejected during human approval.");
+                }
+
+                IList<ChatMessage>? pendingMessages = await context
+                    .ReadStateAsync<IList<ChatMessage>>(
+                        BasicLoanWorkflowConstants.PendingMessagesKey,
+                        scopeName: BasicLoanWorkflowConstants.SharedStateScope,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (pendingMessages is null || pendingMessages.Count == 0)
+                {
+                    throw new InvalidOperationException("Pending underwriting messages were not available when resuming the basic workflow.");
+                }
+
+                await context.SendMessageAsync(pendingMessages, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await context.SendMessageAsync(new TurnToken(emitEvents: true), cancellationToken: cancellationToken).ConfigureAwait(false);
+            },
+            sentMessageTypes: [typeof(IList<ChatMessage>), typeof(List<ChatMessage>), typeof(TurnToken)]);
     }
 
     private static FunctionExecutor<IList<ChatMessage>> CreatePayloadBridgeExecutor(

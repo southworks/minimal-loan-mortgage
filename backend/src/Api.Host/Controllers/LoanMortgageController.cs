@@ -91,6 +91,54 @@ public sealed class LoanMortgageController : ControllerBase
         }
     }
 
+    [HttpPost("applications/{caseId}/workflow/basic/executions/{executionId}/resume")]
+    public async Task<ActionResult<BasicWorkflowStatusResponse>> ResumeBasicWorkflowAsync(
+        string caseId,
+        string executionId,
+        [FromBody] BasicWorkflowApprovalRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            BasicWorkflowStatusResponse response = await _basicWorkflowService.ResumeBasicWorkflowAsync(
+                caseId,
+                executionId,
+                request.Approved,
+                cancellationToken);
+
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetailsResponse
+            {
+                Title = "Basic workflow execution not found.",
+                Detail = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ProblemDetailsResponse
+            {
+                Title = "Basic workflow cannot be resumed.",
+                Detail = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to resume basic workflow for case {CaseId} with execution {ExecutionId}.",
+                caseId,
+                executionId);
+
+            return Problem(
+                detail: ex.Message,
+                title: "Basic workflow failed to resume.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
     [HttpPost("applications/{caseId}/workflow/start")]
     public async Task<ActionResult<LoanCaseResponse>> StartWorkflowAsync(
         string caseId,
