@@ -93,7 +93,11 @@ public sealed class BasicLoanWorkflowService
         };
         _store.Save(execution);
 
-        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(caseId, executionId, normalizedDocuments);
+        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
+            caseId,
+            executionId,
+            normalizedDocuments,
+            _caseWorkflowOptions.PreIndexCaseDocuments);
         RunInBackground(executionId, input);
 
         return ToResponse(execution);

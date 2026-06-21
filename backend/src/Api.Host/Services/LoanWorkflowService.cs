@@ -96,7 +96,11 @@ public sealed class LoanWorkflowService
         record.WorkflowCheckpointManager = CheckpointManager.CreateInMemory();
         _caseStore.Save(record);
 
-        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(caseId, executionId, normalizedDocuments);
+        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
+            caseId,
+            executionId,
+            normalizedDocuments,
+            _caseWorkflowOptions.PreIndexCaseDocuments);
         StartWorkflowProcessing(record, input, executionId);
 
         return LoanCaseMapper.ToResponse(record.State);

@@ -55,7 +55,7 @@ public sealed class DocumentRetrievalTools
                     Category = document.Category,
                     DocumentId = document.DocumentId,
                     DocumentType = document.DocumentType,
-                    SummaryText = document.SummaryText
+                    SummaryText = TruncatePreview(document.SummaryText)
                 })
                 .ToArray(),
             AvailableCategories = context.AvailableCategories,
@@ -64,15 +64,17 @@ public sealed class DocumentRetrievalTools
     }
 
     [McpServerTool]
-    [Description("Chunks normalized case documents, generates Cohere embeddings, and indexes workflow-payload evidence under sourceKey case:{caseId}. Pass the documents array from the workflow payload as documentsJson.")]
+    [Description("Indexes workflow-payload evidence under sourceKey case:{caseId}. Skip this tool when workflowDocumentsPreIndexed is true in the payload; the workflow already indexed the case documents.")]
     public async Task<IndexCaseDocumentsResponse> IndexCaseDocuments(
         string caseId,
         string executionId,
-        [Description("JSON array of normalized case documents from the workflow payload.")]
-        string documentsJson,
+        [Description("JSON array of normalized case documents from the workflow payload, or [] when workflowDocumentsPreIndexed is true.")]
+        string documentsJson = "[]",
         CancellationToken cancellationToken = default)
     {
-        var normalizedDocuments = NormalizeDocuments(ParseJson(documentsJson));
+        var normalizedDocuments = IsEmptyDocumentsJson(documentsJson)
+            ? []
+            : NormalizeDocuments(ParseJson(documentsJson));
 
         return await _evidenceIndexAdapter.IndexDocumentsAsync(
             caseId,
@@ -90,7 +92,7 @@ public sealed class DocumentRetrievalTools
         string executionId,
         [Description("Required natural-language search query. Use key claims or topics from the submitted documents, such as applicant income, employment, property address, loan amount, or document category.")]
         string query,
-        int topK = 5,
+        int topK = 2,
         [Description("Optional evidence source filter: workflow-payload or customer-context.")]
         string? sourceType = null,
         CancellationToken cancellationToken = default)
@@ -118,6 +120,18 @@ public sealed class DocumentRetrievalTools
     {
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
+    }
+
+    private static bool IsEmptyDocumentsJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return true;
+        }
+
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.ValueKind == JsonValueKind.Array
+            && document.RootElement.GetArrayLength() == 0;
     }
 
     private static List<CaseDocument> NormalizeDocuments(JsonElement documents)
@@ -219,5 +233,15 @@ public sealed class DocumentRetrievalTools
         }
 
         return item.GetRawText();
+    }
+
+    private static string TruncatePreview(string? text)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= ToolResponseLimits.MaxFactPreviewLength)
+        {
+            return text ?? string.Empty;
+        }
+
+        return text[..ToolResponseLimits.MaxFactPreviewLength] + "...";
     }
 }

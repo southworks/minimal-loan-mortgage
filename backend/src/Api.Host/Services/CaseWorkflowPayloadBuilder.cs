@@ -6,15 +6,22 @@ namespace CohereLoanAndMortgage.Api.Host.Services;
 
 public static class CaseWorkflowPayloadBuilder
 {
+    private static readonly JsonSerializerOptions CompactJsonOptions = new()
+    {
+        WriteIndented = false
+    };
+
     public static List<ChatMessage> CreateInitialMessages(
         string caseId,
         string executionId,
-        IReadOnlyList<NormalizedCaseDocument> documents)
+        IReadOnlyList<NormalizedCaseDocument> documents,
+        bool workflowDocumentsPreIndexed = false)
     {
         var payload = new
         {
             caseId,
             executionId,
+            workflowDocumentsPreIndexed,
             indexingIdentity = new
             {
                 sourceType = EvidenceIndexAdapter.WorkflowPayloadSourceType,
@@ -27,26 +34,25 @@ public static class CaseWorkflowPayloadBuilder
                 category = EvidenceIndexAdapter.WorkflowPayloadSourceType,
                 sourcePath = document.BlobName,
                 fileName = document.FileName,
-                extractedText = document.ExtractedText,
+                extractedText = workflowDocumentsPreIndexed ? null : document.ExtractedText,
                 extractionMode = document.ExtractionMode,
                 extractionSucceeded = document.ExtractionSucceeded,
                 extractionMessage = document.ExtractionMessage
             })
         };
 
-        string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-        string prompt =
-            """
-            Process this loan case using the normalized documents below. Documents were extracted once at workflow start. Only the document-processing step should consume this payload. Later steps must use processed outputs only. Each agent step must return JSON with summary, decision, and evidence. Use executionId for any unique indexing or embedding identity.
+        string json = JsonSerializer.Serialize(payload, CompactJsonOptions);
+        string prompt = workflowDocumentsPreIndexed
+            ? $"""
+               Normalized case payload. workflowDocumentsPreIndexed is true; case documents are already indexed. Do not call index_case_documents. Start with enrich_customer_context, then call search_case_evidence exactly twice (topK 2).
 
-            Required document-processing steps:
-            1. Call index_case_documents with the documents array from this payload so Cohere embed indexes workflow-payload evidence under sourceKey case:{caseId}.
-            2. Call enrich_customer_context to load and index supporting customer-context evidence.
-            3. Call search_case_evidence separately for workflow-payload and customer-context to retrieve reranked snippets for comparison.
-            4. Return summary, decision, and evidence with concrete text snippets.
+               {json}
+               """
+            : $"""
+               Normalized case payload for this workflow run. Document text was extracted once at workflow start.
 
-            Case payload:
-            """ + json;
+               {json}
+               """;
 
         return [new ChatMessage(ChatRole.User, prompt)];
     }

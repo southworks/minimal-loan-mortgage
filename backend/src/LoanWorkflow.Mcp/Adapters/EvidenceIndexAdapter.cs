@@ -20,6 +20,7 @@ public sealed class EvidenceIndexAdapter
     public static string CreateCustomerContextSourceKey(string caseId) => $"assets:{caseId.Trim()}";
     private const string MetadataDocumentType = "metadata";
     private const int MaxSearchQueryLength = 4096;
+    private const int MaxEvidenceSnippetLength = ToolResponseLimits.MaxEvidenceSnippetLength;
 
     private readonly SearchClient _searchClient;
     private readonly FoundryEmbeddingService _embeddingService;
@@ -51,8 +52,25 @@ public sealed class EvidenceIndexAdapter
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceType);
 
         var effectiveSourceKey = string.IsNullOrWhiteSpace(sourceKey) ? sourceType : sourceKey.Trim();
-        var contentHash = ComputeDocumentsHash(documents);
         var metadataId = CreateMetadataId(caseId, executionId, sourceType, effectiveSourceKey);
+
+        if (documents.Count == 0)
+        {
+            var existing = await ResolveExistingIndexAsync(
+                caseId,
+                executionId,
+                sourceType,
+                effectiveSourceKey,
+                metadataId,
+                cancellationToken);
+
+            return existing
+                ?? throw new ArgumentException(
+                    "At least one document is required when workflow evidence is not already indexed.",
+                    nameof(documents));
+        }
+
+        var contentHash = ComputeDocumentsHash(documents);
 
         var storedMetadata = await GetMetadataAsync(metadataId, cancellationToken);
         if (storedMetadata is not null
@@ -314,7 +332,7 @@ public sealed class EvidenceIndexAdapter
                     DocumentId = candidate.DocumentId ?? string.Empty,
                     DocumentType = candidate.DocumentType ?? string.Empty,
                     Category = candidate.Category ?? string.Empty,
-                    Snippet = candidate.ChunkText ?? string.Empty,
+                    Snippet = TruncateSnippet(candidate.ChunkText),
                     Score = 1
                 })
                 .ToArray();
@@ -334,7 +352,7 @@ public sealed class EvidenceIndexAdapter
                     DocumentId = candidates[result.Index].DocumentId ?? string.Empty,
                     DocumentType = candidates[result.Index].DocumentType ?? string.Empty,
                     Category = candidates[result.Index].Category ?? string.Empty,
-                    Snippet = candidates[result.Index].ChunkText ?? string.Empty,
+                    Snippet = TruncateSnippet(candidates[result.Index].ChunkText),
                     Score = result.Score
                 })
                 .ToArray();
@@ -348,7 +366,7 @@ public sealed class EvidenceIndexAdapter
                     DocumentId = candidate.DocumentId ?? string.Empty,
                     DocumentType = candidate.DocumentType ?? string.Empty,
                     Category = candidate.Category ?? string.Empty,
-                    Snippet = candidate.ChunkText ?? string.Empty,
+                    Snippet = TruncateSnippet(candidate.ChunkText),
                     Score = 1
                 })
                 .ToArray();
@@ -389,6 +407,44 @@ public sealed class EvidenceIndexAdapter
     }
 
     private static string EscapeFilterValue(string value) => value.Replace("'", "''", StringComparison.Ordinal);
+
+    private static string TruncateSnippet(string? text)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= MaxEvidenceSnippetLength)
+        {
+            return text ?? string.Empty;
+        }
+
+        return text[..MaxEvidenceSnippetLength] + "...";
+    }
+
+    private async Task<IndexCaseDocumentsResponse?> ResolveExistingIndexAsync(
+        string caseId,
+        string executionId,
+        string sourceType,
+        string sourceKey,
+        string metadataId,
+        CancellationToken cancellationToken)
+    {
+        var storedMetadata = await GetMetadataAsync(metadataId, cancellationToken);
+        if (storedMetadata is null)
+        {
+            return null;
+        }
+
+        return new IndexCaseDocumentsResponse
+        {
+            CaseId = caseId,
+            ExecutionId = executionId,
+            IndexName = _options.EvidenceIndexName,
+            SourceType = sourceType,
+            SourceKey = sourceKey,
+            ContentHash = storedMetadata.ContentHash ?? string.Empty,
+            IndexedDocumentCount = storedMetadata.SourceDocumentCount,
+            ChunkCount = storedMetadata.ChunkCount,
+            AlreadyIndexed = true
+        };
+    }
 
     private async Task<EvidenceMetadataDocument?> GetMetadataAsync(
         string metadataId,
