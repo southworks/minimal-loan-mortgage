@@ -234,18 +234,32 @@ public sealed class EvidenceIndexAdapter
         CancellationToken cancellationToken)
     {
         var normalizedQuery = NormalizeSearchQuery(query);
+        return await ExecuteSearchAsync(
+            normalizedQuery,
+            BuildSearchFilter(caseId, executionId, category, sourceType),
+            candidateSize,
+            cancellationToken);
+    }
 
-        var filter = $"caseId eq '{EscapeFilterValue(caseId)}' and executionId eq '{EscapeFilterValue(executionId)}' and documentType ne '{MetadataDocumentType}'";
-        if (!string.IsNullOrWhiteSpace(category))
+    private static string NormalizeSearchQuery(string query)
+    {
+        var trimmed = query.Trim();
+        if (string.IsNullOrEmpty(trimmed))
         {
-            filter += $" and category eq '{EscapeFilterValue(category)}'";
+            throw new ArgumentException("Search query is required.", nameof(query));
         }
 
-        if (!string.IsNullOrWhiteSpace(sourceType))
-        {
-            filter += $" and sourceType eq '{EscapeFilterValue(sourceType)}'";
-        }
+        return trimmed.Length <= MaxSearchQueryLength
+            ? trimmed
+            : trimmed[..MaxSearchQueryLength];
+    }
 
+    private async Task<IReadOnlyList<EvidenceSearchCandidate>> ExecuteSearchAsync(
+        string normalizedQuery,
+        string filter,
+        int candidateSize,
+        CancellationToken cancellationToken)
+    {
         var searchOptions = new SearchOptions
         {
             Size = candidateSize,
@@ -278,17 +292,24 @@ public sealed class EvidenceIndexAdapter
         }
     }
 
-    private static string NormalizeSearchQuery(string query)
+    private static string BuildSearchFilter(
+        string caseId,
+        string executionId,
+        string? category,
+        string? sourceType)
     {
-        var trimmed = query.Trim();
-        if (string.IsNullOrEmpty(trimmed))
+        var filter = $"caseId eq '{EscapeFilterValue(caseId)}' and executionId eq '{EscapeFilterValue(executionId)}' and documentType ne '{MetadataDocumentType}'";
+        if (!string.IsNullOrWhiteSpace(category))
         {
-            throw new ArgumentException("Search query is required.", nameof(query));
+            filter += $" and category eq '{EscapeFilterValue(category)}'";
         }
 
-        return trimmed.Length <= MaxSearchQueryLength
-            ? trimmed
-            : trimmed[..MaxSearchQueryLength];
+        if (!string.IsNullOrWhiteSpace(sourceType))
+        {
+            filter += $" and sourceType eq '{EscapeFilterValue(sourceType)}'";
+        }
+
+        return filter;
     }
 
     private async Task<IReadOnlyList<EvidenceSearchCandidate>> CollectSearchResultsAsync(
@@ -296,7 +317,7 @@ public sealed class EvidenceIndexAdapter
         SearchOptions searchOptions,
         CancellationToken cancellationToken)
     {
-        var response = await _searchClient.SearchAsync<EvidenceSearchCandidate>(
+        var response = await _searchClient.SearchAsync<SearchDocument>(
             lexicalQuery,
             searchOptions,
             cancellationToken);
@@ -306,11 +327,32 @@ public sealed class EvidenceIndexAdapter
         {
             if (result.Document is not null)
             {
-                candidates.Add(result.Document);
+                candidates.Add(new EvidenceSearchCandidate
+                {
+                    DocumentId = GetSearchDocumentString(result.Document, "documentId"),
+                    DocumentType = GetSearchDocumentString(result.Document, "documentType"),
+                    Category = GetSearchDocumentString(result.Document, "category"),
+                    ChunkText = GetSearchDocumentString(result.Document, "chunkText")
+                });
             }
         }
 
         return candidates;
+    }
+
+    private static string? GetSearchDocumentString(SearchDocument document, string fieldName)
+    {
+        if (!document.TryGetValue(fieldName, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string text => text,
+            JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
+            _ => value.ToString()
+        };
     }
 
     private async Task<IReadOnlyList<EvidenceMatch>> RerankEvidenceAsync(
