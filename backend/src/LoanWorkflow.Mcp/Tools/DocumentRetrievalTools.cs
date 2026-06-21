@@ -84,16 +84,19 @@ public sealed class DocumentRetrievalTools
     }
 
     [McpServerTool]
-    [Description("Searches indexed case evidence using Azure AI Search vector retrieval and Cohere rerank. Filter by sourceType workflow-payload or customer-context when comparing submitted documents against supporting evidence.")]
+    [Description("Searches indexed case evidence using Azure AI Search vector retrieval and Cohere rerank. Filter by sourceType workflow-payload or customer-context when comparing submitted documents against supporting evidence. The query parameter is required and must describe what to retrieve.")]
     public async Task<SearchCaseEvidenceResponse> SearchCaseEvidence(
         string caseId,
         string executionId,
+        [Description("Required natural-language search query. Use key claims or topics from the submitted documents, such as applicant income, employment, property address, loan amount, or document category.")]
         string query,
         int topK = 5,
         [Description("Optional evidence source filter: workflow-payload or customer-context.")]
         string? sourceType = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
+
         var matches = await _evidenceIndexAdapter.SearchAsync(
             caseId,
             executionId,

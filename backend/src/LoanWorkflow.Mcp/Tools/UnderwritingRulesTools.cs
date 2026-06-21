@@ -33,10 +33,14 @@ public sealed class UnderwritingRulesTools
     public Task<SearchCaseEvidenceResponse> SearchCaseEvidence(
         string caseId,
         string executionId,
+        [Description("Required natural-language search query describing the evidence to retrieve.")]
         string query,
         int topK = 5,
         CancellationToken cancellationToken = default)
-        => SearchEvidenceAsync(caseId, executionId, query, topK, cancellationToken);
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
+        return SearchEvidenceAsync(caseId, executionId, query, topK, cancellationToken);
+    }
 
     [McpServerTool]
     [Description("Returns compact grouped evidence for underwriting categories.")]

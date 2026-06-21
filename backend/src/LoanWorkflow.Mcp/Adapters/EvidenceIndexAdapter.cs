@@ -19,6 +19,7 @@ public sealed class EvidenceIndexAdapter
 
     public static string CreateCustomerContextSourceKey(string caseId) => $"assets:{caseId.Trim()}";
     private const string MetadataDocumentType = "metadata";
+    private const int MaxSearchQueryLength = 4096;
 
     private readonly SearchClient _searchClient;
     private readonly FoundryEmbeddingService _embeddingService;
@@ -214,7 +215,7 @@ public sealed class EvidenceIndexAdapter
         int candidateSize,
         CancellationToken cancellationToken)
     {
-        var queryEmbedding = (await _embeddingService.EmbedAsync([query], cancellationToken)).Single();
+        var normalizedQuery = NormalizeSearchQuery(query);
 
         var filter = $"caseId eq '{EscapeFilterValue(caseId)}' and executionId eq '{EscapeFilterValue(executionId)}' and documentType ne '{MetadataDocumentType}'";
         if (!string.IsNullOrWhiteSpace(category))
@@ -234,19 +235,53 @@ public sealed class EvidenceIndexAdapter
             Select = { "documentId", "documentType", "category", "chunkText" }
         };
 
-        searchOptions.VectorSearch = new VectorSearchOptions
+        try
         {
-            Queries =
-            {
-                new VectorizedQuery(queryEmbedding)
-                {
-                    KNearestNeighborsCount = candidateSize,
-                    Fields = { "embedding" }
-                }
-            }
-        };
+            var queryEmbedding = (await _embeddingService.EmbedAsync([normalizedQuery], cancellationToken)).Single();
 
-        var response = await _searchClient.SearchAsync<EvidenceSearchCandidate>(null, searchOptions, cancellationToken);
+            searchOptions.VectorSearch = new VectorSearchOptions
+            {
+                Queries =
+                {
+                    new VectorizedQuery(queryEmbedding)
+                    {
+                        KNearestNeighborsCount = candidateSize,
+                        Fields = { "embedding" }
+                    }
+                }
+            };
+
+            return await CollectSearchResultsAsync(null, searchOptions, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            // Foundry embed can fail transiently; fall back to lexical search on chunkText.
+            return await CollectSearchResultsAsync(normalizedQuery, searchOptions, cancellationToken);
+        }
+    }
+
+    private static string NormalizeSearchQuery(string query)
+    {
+        var trimmed = query.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            throw new ArgumentException("Search query is required.", nameof(query));
+        }
+
+        return trimmed.Length <= MaxSearchQueryLength
+            ? trimmed
+            : trimmed[..MaxSearchQueryLength];
+    }
+
+    private async Task<IReadOnlyList<EvidenceSearchCandidate>> CollectSearchResultsAsync(
+        string? lexicalQuery,
+        SearchOptions searchOptions,
+        CancellationToken cancellationToken)
+    {
+        var response = await _searchClient.SearchAsync<EvidenceSearchCandidate>(
+            lexicalQuery,
+            searchOptions,
+            cancellationToken);
         var candidates = new List<EvidenceSearchCandidate>();
 
         await foreach (var result in response.Value.GetResultsAsync())
@@ -285,22 +320,39 @@ public sealed class EvidenceIndexAdapter
                 .ToArray();
         }
 
-        var reranked = await _rerankService.RerankAsync(
-            query,
-            candidates.Select(candidate => candidate.ChunkText ?? string.Empty).ToArray(),
-            topK,
-            cancellationToken);
+        try
+        {
+            var reranked = await _rerankService.RerankAsync(
+                NormalizeSearchQuery(query),
+                candidates.Select(candidate => candidate.ChunkText ?? string.Empty).ToArray(),
+                topK,
+                cancellationToken);
 
-        return reranked
-            .Select(result => new EvidenceMatch
-            {
-                DocumentId = candidates[result.Index].DocumentId ?? string.Empty,
-                DocumentType = candidates[result.Index].DocumentType ?? string.Empty,
-                Category = candidates[result.Index].Category ?? string.Empty,
-                Snippet = candidates[result.Index].ChunkText ?? string.Empty,
-                Score = result.Score
-            })
-            .ToArray();
+            return reranked
+                .Select(result => new EvidenceMatch
+                {
+                    DocumentId = candidates[result.Index].DocumentId ?? string.Empty,
+                    DocumentType = candidates[result.Index].DocumentType ?? string.Empty,
+                    Category = candidates[result.Index].Category ?? string.Empty,
+                    Snippet = candidates[result.Index].ChunkText ?? string.Empty,
+                    Score = result.Score
+                })
+                .ToArray();
+        }
+        catch (HttpRequestException)
+        {
+            return candidates
+                .Take(topK)
+                .Select(candidate => new EvidenceMatch
+                {
+                    DocumentId = candidate.DocumentId ?? string.Empty,
+                    DocumentType = candidate.DocumentType ?? string.Empty,
+                    Category = candidate.Category ?? string.Empty,
+                    Snippet = candidate.ChunkText ?? string.Empty,
+                    Score = 1
+                })
+                .ToArray();
+        }
     }
 
     private static List<string> ChunkText(string text, int maxChunkLength = 1200)

@@ -37,6 +37,11 @@ public sealed class FoundryEmbeddingService
             return [];
         }
 
+        if (texts.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("Embedding input must not contain empty or whitespace-only strings.", nameof(texts));
+        }
+
         var batchSize = Math.Max(1, _options.EmbeddingBatchSize);
         var embeddings = new List<float[]>(texts.Count);
 
