@@ -44,7 +44,7 @@ public static class CaseWorkflowPayloadBuilder
         string json = JsonSerializer.Serialize(payload, CompactJsonOptions);
         string prompt = workflowDocumentsPreIndexed
             ? $"""
-               Normalized case payload. workflowDocumentsPreIndexed is true; case documents are already indexed. Do not call index_case_documents. Start with enrich_customer_context, then call search_case_evidence exactly twice (topK 2).
+               Normalized case payload. workflowDocumentsPreIndexed is true; case documents are already indexed. Do not call index_case_documents. Start with enrich_customer_context, then call search_case_evidence exactly twice (topK 3).
 
                {json}
                """

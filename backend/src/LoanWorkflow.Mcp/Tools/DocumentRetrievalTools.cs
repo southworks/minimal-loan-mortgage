@@ -92,7 +92,7 @@ public sealed class DocumentRetrievalTools
         string executionId,
         [Description("Required natural-language search query. Use key claims or topics from the submitted documents, such as applicant income, employment, property address, loan amount, or document category.")]
         string query,
-        int topK = 2,
+        int topK = 3,
         [Description("Optional evidence source filter: workflow-payload or customer-context.")]
         string? sourceType = null,
         CancellationToken cancellationToken = default)
