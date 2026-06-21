@@ -20,13 +20,17 @@ public sealed class PolicyKnowledgeTools
     }
 
     [McpServerTool]
-    [Description("Retrieves relevant policy entries for responsible AI and governance review.")]
+    [Description("Retrieves relevant policy entries for responsible AI and governance review. The query parameter is required.")]
     public Task<GetRelevantPoliciesResponse> GetRelevantPolicies(
+        [Description("Required natural-language search query describing the governance or fairness topic to retrieve.")]
         string query,
         string? caseContext = null,
         int topK = 5,
         CancellationToken cancellationToken = default)
-        => _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
+        return _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+    }
 
     [McpServerTool]
     [Description("Performs structural and consistency checks on the human approval decision.")]

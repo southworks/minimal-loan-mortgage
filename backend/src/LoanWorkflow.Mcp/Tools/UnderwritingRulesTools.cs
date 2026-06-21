@@ -77,13 +77,17 @@ public sealed class UnderwritingRulesTools
     }
 
     [McpServerTool]
-    [Description("Retrieves the most relevant underwriting policies using Azure AI Search and Azure Foundry rerank.")]
+    [Description("Retrieves the most relevant underwriting policies using Azure AI Search and Azure Foundry rerank. The query parameter is required.")]
     public Task<GetRelevantPoliciesResponse> GetRelevantPolicies(
+        [Description("Required natural-language search query describing the underwriting rule or risk area to retrieve.")]
         string query,
         string? caseContext = null,
         int topK = 5,
         CancellationToken cancellationToken = default)
-        => _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
+        return _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+    }
 
     private async Task<SearchCaseEvidenceResponse> SearchEvidenceAsync(
         string caseId,

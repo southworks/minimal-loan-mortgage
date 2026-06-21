@@ -184,7 +184,7 @@ public sealed class FoundryRerankService
             await ApplyAuthorizationAsync(request, cancellationToken);
             request.Content = FoundryHttpExtensions.CreateJsonContent(new RerankRequest
             {
-                Model = _options.RerankModelName,
+                Model = ResolveRerankModelName(_options),
                 Query = query,
                 Documents = documents,
                 TopN = topK
@@ -227,6 +227,14 @@ public sealed class FoundryRerankService
         {
             throw new InvalidOperationException($"AzureFoundryModels:{settingName} is required.");
         }
+    }
+
+    private static string ResolveRerankModelName(AzureFoundryModelsOptions options)
+    {
+        // Foundry's /providers/cohere/v2/rerank expects the deployment name, not the catalog model id.
+        return string.IsNullOrWhiteSpace(options.RerankDeploymentName)
+            ? options.RerankModelName
+            : options.RerankDeploymentName;
     }
 
     public sealed record RerankResult(int Index, double Score);

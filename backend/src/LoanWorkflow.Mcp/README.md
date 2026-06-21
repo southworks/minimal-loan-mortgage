@@ -91,6 +91,7 @@ Endpoint notes:
 
 - `EmbedEndpoint` must point to the hub deployment path (`/openai/deployments/{name}`). The app calls `/embeddings?api-version=2024-05-01-preview` on that URL. Do not append `/v1/embed`; that path is for serverless model endpoints only.
 - `RerankEndpoint` must be the Foundry account base URL. The app calls `/providers/cohere/v2/rerank` on that base. A deployment URL such as `/openai/deployments/cohere-rerank-v4-pro` is normalized automatically, but the account base is preferred.
+- The rerank request `model` field uses `RerankDeploymentName` (for example `cohere-rerank-v4-pro`), not the catalog model name (`Cohere-rerank-v4.0-pro`).
 
 ## Local Development
 
