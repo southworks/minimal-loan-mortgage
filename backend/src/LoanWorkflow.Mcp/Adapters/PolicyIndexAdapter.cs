@@ -133,15 +133,25 @@ public sealed class PolicyIndexAdapter
             }
         };
 
-        var response = await _searchClient.SearchAsync<PolicySearchDocument>(null, searchOptions, cancellationToken);
-        var candidates = new List<PolicySearchDocument>();
+        var response = await _searchClient.SearchAsync<SearchDocument>(null, searchOptions, cancellationToken);
+        var candidates = new List<PolicySearchCandidate>();
 
         await foreach (var result in response.Value.GetResultsAsync())
         {
-            if (result.Document is not null)
+            if (result.Document is null)
             {
-                candidates.Add(result.Document);
+                continue;
             }
+
+            candidates.Add(new PolicySearchCandidate
+            {
+                PolicyRef = GetSearchDocumentString(result.Document, "policyRef"),
+                Rule = GetSearchDocumentString(result.Document, "rule"),
+                Threshold = GetSearchDocumentString(result.Document, "threshold"),
+                Action = GetSearchDocumentString(result.Document, "action"),
+                Exception = GetSearchDocumentString(result.Document, "exception"),
+                FullText = GetSearchDocumentString(result.Document, "fullText")
+            });
         }
 
         if (candidates.Count == 0)
@@ -158,36 +168,18 @@ public sealed class PolicyIndexAdapter
             return new GetRelevantPoliciesResponse
             {
                 Query = query,
-                Policies = candidates
-                    .Select(candidate => new PolicyMatch
-                    {
-                        PolicyRef = candidate.PolicyRef,
-                        Rule = candidate.Rule,
-                        Threshold = candidate.Threshold,
-                        Action = candidate.Action,
-                        Exception = candidate.Exception,
-                        Score = 1
-                    })
-                    .ToArray()
+                Policies = candidates.Select(candidate => ToPolicyMatch(candidate)).ToArray()
             };
         }
 
         var reranked = await _rerankService.RerankAsync(
             effectiveQuery,
-            candidates.Select(candidate => candidate.FullText).ToArray(),
+            candidates.Select(candidate => candidate.FullText ?? string.Empty).ToArray(),
             topK,
             cancellationToken);
 
         var policies = reranked
-            .Select(result => new PolicyMatch
-            {
-                PolicyRef = candidates[result.Index].PolicyRef,
-                Rule = candidates[result.Index].Rule,
-                Threshold = candidates[result.Index].Threshold,
-                Action = candidates[result.Index].Action,
-                Exception = candidates[result.Index].Exception,
-                Score = result.Score
-            })
+            .Select(result => ToPolicyMatch(candidates[result.Index], result.Score))
             .ToArray();
 
         return new GetRelevantPoliciesResponse
@@ -195,6 +187,47 @@ public sealed class PolicyIndexAdapter
             Query = query,
             Policies = policies
         };
+    }
+
+    private static PolicyMatch ToPolicyMatch(PolicySearchCandidate candidate, double score = 1) =>
+        new()
+        {
+            PolicyRef = candidate.PolicyRef ?? string.Empty,
+            Rule = candidate.Rule ?? string.Empty,
+            Threshold = candidate.Threshold ?? string.Empty,
+            Action = candidate.Action ?? string.Empty,
+            Exception = candidate.Exception ?? string.Empty,
+            Score = score
+        };
+
+    private static string? GetSearchDocumentString(SearchDocument document, string fieldName)
+    {
+        if (!document.TryGetValue(fieldName, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string text => text,
+            JsonElement element when element.ValueKind == JsonValueKind.String => element.GetString(),
+            _ => value.ToString()
+        };
+    }
+
+    private sealed class PolicySearchCandidate
+    {
+        public string? PolicyRef { get; init; }
+
+        public string? Rule { get; init; }
+
+        public string? Threshold { get; init; }
+
+        public string? Action { get; init; }
+
+        public string? Exception { get; init; }
+
+        public string? FullText { get; init; }
     }
 
     private sealed class PolicyMetadataDocument

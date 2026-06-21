@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CohereLoanAndMortgage.Api.Host.Workflow;
 using Microsoft.Extensions.AI;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
@@ -42,7 +43,38 @@ public static class CaseWorkflowPayloadBuilder
                 })
         };
 
+        return CreateJsonMessages(payload);
+    }
+
+    public static ChatMessage CreateAgentTransitionMessage(
+        string caseId,
+        string executionId,
+        AgentStepResult previousResult)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentNullException.ThrowIfNull(previousResult);
+
+        var payload = new
+        {
+            caseId,
+            executionId,
+            summary = previousResult.Summary,
+            decision = previousResult.Decision,
+            evidence = previousResult.Evidence
+        };
+
+        return CreateJsonMessage(payload);
+    }
+
+    private static List<ChatMessage> CreateJsonMessages(object payload)
+    {
+        return [CreateJsonMessage(payload)];
+    }
+
+    private static ChatMessage CreateJsonMessage(object payload)
+    {
         string json = JsonSerializer.Serialize(payload, CompactJsonOptions);
-        return [new ChatMessage(ChatRole.User, json)];
+        return new ChatMessage(ChatRole.User, json);
     }
 }

@@ -117,7 +117,7 @@ public sealed class BasicLoanWorkflowService
             try
             {
                 FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
-                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, executionId);
+                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, executionId);
                 CheckpointManager checkpoints = CheckpointManager.CreateInMemory();
 
                 await using StreamingRun run = await InProcessExecution
@@ -249,11 +249,11 @@ public sealed class BasicLoanWorkflowService
                 break;
 
             case SuperStepCompletedEvent superStepCompletedEvent:
-                if (!(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
-                    execution.Status = BasicWorkflowStatus.Completed;
-                    execution.CurrentAgent = null;
-                    Touch(execution);
-                }
+                //if (!(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
+                //    execution.Status = BasicWorkflowStatus.Completed;
+                //    execution.CurrentAgent = null;
+                //    Touch(execution);
+                //}
                 break;
         }
     }
