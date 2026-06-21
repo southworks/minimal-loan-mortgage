@@ -1,6 +1,5 @@
-using System.Text;
-using System.Text.Json;
 using CohereLoanAndMortgage.Api.Host.Contracts;
+using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Workflow;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -23,7 +22,9 @@ public sealed class BasicLoanWorkflowService
     private readonly LoanMortgageBasicWorkflowFactory _workflowFactory;
     private readonly InMemoryBasicWorkflowStore _store;
     private readonly BlobDocumentStorageService _documentStorage;
+    private readonly DocumentTextExtractionService _documentTextExtractionService;
     private readonly CaseEvidenceIndexingService _caseEvidenceIndexingService;
+    private readonly CaseWorkflowOptions _caseWorkflowOptions;
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly ILogger<BasicLoanWorkflowService> _logger;
 
@@ -32,7 +33,9 @@ public sealed class BasicLoanWorkflowService
         LoanMortgageBasicWorkflowFactory workflowFactory,
         InMemoryBasicWorkflowStore store,
         BlobDocumentStorageService documentStorage,
+        DocumentTextExtractionService documentTextExtractionService,
         CaseEvidenceIndexingService caseEvidenceIndexingService,
+        Microsoft.Extensions.Options.IOptions<CaseWorkflowOptions> caseWorkflowOptions,
         IHostApplicationLifetime applicationLifetime,
         ILogger<BasicLoanWorkflowService> logger)
     {
@@ -40,7 +43,9 @@ public sealed class BasicLoanWorkflowService
         _workflowFactory = workflowFactory;
         _store = store;
         _documentStorage = documentStorage;
+        _documentTextExtractionService = documentTextExtractionService;
         _caseEvidenceIndexingService = caseEvidenceIndexingService;
+        _caseWorkflowOptions = caseWorkflowOptions.Value;
         _applicationLifetime = applicationLifetime;
         _logger = logger;
     }
@@ -69,9 +74,16 @@ public sealed class BasicLoanWorkflowService
                 $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'.");
         }
 
-        await _caseEvidenceIndexingService
-            .EnsureBlobDocumentsIndexedAsync(caseId, executionId, documents, cancellationToken)
+        IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
+            .ExtractAsync(documents, cancellationToken)
             .ConfigureAwait(false);
+
+        if (_caseWorkflowOptions.PreIndexCaseDocuments)
+        {
+            await _caseEvidenceIndexingService
+                .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         var execution = new BasicWorkflowExecution
         {
@@ -81,7 +93,7 @@ public sealed class BasicLoanWorkflowService
         };
         _store.Save(execution);
 
-        List<ChatMessage> input = BuildInput(caseId, executionId, documents);
+        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(caseId, executionId, normalizedDocuments);
         RunInBackground(executionId, input);
 
         return ToResponse(execution);
@@ -446,37 +458,6 @@ public sealed class BasicLoanWorkflowService
 
     private static string? GetOutput(BasicWorkflowExecution execution, string key) =>
         execution.AgentOutputs.TryGetValue(key, out string? value) ? value : null;
-
-    private static List<ChatMessage> BuildInput(
-        string caseId,
-        string executionId,
-        IReadOnlyList<LoadedCaseDocument> documents)
-    {
-        var payload = new
-        {
-            caseId,
-            executionId,
-            documents = documents.Select(document => new
-            {
-                fileName = document.FileName,
-                contentType = document.ContentType,
-                blobName = document.BlobName,
-                content = document.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
-                    ? document.Content.ToString()
-                    : Convert.ToBase64String(document.Content.ToArray())
-            })
-        };
-
-        string json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-        string prompt =
-            """
-            Process this loan case using the loaded documents below. Each agent step must return JSON with summary, decision, and evidence.
-
-            Case payload:
-            """ + json;
-
-        return [new ChatMessage(ChatRole.User, prompt)];
-    }
 
     private static async Task SendTurnTokenAsync(StreamingRun run, CancellationToken cancellationToken)
     {

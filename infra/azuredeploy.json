@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "7338142397164829573"
+      "templateHash": "5898292499407664720"
     }
   },
   "parameters": {
@@ -183,6 +183,7 @@
     "storageAccountName": "[toLower(take(replace(format('{0}st{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 24))]",
     "foundryAccountName": "[toLower(take(replace(format('{0}foundry{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 24))]",
     "searchServiceName": "[toLower(take(replace(format('{0}search{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 60))]",
+    "documentIntelligenceAccountName": "[toLower(take(replace(format('{0}docintel{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 24))]",
     "logAnalyticsName": "[take(format('{0}-logs-{1}', parameters('baseName'), variables('deploymentSuffix')), 63)]",
     "containerAppsEnvironmentName": "[take(format('{0}-cae-{1}', parameters('baseName'), variables('deploymentSuffix')), 63)]",
     "apiAppName": "[take(format('{0}-api-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
@@ -350,6 +351,21 @@
       }
     },
     {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('documentIntelligenceAccountName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
+      "kind": "FormRecognizer",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[variables('documentIntelligenceAccountName')]",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
       "type": "Microsoft.OperationalInsights/workspaces",
       "apiVersion": "2023-09-01",
       "name": "[variables('logAnalyticsName')]",
@@ -477,6 +493,21 @@
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName'))]"
       ]
     },
     {
@@ -722,6 +753,10 @@
                 {
                   "name": "AZURE_CLIENT_ID",
                   "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId]"
+                },
+                {
+                  "name": "DocumentExtraction__Endpoint",
+                  "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName')), '2023-05-01').endpoint]"
                 }
               ],
               "probes": [
@@ -753,8 +788,10 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesUser', parameters('nameSuffix')))]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-api-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
@@ -1081,6 +1118,14 @@
     "searchServiceEndpoint": {
       "type": "string",
       "value": "[format('https://{0}.search.windows.net', variables('searchServiceName'))]"
+    },
+    "documentIntelligenceAccountName": {
+      "type": "string",
+      "value": "[variables('documentIntelligenceAccountName')]"
+    },
+    "documentIntelligenceEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('documentIntelligenceAccountName')), '2023-05-01').endpoint]"
     },
     "apiUrl": {
       "type": "string",

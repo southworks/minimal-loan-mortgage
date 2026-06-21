@@ -20,10 +20,25 @@ public sealed class CaseEvidenceIndexingService
         _logger = logger;
     }
 
-    public async Task<IndexCaseDocumentsResponse> EnsureBlobDocumentsIndexedAsync(
+    public Task<IndexCaseDocumentsResponse> EnsureCaseDocumentsIndexedAsync(
         string caseId,
         string executionId,
-        IReadOnlyList<LoadedCaseDocument> documents,
+        IReadOnlyList<NormalizedCaseDocument> documents,
+        CancellationToken cancellationToken) =>
+        EnsureCaseDocumentsIndexedAsync(
+            caseId,
+            executionId,
+            documents,
+            EvidenceIndexAdapter.WorkflowPayloadSourceType,
+            EvidenceIndexAdapter.CreateCaseSourceKey(caseId),
+            cancellationToken);
+
+    public async Task<IndexCaseDocumentsResponse> EnsureCaseDocumentsIndexedAsync(
+        string caseId,
+        string executionId,
+        IReadOnlyList<NormalizedCaseDocument> documents,
+        string sourceType,
+        string sourceKey,
         CancellationToken cancellationToken)
     {
         await _searchIndexInitializer.EnsureIndexesAsync(cancellationToken).ConfigureAwait(false);
@@ -37,32 +52,30 @@ public sealed class CaseEvidenceIndexingService
                 caseId,
                 executionId,
                 caseDocuments,
-                EvidenceIndexAdapter.BlobDocumentSourceType,
-                sourceKey: $"blob:{caseId}",
+                sourceType,
+                sourceKey,
                 cancellationToken)
             .ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Blob evidence indexing completed for case {CaseId}, execution {ExecutionId}. AlreadyIndexed={AlreadyIndexed}, ChunkCount={ChunkCount}.",
+            "Case evidence indexing completed for case {CaseId}, execution {ExecutionId}, sourceType {SourceType}, sourceKey {SourceKey}. AlreadyIndexed={AlreadyIndexed}, ChunkCount={ChunkCount}.",
             caseId,
             executionId,
+            sourceType,
+            sourceKey,
             response.AlreadyIndexed,
             response.ChunkCount);
 
         return response;
     }
 
-    private static CaseDocument ToCaseDocument(LoadedCaseDocument document)
+    private static CaseDocument ToCaseDocument(NormalizedCaseDocument document)
     {
-        string contentForSearch = document.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
-            ? document.Content.ToString()
-            : $"Binary document {document.FileName} with content type {document.ContentType}. Blob path: {document.BlobName}.";
-
         return new CaseDocument
         {
             DocumentId = Path.GetFileNameWithoutExtension(document.FileName),
             DocumentType = document.ContentType,
-            Category = "blob-document",
+            Category = EvidenceIndexAdapter.WorkflowPayloadSourceType,
             SourcePath = document.BlobName,
             Content = JsonSerializer.SerializeToElement(new
             {
@@ -70,7 +83,10 @@ public sealed class CaseEvidenceIndexingService
                 document.ContentType,
                 document.BlobName,
                 document.Reference,
-                document.LastModifiedUtc
+                document.LastModifiedUtc,
+                document.ExtractionMode,
+                document.ExtractionSucceeded,
+                document.ExtractionMessage
             }),
             SummaryText = string.Join(Environment.NewLine, [
                 $"FileName: {document.FileName}",
@@ -78,7 +94,10 @@ public sealed class CaseEvidenceIndexingService
                 $"BlobName: {document.BlobName}",
                 $"Reference: {document.Reference}",
                 $"LastModifiedUtc: {document.LastModifiedUtc:O}",
-                $"Content: {contentForSearch}"
+                $"ExtractionMode: {document.ExtractionMode}",
+                $"ExtractionSucceeded: {document.ExtractionSucceeded}",
+                $"ExtractionMessage: {document.ExtractionMessage ?? string.Empty}",
+                $"Content: {document.ExtractedText}"
             ])
         };
     }

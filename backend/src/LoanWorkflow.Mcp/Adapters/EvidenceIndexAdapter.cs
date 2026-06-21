@@ -11,9 +11,12 @@ namespace LoanWorkflow.Mcp.Adapters;
 
 public sealed class EvidenceIndexAdapter
 {
-    public const string BlobDocumentSourceType = "blob-document";
     public const string CustomerContextSourceType = "customer-context";
     public const string WorkflowPayloadSourceType = "workflow-payload";
+
+    public static string CreateCaseSourceKey(string caseId) => $"case:{caseId.Trim()}";
+
+    public static string CreateCustomerContextSourceKey(string caseId) => $"assets:{caseId.Trim()}";
     private const string MetadataDocumentType = "metadata";
 
     private readonly SearchClient _searchClient;
@@ -165,6 +168,7 @@ public sealed class EvidenceIndexAdapter
         string executionId,
         string query,
         int topK,
+        string? sourceType = null,
         CancellationToken cancellationToken = default)
     {
         var candidates = await SearchCandidatesAsync(
@@ -172,6 +176,7 @@ public sealed class EvidenceIndexAdapter
             executionId,
             query,
             category: null,
+            sourceType,
             candidateSize: Math.Max(topK * 3, topK),
             cancellationToken);
 
@@ -184,6 +189,7 @@ public sealed class EvidenceIndexAdapter
         string category,
         string query,
         int topK,
+        string? sourceType = null,
         CancellationToken cancellationToken = default)
     {
         var candidates = await SearchCandidatesAsync(
@@ -191,6 +197,7 @@ public sealed class EvidenceIndexAdapter
             executionId,
             query,
             category,
+            sourceType,
             candidateSize: Math.Max(topK * 2, topK),
             cancellationToken);
 
@@ -202,6 +209,7 @@ public sealed class EvidenceIndexAdapter
         string executionId,
         string query,
         string? category,
+        string? sourceType,
         int candidateSize,
         CancellationToken cancellationToken)
     {
@@ -211,6 +219,11 @@ public sealed class EvidenceIndexAdapter
         if (!string.IsNullOrWhiteSpace(category))
         {
             filter += $" and category eq '{EscapeFilterValue(category)}'";
+        }
+
+        if (!string.IsNullOrWhiteSpace(sourceType))
+        {
+            filter += $" and sourceType eq '{EscapeFilterValue(sourceType)}'";
         }
 
         var searchOptions = new SearchOptions

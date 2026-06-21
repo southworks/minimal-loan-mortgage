@@ -41,6 +41,11 @@ builder.Services.Configure<AzureBlobStorageOptions>(options =>
     }
 });
 
+builder.Services.Configure<DocumentExtractionOptions>(
+    builder.Configuration.GetSection(DocumentExtractionOptions.SectionName));
+builder.Services.Configure<CaseWorkflowOptions>(
+    builder.Configuration.GetSection(CaseWorkflowOptions.SectionName));
+
 StartupConfigurationValidator.Validate(builder.Configuration);
 
 builder.Services.AddSingleton<InMemoryLoanCaseStore>();
@@ -48,6 +53,7 @@ builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageWorkflowFactory>();
 builder.Services.AddSingleton<LoanMortgageBasicWorkflowFactory>();
 builder.Services.AddSingleton<BlobDocumentStorageService>();
+builder.Services.AddSingleton<DocumentTextExtractionService>();
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
 builder.Services.AddSingleton<CaseEvidenceIndexingService>();
 builder.Services.AddSingleton<InMemoryBasicWorkflowStore>();

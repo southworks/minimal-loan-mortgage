@@ -80,6 +80,7 @@ var deploymentSuffix = empty(nameSuffix) ? uniqueString(resourceGroup().id) : un
 var storageAccountName = toLower(take(replace('${baseName}st${deploymentSuffix}', '-', ''), 24))
 var foundryAccountName = toLower(take(replace('${baseName}foundry${deploymentSuffix}', '-', ''), 24))
 var searchServiceName = toLower(take(replace('${baseName}search${deploymentSuffix}', '-', ''), 60))
+var documentIntelligenceAccountName = toLower(take(replace('${baseName}docintel${deploymentSuffix}', '-', ''), 24))
 var logAnalyticsName = take('${baseName}-logs-${deploymentSuffix}', 63)
 var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 63)
 var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
@@ -233,6 +234,22 @@ resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
   }
 }
 
+resource documentIntelligenceAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+  name: documentIntelligenceAccountName
+  location: location
+  tags: resourceTags
+  kind: 'FormRecognizer'
+  sku: {
+    name: 'S0'
+  }
+  properties: {
+    customSubDomainName: documentIntelligenceAccountName
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+var documentIntelligenceEndpoint = documentIntelligenceAccount.properties.endpoint
+
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
   location: location
@@ -330,6 +347,16 @@ resource apiSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
+    principalId: apiIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource apiDocumentIntelligenceRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(documentIntelligenceAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
+  scope: documentIntelligenceAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
     principalId: apiIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -525,6 +552,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
             { name: 'AZURE_CLIENT_ID', value: apiIdentity.properties.clientId }
+            { name: 'DocumentExtraction__Endpoint', value: documentIntelligenceEndpoint }
           ]
           probes: [
             {
@@ -554,6 +582,9 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
+  dependsOn: [
+    apiDocumentIntelligenceRole
+  ]
 }
 
 var mcpBaseUrl = 'https://${mcpApp.properties.configuration.ingress.fqdn}'
@@ -864,6 +895,8 @@ output rerankModelName string = rerankModelName
 output memoryStoreName string = memoryStoreName
 output searchServiceName string = searchService.name
 output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
+output documentIntelligenceAccountName string = documentIntelligenceAccount.name
+output documentIntelligenceEndpoint string = documentIntelligenceEndpoint
 output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
 output policySeedJobName string = policySeedJob.name

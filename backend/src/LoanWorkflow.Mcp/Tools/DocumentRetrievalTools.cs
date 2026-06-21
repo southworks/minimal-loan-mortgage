@@ -40,7 +40,7 @@ public sealed class DocumentRetrievalTools
             executionId,
             context.Documents,
             EvidenceIndexAdapter.CustomerContextSourceType,
-            sourceKey: $"assets:{caseId}",
+            sourceKey: EvidenceIndexAdapter.CreateCustomerContextSourceKey(caseId),
             cancellationToken);
 
         return new EnrichCustomerContextResponse
@@ -64,28 +64,51 @@ public sealed class DocumentRetrievalTools
     }
 
     [McpServerTool]
-    [Description("Chunks case documents, generates Azure Foundry embeddings, and indexes evidence in Azure AI Search.")]
+    [Description("Chunks normalized case documents, generates Cohere embeddings, and indexes workflow-payload evidence under sourceKey case:{caseId}. Pass the documents array from the workflow payload as documentsJson.")]
     public async Task<IndexCaseDocumentsResponse> IndexCaseDocuments(
         string caseId,
         string executionId,
-        [Description("Optional JSON array of case documents. When omitted, demo case documents are loaded automatically.")]
-        string? documentsJson = null,
+        [Description("JSON array of normalized case documents from the workflow payload.")]
+        string documentsJson,
         CancellationToken cancellationToken = default)
     {
-        var normalizedDocuments = string.IsNullOrWhiteSpace(documentsJson)
-            ? []
-            : NormalizeDocuments(ParseJson(documentsJson));
-        if (normalizedDocuments.Count == 0)
-        {
-            var loaded = await _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
-            normalizedDocuments = loaded.Documents.ToList();
-        }
+        var normalizedDocuments = NormalizeDocuments(ParseJson(documentsJson));
 
         return await _evidenceIndexAdapter.IndexDocumentsAsync(
             caseId,
             executionId,
             normalizedDocuments,
+            EvidenceIndexAdapter.WorkflowPayloadSourceType,
+            sourceKey: EvidenceIndexAdapter.CreateCaseSourceKey(caseId),
             cancellationToken: cancellationToken);
+    }
+
+    [McpServerTool]
+    [Description("Searches indexed case evidence using Azure AI Search vector retrieval and Cohere rerank. Filter by sourceType workflow-payload or customer-context when comparing submitted documents against supporting evidence.")]
+    public async Task<SearchCaseEvidenceResponse> SearchCaseEvidence(
+        string caseId,
+        string executionId,
+        string query,
+        int topK = 5,
+        [Description("Optional evidence source filter: workflow-payload or customer-context.")]
+        string? sourceType = null,
+        CancellationToken cancellationToken = default)
+    {
+        var matches = await _evidenceIndexAdapter.SearchAsync(
+            caseId,
+            executionId,
+            query,
+            topK,
+            sourceType,
+            cancellationToken);
+
+        return new SearchCaseEvidenceResponse
+        {
+            CaseId = caseId,
+            ExecutionId = executionId,
+            Query = query,
+            Matches = matches
+        };
     }
 
     private static JsonElement ParseJson(string json)
@@ -110,29 +133,88 @@ public sealed class DocumentRetrievalTools
                 continue;
             }
 
+            string documentId = item.TryGetProperty("documentId", out var documentIdElement)
+                ? documentIdElement.GetString() ?? Guid.NewGuid().ToString("N")
+                : item.TryGetProperty("fileName", out var fileNameElement)
+                    ? Path.GetFileNameWithoutExtension(fileNameElement.GetString() ?? Guid.NewGuid().ToString("N"))
+                    : Guid.NewGuid().ToString("N");
+
+            string documentType = item.TryGetProperty("documentType", out var documentTypeElement)
+                ? documentTypeElement.GetString() ?? "unknown"
+                : "unknown";
+
+            string category = item.TryGetProperty("category", out var categoryElement)
+                ? categoryElement.GetString() ?? EvidenceIndexAdapter.WorkflowPayloadSourceType
+                : EvidenceIndexAdapter.WorkflowPayloadSourceType;
+
+            string sourcePath = item.TryGetProperty("sourcePath", out var sourcePathElement)
+                ? sourcePathElement.GetString() ?? "workflow-payload"
+                : "workflow-payload";
+
+            string summaryText = BuildSummaryText(item);
+
             results.Add(new CaseDocument
             {
-                DocumentId = item.TryGetProperty("documentId", out var documentId)
-                    ? documentId.GetString() ?? Guid.NewGuid().ToString("N")
-                    : Guid.NewGuid().ToString("N"),
-                DocumentType = item.TryGetProperty("documentType", out var documentType)
-                    ? documentType.GetString() ?? "unknown"
-                    : "unknown",
-                Category = item.TryGetProperty("category", out var category)
-                    ? category.GetString() ?? "unknown"
-                    : "unknown",
-                SourcePath = item.TryGetProperty("sourcePath", out var sourcePath)
-                    ? sourcePath.GetString() ?? "workflow-payload"
-                    : "workflow-payload",
-                Content = item.TryGetProperty("content", out var content)
-                    ? content.Clone()
-                    : item.Clone(),
-                SummaryText = item.TryGetProperty("summaryText", out var summaryText)
-                    ? summaryText.GetString() ?? item.GetRawText()
-                    : item.GetRawText()
+                DocumentId = documentId,
+                DocumentType = documentType,
+                Category = category,
+                SourcePath = sourcePath,
+                Content = item.Clone(),
+                SummaryText = summaryText
             });
         }
 
         return results;
+    }
+
+    private static string BuildSummaryText(JsonElement item)
+    {
+        if (item.TryGetProperty("extractedText", out var extractedTextElement)
+            && extractedTextElement.ValueKind == JsonValueKind.String)
+        {
+            var builder = new System.Text.StringBuilder();
+
+            if (item.TryGetProperty("fileName", out var fileNameElement))
+            {
+                builder.AppendLine($"FileName: {fileNameElement}");
+            }
+
+            if (item.TryGetProperty("documentType", out var documentTypeElement))
+            {
+                builder.AppendLine($"ContentType: {documentTypeElement}");
+            }
+
+            if (item.TryGetProperty("sourcePath", out var sourcePathElement))
+            {
+                builder.AppendLine($"SourcePath: {sourcePathElement}");
+            }
+
+            if (item.TryGetProperty("extractionMode", out var extractionModeElement))
+            {
+                builder.AppendLine($"ExtractionMode: {extractionModeElement}");
+            }
+
+            if (item.TryGetProperty("extractionSucceeded", out var extractionSucceededElement))
+            {
+                builder.AppendLine($"ExtractionSucceeded: {extractionSucceededElement}");
+            }
+
+            if (item.TryGetProperty("extractionMessage", out var extractionMessageElement)
+                && extractionMessageElement.ValueKind == JsonValueKind.String)
+            {
+                builder.AppendLine($"ExtractionMessage: {extractionMessageElement.GetString()}");
+            }
+
+            builder.AppendLine($"Content: {extractedTextElement.GetString()}");
+            return builder.ToString().Trim();
+        }
+
+        if (item.TryGetProperty("summaryText", out var summaryTextElement)
+            && summaryTextElement.ValueKind == JsonValueKind.String)
+        {
+            return summaryTextElement.GetString() ?? item.GetRawText();
+        }
+
+        return item.GetRawText();
     }
 }

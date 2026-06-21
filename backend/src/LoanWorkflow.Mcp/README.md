@@ -8,7 +8,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 
 | MCP endpoint | Tools |
 | --- | --- |
-| `/document-retrieval/mcp` | `get_case_documents`, `enrich_customer_context`, `index_case_documents` |
+| `/document-retrieval/mcp` | `get_case_documents`, `enrich_customer_context`, `index_case_documents`, `search_case_evidence` |
 | `/underwriting-rules/mcp` | `search_case_evidence`, `get_underwriting_context`, `get_relevant_policies` |
 | `/policy-knowledge/mcp` | `get_relevant_policies`, `validate_human_decision` |
 | `/loan-setup/mcp` | `build_account_setup_draft` |
@@ -17,7 +17,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 
 - Read structured demo case data from `dataset-seed/02_identity` through `dataset-seed/07_collateral`
 - Enrich customer context from local assets today, with the same adapter boundary intended for Fabric later
-- Ensure customer context evidence is indexed idempotently into Azure AI Search using Azure AI Foundry `embed-v-4-0`
+- Ensure case and customer-context evidence are indexed idempotently into the shared Azure AI Search evidence index using Azure AI Foundry `embed-v-4-0`
 - Retrieve evidence and policies from Azure AI Search using Azure AI Foundry `Cohere-rerank-v4.0-pro`
 - Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` during deploy-time seeding
 - Reindex policies only when the policy source hash changes
@@ -116,7 +116,7 @@ For local runs, the default dataset paths in [appsettings.json](appsettings.json
 - `APP-017` — borderline/manual review style case
 - `APP-015` — clearly rejectable
 
-When the API workflow starts, Blob-uploaded documents are indexed before the agent workflow begins. During document processing, the agent extracts the case id and calls `enrich_customer_context`; that tool loads the current assets-backed customer context, indexes it if the content hash changed, and returns compact facts for comparison. Policies are still indexed by deploy-time seed.
+When the API workflow starts, normalized case documents may be pre-indexed under `sourceType=workflow-payload` and `sourceKey=case:{caseId}`. During document processing, the agent calls `index_case_documents` with the same identity so idempotency avoids duplicate embedding work, then calls `enrich_customer_context` to index supporting evidence under `sourceType=customer-context` and `sourceKey=assets:{caseId}`. The agent uses `search_case_evidence` with optional `sourceType` filters to compare submitted documents against supporting context with Cohere rerank. Policies are still indexed by deploy-time seed.
 
 ## Future Extension
 

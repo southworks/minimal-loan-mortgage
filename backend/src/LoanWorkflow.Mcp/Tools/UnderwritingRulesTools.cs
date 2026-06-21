@@ -55,7 +55,7 @@ public sealed class UnderwritingRulesTools
                 category,
                 $"Summarize {category} evidence for underwriting.",
                 topK: 2,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             categories.Add(new UnderwritingCategoryContext
             {
@@ -93,7 +93,7 @@ public sealed class UnderwritingRulesTools
             executionId,
             query,
             topK,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         return new SearchCaseEvidenceResponse
         {
