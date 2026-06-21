@@ -62,7 +62,7 @@ public sealed class FoundryEmbeddingService
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             await ApplyAuthorizationAsync(request, cancellationToken);
-            request.Content = JsonContent.Create(new AzureEmbedRequest
+            request.Content = FoundryHttpExtensions.CreateJsonContent(new AzureEmbedRequest
             {
                 Model = _options.EmbedModelName,
                 Input = texts,
@@ -177,7 +177,7 @@ public sealed class FoundryRerankService
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             await ApplyAuthorizationAsync(request, cancellationToken);
-            request.Content = JsonContent.Create(new RerankRequest
+            request.Content = FoundryHttpExtensions.CreateJsonContent(new RerankRequest
             {
                 Model = _options.RerankModelName,
                 Query = query,

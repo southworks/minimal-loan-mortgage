@@ -1,7 +1,18 @@
+using System.Net.Http.Headers;
+using System.Text.Json;
+
 namespace LoanWorkflow.Mcp.Adapters;
 
 internal static class FoundryHttpExtensions
 {
+    public static ByteArrayContent CreateJsonContent<T>(T value)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(value);
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        return content;
+    }
+
     public static async Task EnsureFoundrySuccessAsync(
         this HttpResponseMessage response,
         string operation,
