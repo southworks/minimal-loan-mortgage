@@ -3,6 +3,7 @@ using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Models;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using LoanWorkflow.Mcp.Models;
 using LoanWorkflow.Mcp.Options;
 using Microsoft.Extensions.Options;
@@ -337,20 +338,29 @@ public sealed class EvidenceIndexAdapter
 
     private static string EscapeFilterValue(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
-    private async Task<EvidenceChunkDocument?> GetMetadataAsync(
+    private async Task<EvidenceMetadataDocument?> GetMetadataAsync(
         string metadataId,
         CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _searchClient.GetDocumentAsync<EvidenceChunkDocument>(
+            var response = await _searchClient.GetDocumentAsync<EvidenceMetadataDocument>(
                 metadataId,
+                new GetDocumentOptions
+                {
+                    SelectedFields = { "contentHash", "sourceDocumentCount", "chunkCount" }
+                },
                 cancellationToken: cancellationToken);
 
             return response.Value;
         }
         catch (Azure.RequestFailedException exception) when (exception.Status == 404)
         {
+            return null;
+        }
+        catch (JsonException)
+        {
+            // Legacy or partial metadata documents may not match the current schema; treat as missing.
             return null;
         }
     }
@@ -457,6 +467,15 @@ public sealed class EvidenceIndexAdapter
         public string? Category { get; set; }
 
         public string? ChunkText { get; set; }
+    }
+
+    private sealed class EvidenceMetadataDocument
+    {
+        public string? ContentHash { get; set; }
+
+        public int SourceDocumentCount { get; set; }
+
+        public int ChunkCount { get; set; }
     }
 
     public sealed class EvidenceChunkDocument
