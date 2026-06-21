@@ -233,7 +233,7 @@ public sealed class BasicLoanWorkflowService
                 break;
 
             case SuperStepCompletedEvent superStepCompletedEvent:
-                if (!(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
+                if (!(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false)) {
                     execution.Status = BasicWorkflowStatus.Completed;
                     execution.CurrentAgent = null;
                     Touch(execution);
