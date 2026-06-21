@@ -224,6 +224,90 @@ public sealed class EvidenceIndexAdapter
         return await RerankEvidenceAsync(query, candidates, topK, cancellationToken);
     }
 
+    public async Task<GetApplicationProfileResponse> GetApplicationProfileAsync(
+        string caseId,
+        string executionId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+
+        var chunks = await ListWorkflowPayloadChunksAsync(caseId, executionId, cancellationToken);
+        var applicationChunks = chunks
+            .Where(chunk => ApplicationProfileParser.LooksLikeApplicationDocument(chunk.ChunkText ?? string.Empty))
+            .ToArray();
+
+        if (applicationChunks.Length == 0)
+        {
+            var searchMatches = await SearchAsync(
+                caseId,
+                executionId,
+                "loan application requested amount purchase price loan purpose product occupancy declared financials",
+                topK: 5,
+                WorkflowPayloadSourceType,
+                cancellationToken);
+
+            applicationChunks = searchMatches
+                .Select(match => new WorkflowPayloadChunk
+                {
+                    DocumentId = match.DocumentId,
+                    ChunkText = match.Snippet
+                })
+                .Where(chunk => ApplicationProfileParser.LooksLikeApplicationDocument(chunk.ChunkText ?? string.Empty))
+                .ToArray();
+        }
+
+        if (applicationChunks.Length == 0)
+        {
+            return new GetApplicationProfileResponse
+            {
+                CaseId = caseId,
+                ExecutionId = executionId,
+                Profile = new ApplicationProfile(),
+                Found = false
+            };
+        }
+
+        string combinedText = string.Join(
+            Environment.NewLine,
+            applicationChunks
+                .Select(chunk => chunk.ChunkText)
+                .Where(text => !string.IsNullOrWhiteSpace(text))
+                .Distinct(StringComparer.Ordinal));
+
+        return new GetApplicationProfileResponse
+        {
+            CaseId = caseId,
+            ExecutionId = executionId,
+            Profile = ApplicationProfileParser.Parse(combinedText),
+            SourceDocumentId = applicationChunks[0].DocumentId,
+            Found = true
+        };
+    }
+
+    private async Task<IReadOnlyList<WorkflowPayloadChunk>> ListWorkflowPayloadChunksAsync(
+        string caseId,
+        string executionId,
+        CancellationToken cancellationToken)
+    {
+        var filter = BuildSearchFilter(caseId, executionId, category: null, WorkflowPayloadSourceType);
+        var searchOptions = new SearchOptions
+        {
+            Size = 50,
+            Filter = filter,
+            Select = { "documentId", "chunkText" }
+        };
+
+        var candidates = await CollectSearchResultsAsync("*", searchOptions, cancellationToken);
+        return candidates
+            .Select(candidate => new WorkflowPayloadChunk
+            {
+                DocumentId = candidate.DocumentId,
+                ChunkText = candidate.ChunkText
+            })
+            .ToArray();
+    }
+
     private async Task<IReadOnlyList<EvidenceSearchCandidate>> SearchCandidatesAsync(
         string caseId,
         string executionId,
@@ -615,6 +699,13 @@ public sealed class EvidenceIndexAdapter
         public string? DocumentType { get; set; }
 
         public string? Category { get; set; }
+
+        public string? ChunkText { get; set; }
+    }
+
+    private sealed class WorkflowPayloadChunk
+    {
+        public string? DocumentId { get; set; }
 
         public string? ChunkText { get; set; }
     }

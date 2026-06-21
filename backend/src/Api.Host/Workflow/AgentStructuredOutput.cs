@@ -17,6 +17,18 @@ public sealed class AgentStructuredOutput
 
     [JsonPropertyName("evidence")]
     public required string Evidence { get; init; }
+
+    [JsonPropertyName("riskLevel")]
+    public string? RiskLevel { get; init; }
+
+    [JsonPropertyName("policyRefs")]
+    public IReadOnlyList<string>? PolicyRefs { get; init; }
+
+    [JsonPropertyName("anomalies")]
+    public IReadOnlyList<string>? Anomalies { get; init; }
+
+    [JsonPropertyName("keyFacts")]
+    public IReadOnlyList<string>? KeyFacts { get; init; }
 }
 
 public sealed class AgentStepResult
@@ -29,7 +41,29 @@ public sealed class AgentStepResult
 
     public required string Evidence { get; init; }
 
+    public string? RiskLevel { get; init; }
+
+    public IReadOnlyList<string>? PolicyRefs { get; init; }
+
+    public IReadOnlyList<string>? Anomalies { get; init; }
+
+    public IReadOnlyList<string>? KeyFacts { get; init; }
+
     public required DateTimeOffset CompletedAtUtc { get; init; }
+
+    public static AgentStepResult FromStructuredOutput(string agentName, AgentStructuredOutput output) =>
+        new()
+        {
+            AgentName = agentName,
+            Summary = output.Summary,
+            Decision = output.Decision,
+            Evidence = output.Evidence,
+            RiskLevel = output.RiskLevel,
+            PolicyRefs = output.PolicyRefs,
+            Anomalies = output.Anomalies,
+            KeyFacts = output.KeyFacts,
+            CompletedAtUtc = DateTimeOffset.UtcNow
+        };
 }
 
 public static class AgentStructuredOutputParser
@@ -41,10 +75,10 @@ public static class AgentStructuredOutputParser
 
     public static AgentStepResult Parse(string agentName, string rawOutput)
     {
-        AgentStepResult? structured = TryParse(agentName, rawOutput);
+        AgentStructuredOutput? structured = TryParseStructuredOutput(rawOutput);
         if (structured is not null)
         {
-            return structured;
+            return AgentStepResult.FromStructuredOutput(agentName, structured);
         }
 
         if (string.IsNullOrWhiteSpace(rawOutput))
@@ -64,7 +98,7 @@ public static class AgentStructuredOutputParser
             $"Agent '{agentName}' did not return valid structured JSON. Expected properties: summary, decision, evidence.");
     }
 
-    public static AgentStepResult? TryParse(string agentName, string rawOutput)
+    public static AgentStructuredOutput? TryParseStructuredOutput(string rawOutput)
     {
         if (string.IsNullOrWhiteSpace(rawOutput))
         {
@@ -79,7 +113,7 @@ public static class AgentStructuredOutputParser
 
         foreach (string candidate in CollectJsonCandidates(rawOutput))
         {
-            AgentStepResult? parsed = TryParseFlexible(agentName, candidate);
+            AgentStructuredOutput? parsed = TryParseStructuredOutputFromJson(candidate);
             if (parsed is not null)
             {
                 return parsed;
@@ -89,7 +123,15 @@ public static class AgentStructuredOutputParser
         return null;
     }
 
-    private static AgentStepResult? TryParseFlexible(string agentName, string json)
+    public static AgentStepResult? TryParse(string agentName, string rawOutput)
+    {
+        AgentStructuredOutput? structured = TryParseStructuredOutput(rawOutput);
+        return structured is null
+            ? null
+            : AgentStepResult.FromStructuredOutput(agentName, structured);
+    }
+
+    private static AgentStructuredOutput? TryParseStructuredOutputFromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -102,7 +144,7 @@ public static class AgentStructuredOutputParser
             !string.IsNullOrWhiteSpace(strict.Decision) &&
             !string.IsNullOrWhiteSpace(strict.Evidence))
         {
-            return ToStepResult(agentName, strict.Summary, strict.Decision, strict.Evidence);
+            return strict;
         }
 
         try
@@ -125,7 +167,16 @@ public static class AgentStructuredOutputParser
                 return null;
             }
 
-            return ToStepResult(agentName, summary, decision, evidence);
+            return new AgentStructuredOutput
+            {
+                Summary = summary,
+                Decision = decision,
+                Evidence = evidence,
+                RiskLevel = ReadOptionalString(root, "riskLevel"),
+                PolicyRefs = ReadOptionalStringArray(root, "policyRefs"),
+                Anomalies = ReadOptionalStringArray(root, "anomalies"),
+                KeyFacts = ReadOptionalStringArray(root, "keyFacts")
+            };
         }
         catch (JsonException)
         {
@@ -193,19 +244,41 @@ public static class AgentStructuredOutputParser
         return false;
     }
 
-    private static AgentStepResult ToStepResult(
-        string agentName,
-        string summary,
-        string decision,
-        string evidence) =>
-        new()
+    private static string? ReadOptionalString(JsonElement root, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value))
         {
-            AgentName = agentName,
-            Summary = summary,
-            Decision = decision,
-            Evidence = evidence,
-            CompletedAtUtc = DateTimeOffset.UtcNow
-        };
+            return null;
+        }
+
+        return value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : value.GetRawText();
+    }
+
+    private static IReadOnlyList<string>? ReadOptionalStringArray(JsonElement root, string propertyName)
+    {
+        if (!TryGetPropertyIgnoreCase(root, propertyName, out JsonElement value)
+            || value.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var items = new List<string>();
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                string? text = item.GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    items.Add(text);
+                }
+            }
+        }
+
+        return items.Count == 0 ? null : items;
+    }
 
     private static string NormalizeJsonPayload(string text)
     {

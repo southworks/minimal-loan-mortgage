@@ -72,14 +72,17 @@ public sealed class AgentDefinitionBuilder
         builder.AppendLine(bundle.Instructions);
         builder.AppendLine();
         builder.AppendLine("## Structured Output Contract");
-        builder.AppendLine("Return JSON only with these properties: summary, decision, evidence.");
+        builder.AppendLine("Return JSON only with these required properties: summary, decision, evidence.");
         builder.AppendLine("The API requires summary, decision, and evidence.");
+        builder.AppendLine("Optional properties when applicable: riskLevel, policyRefs, anomalies, keyFacts.");
         builder.AppendLine();
         builder.AppendLine("Formatting rules:");
         builder.AppendLine("- Return raw JSON only. Do not wrap the JSON in markdown code fences.");
         builder.AppendLine("- Do not include extra text before or after the JSON.");
         builder.AppendLine("- Use valid JSON syntax. Numeric values must not include currency symbols such as $.");
         builder.AppendLine("- evidence must be a plain string, not an object or array.");
+        builder.AppendLine("- riskLevel must be Low or Medium when provided.");
+        builder.AppendLine("- policyRefs, anomalies, and keyFacts must be arrays of strings when provided.");
         builder.AppendLine();
         builder.AppendLine("## Allowed Decision Values");
         foreach (string decision in bundle.Manifest.AllowedDecisions)

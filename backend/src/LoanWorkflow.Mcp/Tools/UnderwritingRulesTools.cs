@@ -29,6 +29,14 @@ public sealed class UnderwritingRulesTools
     }
 
     [McpServerTool]
+    [Description("Returns the requested loan profile parsed from indexed workflow-payload application evidence.")]
+    public Task<GetApplicationProfileResponse> GetApplicationProfile(
+        string caseId,
+        string executionId,
+        CancellationToken cancellationToken = default) =>
+        _evidenceIndexAdapter.GetApplicationProfileAsync(caseId, executionId, cancellationToken);
+
+    [McpServerTool]
     [Description("Searches indexed case evidence using Azure AI Search and Azure Foundry rerank.")]
     public Task<SearchCaseEvidenceResponse> SearchCaseEvidence(
         string caseId,

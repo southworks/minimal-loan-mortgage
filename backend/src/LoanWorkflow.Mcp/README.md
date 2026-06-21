@@ -9,7 +9,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 | MCP endpoint | Tools |
 | --- | --- |
 | `/document-retrieval/mcp` | `get_case_documents`, `enrich_customer_context`, `index_case_documents`, `search_case_evidence` |
-| `/underwriting-rules/mcp` | `search_case_evidence`, `get_underwriting_context`, `get_relevant_policies` |
+| `/underwriting-rules/mcp` | `get_application_profile`, `search_case_evidence`, `get_underwriting_context`, `get_relevant_policies` |
 | `/policy-knowledge/mcp` | `get_relevant_policies`, `validate_human_decision` |
 | `/loan-setup/mcp` | `build_account_setup_draft` |
 

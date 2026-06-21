@@ -55,16 +55,41 @@ public static class CaseWorkflowPayloadBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
         ArgumentNullException.ThrowIfNull(previousResult);
 
-        var payload = new
+        return CreateJsonMessage(BuildTransitionPayload(caseId, executionId, previousResult));
+    }
+
+    private static object BuildTransitionPayload(
+        string caseId,
+        string executionId,
+        AgentStepResult previousResult)
+    {
+        if (previousResult.RiskLevel is null
+            && previousResult.PolicyRefs is null
+            && previousResult.Anomalies is null
+            && previousResult.KeyFacts is null)
+        {
+            return new
+            {
+                caseId,
+                executionId,
+                summary = previousResult.Summary,
+                decision = previousResult.Decision,
+                evidence = previousResult.Evidence
+            };
+        }
+
+        return new
         {
             caseId,
             executionId,
             summary = previousResult.Summary,
             decision = previousResult.Decision,
-            evidence = previousResult.Evidence
+            evidence = previousResult.Evidence,
+            riskLevel = previousResult.RiskLevel,
+            policyRefs = previousResult.PolicyRefs,
+            anomalies = previousResult.Anomalies,
+            keyFacts = previousResult.KeyFacts
         };
-
-        return CreateJsonMessage(payload);
     }
 
     private static List<ChatMessage> CreateJsonMessages(object payload)

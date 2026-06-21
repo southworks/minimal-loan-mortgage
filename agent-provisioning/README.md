@@ -99,4 +99,11 @@ Each agent returns JSON with:
 - `decision`
 - `evidence`
 
+Optional fields when applicable:
+
+- `riskLevel`
+- `policyRefs`
+- `anomalies`
+- `keyFacts`
+
 The shared schema lives in [shared/agent-structured-output.schema.json](shared/agent-structured-output.schema.json).

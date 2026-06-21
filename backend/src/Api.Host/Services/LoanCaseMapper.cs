@@ -79,6 +79,10 @@ public static class LoanCaseMapper
                 Summary = output.Summary,
                 Decision = output.Decision,
                 Evidence = output.Evidence,
+                RiskLevel = output.RiskLevel,
+                PolicyRefs = output.PolicyRefs,
+                Anomalies = output.Anomalies,
+                KeyFacts = output.KeyFacts,
                 CompletedAtUtc = output.CompletedAtUtc
             };
 

@@ -13,6 +13,32 @@
     "evidence": {
       "type": "string",
       "description": "Key facts or rationale supporting the decision."
+    },
+    "riskLevel": {
+      "type": "string",
+      "description": "Optional risk classification for underwriting outcomes.",
+      "enum": ["Low", "Medium"]
+    },
+    "policyRefs": {
+      "type": "array",
+      "description": "Optional policy reference codes supporting the outcome.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "anomalies": {
+      "type": "array",
+      "description": "Optional short labels for detected discrepancies or concerns.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keyFacts": {
+      "type": "array",
+      "description": "Optional short display-friendly fact strings.",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

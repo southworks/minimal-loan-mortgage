@@ -105,6 +105,14 @@ public sealed class AgentStepResultResponse
 
     public required string Evidence { get; init; }
 
+    public string? RiskLevel { get; init; }
+
+    public IReadOnlyList<string>? PolicyRefs { get; init; }
+
+    public IReadOnlyList<string>? Anomalies { get; init; }
+
+    public IReadOnlyList<string>? KeyFacts { get; init; }
+
     public required DateTimeOffset CompletedAtUtc { get; init; }
 }
 
