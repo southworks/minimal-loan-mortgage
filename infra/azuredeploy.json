@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "12155855848057510821"
+      "templateHash": "16894934777392262448"
     }
   },
   "parameters": {
@@ -161,7 +161,7 @@
     },
     "frontendContainerImage": {
       "type": "string",
-      "defaultValue": "ghcr.io/southworks/cohereloan-webapp:demo",
+      "defaultValue": "ghcr.io/southworks/cohereloan-web:demo",
       "metadata": {
         "description": "Full container image URI for the frontend host."
       }

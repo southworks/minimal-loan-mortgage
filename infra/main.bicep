@@ -67,7 +67,7 @@ param apiContainerImage string = 'ghcr.io/southworks/cohereloan-api:demo'
 param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 
 @description('Full container image URI for the frontend host.')
-param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-webapp:demo'
+param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-web:demo'
 
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
