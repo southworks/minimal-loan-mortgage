@@ -66,6 +66,9 @@ param apiContainerImage string = 'ghcr.io/southworks/cohereloan-api:demo'
 @description('Full container image URI for the MCP host.')
 param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 
+@description('Full container image URI for the frontend host.')
+param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-webapp:demo'
+
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
@@ -85,6 +88,7 @@ var logAnalyticsName = take('${baseName}-logs-${deploymentSuffix}', 63)
 var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 63)
 var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
 var mcpAppName = take('${baseName}-mcp-${deploymentSuffix}', 32)
+var frontendAppName = take('${baseName}-web-${deploymentSuffix}', 32)
 var policySeedJobName = take('${baseName}-policyseed-${deploymentSuffix}', 32)
 var provisioningJobName = take('${baseName}-provision-${deploymentSuffix}', 32)
 var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
@@ -587,6 +591,62 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
+resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: frontendAppName
+  location: location
+  tags: resourceTags
+  properties: {
+    managedEnvironmentId: containerAppsEnvironment.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'auto'
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'frontend'
+          image: frontendContainerImage
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: [
+            { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
+            { name: 'ApiBaseUrl', value: 'https://${apiApp.properties.configuration.ingress.fqdn}/' }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: '/'
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/'
+                port: 8080
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 15
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 1
+        maxReplicas: 1
+      }
+    }
+  }
+}
+
 var mcpBaseUrl = 'https://${mcpApp.properties.configuration.ingress.fqdn}'
 
 resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
@@ -898,6 +958,7 @@ output searchServiceEndpoint string = 'https://${searchService.name}.search.wind
 output documentIntelligenceAccountName string = documentIntelligenceAccount.name
 output documentIntelligenceEndpoint string = documentIntelligenceEndpoint
 output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
+output frontendUrl string = 'https://${frontendApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
 output policySeedJobName string = policySeedJob.name
 output provisioningJobName string = provisioningJob.name

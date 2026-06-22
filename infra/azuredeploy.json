@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "5898292499407664720"
+      "templateHash": "12155855848057510821"
     }
   },
   "parameters": {
@@ -159,6 +159,13 @@
         "description": "Full container image URI for the MCP host."
       }
     },
+    "frontendContainerImage": {
+      "type": "string",
+      "defaultValue": "ghcr.io/southworks/cohereloan-webapp:demo",
+      "metadata": {
+        "description": "Full container image URI for the frontend host."
+      }
+    },
     "provisioningContainerImage": {
       "type": "string",
       "defaultValue": "ghcr.io/southworks/cohereloan-provisioning:demo",
@@ -188,6 +195,7 @@
     "containerAppsEnvironmentName": "[take(format('{0}-cae-{1}', parameters('baseName'), variables('deploymentSuffix')), 63)]",
     "apiAppName": "[take(format('{0}-api-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "mcpAppName": "[take(format('{0}-mcp-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
+    "frontendAppName": "[take(format('{0}-web-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "policySeedJobName": "[take(format('{0}-policyseed-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
     "provisioningJobName": "[take(format('{0}-provision-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]"
   },
@@ -799,6 +807,73 @@
       ]
     },
     {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('frontendAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "auto"
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "frontend",
+              "image": "[parameters('frontendContainerImage')]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              },
+              "env": [
+                {
+                  "name": "ASPNETCORE_ENVIRONMENT",
+                  "value": "Production"
+                },
+                {
+                  "name": "ApiBaseUrl",
+                  "value": "[format('https://{0}/', reference(resourceId('Microsoft.App/containerApps', variables('apiAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+                }
+              ],
+              "probes": [
+                {
+                  "type": "Liveness",
+                  "httpGet": {
+                    "path": "/",
+                    "port": 8080
+                  },
+                  "initialDelaySeconds": 10,
+                  "periodSeconds": 30
+                },
+                {
+                  "type": "Readiness",
+                  "httpGet": {
+                    "path": "/",
+                    "port": 8080
+                  },
+                  "initialDelaySeconds": 5,
+                  "periodSeconds": 15
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', variables('apiAppName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]"
+      ]
+    },
+    {
       "type": "Microsoft.App/jobs",
       "apiVersion": "2024-03-01",
       "name": "[variables('policySeedJobName')]",
@@ -1130,6 +1205,10 @@
     "apiUrl": {
       "type": "string",
       "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('apiAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "frontendUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('frontendAppName')), '2024-03-01').configuration.ingress.fqdn)]"
     },
     "mcpUrl": {
       "type": "string",
