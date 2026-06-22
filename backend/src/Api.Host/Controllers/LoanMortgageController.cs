@@ -9,13 +9,16 @@ namespace CohereLoanAndMortgage.Api.Host.Controllers;
 public sealed class LoanMortgageController : ControllerBase
 {
     private readonly BasicLoanWorkflowService _basicWorkflowService;
+    private readonly BlobDocumentStorageService _documentStorageService;
     private readonly ILogger<LoanMortgageController> _logger;
 
     public LoanMortgageController(
         BasicLoanWorkflowService basicWorkflowService,
+        BlobDocumentStorageService documentStorageService,
         ILogger<LoanMortgageController> logger)
     {
         _basicWorkflowService = basicWorkflowService;
+        _documentStorageService = documentStorageService;
         _logger = logger;
     }
 
@@ -67,6 +70,104 @@ public sealed class LoanMortgageController : ControllerBase
             return Problem(
                 detail: ex.Message,
                 title: "Basic loan workflow failed to start.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    [HttpGet("applications/{caseId}/documents")]
+    public async Task<ActionResult<CaseDocumentsResponse>> GetCaseDocumentsAsync(
+        string caseId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            IReadOnlyList<CaseDocumentInfo> documents = await _documentStorageService.ListCaseDocumentsAsync(
+                caseId,
+                cancellationToken);
+
+            if (documents.Count == 0)
+            {
+                return NotFound(new ProblemDetailsResponse
+                {
+                    Title = "Loan case not found.",
+                    Detail = $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'."
+                });
+            }
+
+            return Ok(new CaseDocumentsResponse
+            {
+                CaseId = caseId.Trim(),
+                Documents = documents
+                    .Select(document => new CaseDocumentResponse
+                    {
+                        FileName = document.FileName,
+                        ContentType = document.ContentType,
+                        BlobName = document.BlobName,
+                        Reference = document.Reference,
+                        LastModifiedUtc = document.LastModifiedUtc
+                    })
+                    .ToArray()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to list documents for case {CaseId}.",
+                caseId);
+
+            return Problem(
+                detail: ex.Message,
+                title: "Failed to list case documents.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    [HttpGet("applications/{caseId}/documents/content")]
+    public async Task<IActionResult> GetCaseDocumentContentAsync(
+        string caseId,
+        [FromQuery] string blobName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            LoadedCaseDocument document = await _documentStorageService.GetCaseDocumentAsync(
+                caseId,
+                blobName,
+                cancellationToken);
+
+            return File(
+                document.Content.ToArray(),
+                document.ContentType,
+                document.FileName);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetailsResponse
+            {
+                Title = "Loan case document not found.",
+                Detail = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetailsResponse
+            {
+                Title = "Loan case document request is invalid.",
+                Detail = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to load document {BlobName} for case {CaseId}.",
+                blobName,
+                caseId);
+
+            return Problem(
+                detail: ex.Message,
+                title: "Failed to load case document.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
