@@ -55,13 +55,6 @@
                     </span>
                 </div>
             }
-            @if (HasMeaningfulDemoAccount(Result.DemoAccountId))
-            {
-                <div class="outcome-metric">
-                    <span class="outcome-metric-label">Account reference</span>
-                    <span class="outcome-metric-value">@Result.DemoAccountId</span>
-                </div>
-            }
         </div>
 
         <p class="outcome-summary-meta">
@@ -87,10 +80,6 @@
         "AwaitingHumanApproval" => "Waiting for human review",
         _ => status
     };
-
-    private static bool HasMeaningfulDemoAccount(string? demoAccountId) =>
-        !string.IsNullOrWhiteSpace(demoAccountId)
-        && !string.Equals(demoAccountId.Trim(), "null", StringComparison.OrdinalIgnoreCase);
 
     private static string GetFairnessOutcomeLabel(bool? passed) =>
         passed == true ? "Passed" : "Escalated";
