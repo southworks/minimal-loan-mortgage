@@ -33,6 +33,17 @@ public sealed class PolicyKnowledgeTools
     }
 
     [McpServerTool]
+    [Description("Retrieves policy entries by exact policy reference codes, such as those listed in underwriting policyRefs.")]
+    public Task<GetRelevantPoliciesResponse> GetPoliciesByRefs(
+        [Description("Policy reference codes to retrieve, for example UW-100 or MR-001.")]
+        string[] policyRefs,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(policyRefs);
+        return _policyIndexAdapter.GetPoliciesByRefsAsync(policyRefs, cancellationToken);
+    }
+
+    [McpServerTool]
     [Description("Performs structural and consistency checks on the human approval decision.")]
     public Task<ValidateHumanDecisionResponse> ValidateHumanDecision(
         string caseId,

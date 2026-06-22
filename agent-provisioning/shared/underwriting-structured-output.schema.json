@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Concise explanation of the underwriting outcome."
+    },
+    "decision": {
+      "type": "string",
+      "description": "The underwriting recommendation."
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Key facts or rationale supporting the decision."
+    },
+    "riskLevel": {
+      "type": "string",
+      "description": "Risk classification for the application.",
+      "enum": ["Low", "Medium"]
+    },
+    "policyRefs": {
+      "type": "array",
+      "description": "Policy reference codes supporting the outcome.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "anomalies": {
+      "type": "array",
+      "description": "Short labels for detected discrepancies or concerns.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keyFacts": {
+      "type": "array",
+      "description": "Short display-friendly fact strings.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "decision",
+    "evidence",
+    "riskLevel",
+    "policyRefs",
+    "anomalies",
+    "keyFacts"
+  ]
+}

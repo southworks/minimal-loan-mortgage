@@ -189,6 +189,50 @@ public sealed class PolicyIndexAdapter
         };
     }
 
+    public async Task<GetRelevantPoliciesResponse> GetPoliciesByRefsAsync(
+        IReadOnlyList<string> policyRefs,
+        CancellationToken cancellationToken = default)
+    {
+        var policies = new List<PolicyMatch>();
+
+        foreach (string policyRef in policyRefs
+                     .Where(reference => !string.IsNullOrWhiteSpace(reference))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var response = await _searchClient.GetDocumentAsync<PolicySearchDocument>(
+                    policyRef,
+                    cancellationToken: cancellationToken);
+
+                if (!string.Equals(response.Value.DocumentType, "policy", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                policies.Add(new PolicyMatch
+                {
+                    PolicyRef = response.Value.PolicyRef,
+                    Rule = response.Value.Rule,
+                    Threshold = response.Value.Threshold,
+                    Action = response.Value.Action,
+                    Exception = response.Value.Exception,
+                    Score = 1
+                });
+            }
+            catch (Azure.RequestFailedException exception) when (exception.Status == 404)
+            {
+                // Ignore missing policy references in demo lookups.
+            }
+        }
+
+        return new GetRelevantPoliciesResponse
+        {
+            Query = string.Join(",", policyRefs),
+            Policies = policies
+        };
+    }
+
     private static PolicyMatch ToPolicyMatch(PolicySearchCandidate candidate, double score = 1) =>
         new()
         {

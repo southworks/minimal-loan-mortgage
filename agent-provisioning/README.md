@@ -41,6 +41,7 @@ agents/
     mcp.json
 shared/
   agent-structured-output.schema.json
+  underwriting-structured-output.schema.json
 config/
   provisioning.json
 ```
@@ -99,11 +100,36 @@ Each agent returns JSON with:
 - `decision`
 - `evidence`
 
-Optional fields when applicable:
+The shared schema lives in [shared/agent-structured-output.schema.json](shared/agent-structured-output.schema.json).
+
+`underwriting-agent` uses an extended strict schema in [shared/underwriting-structured-output.schema.json](shared/underwriting-structured-output.schema.json) that also requires:
 
 - `riskLevel`
 - `policyRefs`
 - `anomalies`
 - `keyFacts`
 
-The shared schema lives in [shared/agent-structured-output.schema.json](shared/agent-structured-output.schema.json).
+`responsible-ai-agent` uses [shared/responsible-ai-structured-output.schema.json](shared/responsible-ai-structured-output.schema.json) with:
+
+- `approvalAssessment`
+- `biasRisk`
+- `supportingFacts`
+- `concerns`
+- `recommendations`
+
+## Responsible AI demo scenarios
+
+After HITL resume, the workflow sends underwriting plus human decision context to `responsible-ai-agent`. Expected outcomes:
+
+| Underwriting | Human | Reviewer comment | Expected direction |
+| --- | --- | --- | --- |
+| Approve | approved | optional | `Approval Supported`, `biasRisk=None` |
+| Reject | approved | missing | `Approval Not Supported`, `biasRisk=Potential` |
+| Reject | approved | plausible rationale | `Approval Supported with Caveats` or `Partially Supported` |
+| Approve | denied | optional | explain clearly; lower priority use case |
+
+Resume the basic workflow with:
+
+```json
+{ "approved": true, "reviewerComment": "Override justified by compensating factors." }
+```

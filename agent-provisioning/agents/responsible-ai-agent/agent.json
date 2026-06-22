@@ -1,14 +1,12 @@
 {
   "name": "responsible-ai-agent",
-  "description": "Reviews fairness, governance, and responsible AI concerns.",
+  "description": "Reviews whether human approval after underwriting is supported and flags potential bias signals.",
   "instructionsFile": "instructions.md",
-  "outputSchemaFile": "../../shared/agent-structured-output.schema.json",
+  "outputSchemaFile": "../../shared/responsible-ai-structured-output.schema.json",
   "allowedDecisions": [
-    "Passed",
-    "Passed with Recommendations",
-    "Policy Warning",
-    "Fairness Concern",
-    "Compliance Concern",
-    "Escalation Required"
+    "Approval Supported",
+    "Approval Supported with Caveats",
+    "Approval Not Supported",
+    "Insufficient Information"
   ]
 }

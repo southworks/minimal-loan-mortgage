@@ -1,0 +1,72 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Concise explanation of the responsible AI review outcome."
+    },
+    "decision": {
+      "type": "string",
+      "description": "Overall assessment of whether the human approval is supported."
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Key facts and rationale supporting the decision."
+    },
+    "approvalAssessment": {
+      "type": "string",
+      "description": "Whether the human decision is supported by underwriting and available context.",
+      "enum": [
+        "Supported",
+        "Partially Supported",
+        "Not Supported",
+        "Insufficient Information"
+      ]
+    },
+    "biasRisk": {
+      "type": "string",
+      "description": "Potential inconsistency or bias signal from the override pattern.",
+      "enum": ["None", "Low", "Potential", "High"]
+    },
+    "policyRefs": {
+      "type": "array",
+      "description": "Policy reference codes supporting the assessment.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supportingFacts": {
+      "type": "array",
+      "description": "Concrete facts from underwriting and human decision context.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "concerns": {
+      "type": "array",
+      "description": "Identified consistency, override, or bias concerns.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "Suggested mitigations or follow-up actions.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "decision",
+    "evidence",
+    "approvalAssessment",
+    "biasRisk",
+    "policyRefs",
+    "supportingFacts",
+    "concerns",
+    "recommendations"
+  ]
+}
