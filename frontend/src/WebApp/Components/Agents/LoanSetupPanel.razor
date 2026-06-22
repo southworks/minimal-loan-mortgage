@@ -1,0 +1,53 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+@if (Result is not null)
+{
+    var setupFailed = IsFailed(Result);
+    <AgentPanel AgentName="Account Setup"
+                Role="Stage 5"
+                Purpose="Create the final account record once approval and governance checks are complete."
+                StatusLabel="@(setupFailed ? "Failed" : "Completed")"
+                StatusCssClass="@(setupFailed ? "agent-status-warning" : "agent-status-success")"
+                CssClass="agent-loan-setup"
+                PanelId="stage-account-setup"
+                IsCollapsible="true"
+                CollapsedByDefault="true">
+        <div class="final-result-card @(setupFailed ? "decision-rejected" : string.Empty)">
+            <p class="final-result-label">@(setupFailed ? "Account setup failed" : "Account created")</p>
+            @if (HasMeaningfulValue(Result.DemoAccountId))
+            {
+                <p class="final-result-value">@Result.DemoAccountId</p>
+            }
+            @if (HasMeaningfulValue(Result.SetupSummary))
+            {
+                <p class="final-result-summary">@Result.SetupSummary</p>
+            }
+            <p class="final-result-meta">Completed @Result.CompletedAt.ToLocalTime().ToString("g")</p>
+        </div>
+        @if (Result.EvidenceItems?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Evidence used</h4>
+                <StructuredEvidenceList Items="Result.EvidenceItems" />
+            </div>
+        }
+        <div class="agent-detail-block">
+            <h4>Next step</h4>
+            <p class="agent-summary">@(setupFailed ? "Review the completion issue before closing the case." : "Move the application to completed status and share the final summary.")</p>
+        </div>
+    </AgentPanel>
+}
+
+@code {
+    [Parameter]
+    public LoanSetupResultDto? Result { get; set; }
+
+    private static bool IsFailed(LoanSetupResultDto result) =>
+        string.Equals(result.Status, "Failed", StringComparison.OrdinalIgnoreCase)
+        || !HasMeaningfulValue(result.DemoAccountId);
+
+    private static bool HasMeaningfulValue(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && !string.Equals(value.Trim(), "null", StringComparison.OrdinalIgnoreCase);
+}

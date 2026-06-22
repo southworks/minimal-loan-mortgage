@@ -1,0 +1,39 @@
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+<div class="workflow-banner @BannerClass">
+    <div class="workflow-banner-content">
+        <StatusBadge Status="@Status" Label="@WorkflowStageUi.ToBusinessStatusLabel(Status)" />
+        <span class="workflow-stage-label">Stage: @WorkflowStageUi.ToBusinessStageName(CurrentStage, CurrentStage)</span>
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <span class="workflow-message">@Message</span>
+        }
+    </div>
+    @if (IsBusy)
+    {
+        <span class="workflow-busy">Processing...</span>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CurrentStage { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    private string BannerClass => Status switch
+    {
+        "AwaitingHumanApproval" => "banner-review",
+        "Approved" or "Completed" => "banner-success",
+        "Rejected" or "Failed" => "banner-danger",
+        _ => "banner-neutral"
+    };
+}

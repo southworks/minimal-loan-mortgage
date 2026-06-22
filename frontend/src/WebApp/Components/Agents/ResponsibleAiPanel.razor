@@ -1,0 +1,72 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+@if (Result is not null)
+{
+    <AgentPanel AgentName="Fairness Review"
+                Role="Stage 4"
+                Purpose="Review governance signals, fairness concerns, and decision consistency before account setup."
+                StatusLabel="@(Result.Passed ? "Completed" : "Escalated")"
+                StatusCssClass="@(Result.Passed ? "agent-status-success" : "agent-status-warning")"
+                CssClass="agent-rai"
+                PanelId="stage-fairness-review"
+                IsCollapsible="true"
+                CollapsedByDefault="true">
+        @if (!string.IsNullOrWhiteSpace(Result.Summary))
+        {
+            <p class="agent-summary"><strong>What happened:</strong> @Result.Summary</p>
+        }
+        else
+        {
+            <p class="agent-summary">
+                @(Result.Passed ? "The governance review did not identify blocking fairness concerns." : "The governance review surfaced concerns that require attention.")
+            </p>
+        }
+
+        <p class="agent-metric"><strong>Confidence:</strong> @(Result.Passed ? "High" : "Moderate")</p>
+
+        @if (Result.FlagItems?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Bias indicators</h4>
+                <StructuredFlagList Items="Result.FlagItems" />
+            </div>
+        }
+
+        @if (Result.FairnessFlags.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Decision</h4>
+                <FlagList Items="Result.FairnessFlags" Variant="flag-warning" />
+            </div>
+        }
+
+        @if (Result.Observations.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Governance observations</h4>
+                <EvidenceList Items="Result.Observations" />
+            </div>
+        }
+
+        <div class="agent-detail-block">
+            <h4>Escalation status</h4>
+            <p class="agent-summary">@(Result.EscalationRecommended ? "Escalation is recommended before final completion." : "No additional escalation is recommended.")</p>
+        </div>
+
+        <div class="agent-detail-block">
+            <h4>Next step</h4>
+            <p class="agent-summary">@(Result.Passed ? "Proceed to account setup." : "Resolve the governance concerns before continuing.")</p>
+        </div>
+
+        @if (Result.RequiresHumanReview)
+        {
+            <p class="rai-escalation">This governance step keeps the case under visible oversight.</p>
+        }
+    </AgentPanel>
+}
+
+@code {
+    [Parameter]
+    public ResponsibleAiResultDto? Result { get; set; }
+}

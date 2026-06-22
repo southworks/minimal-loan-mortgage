@@ -1,0 +1,156 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Governance
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Health
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+<section class="runtime-status-card" aria-label="Agent runtime and execution status">
+    <h3>Runtime</h3>
+    @if (Runtime is null)
+    {
+        <p class="runtime-detail">Runtime status unavailable.</p>
+    }
+    else
+    {
+        <dl class="runtime-grid">
+            <div>
+                <dt>Configured mode</dt>
+                <dd>@Runtime.ConfiguredMode</dd>
+            </div>
+            <div>
+                <dt>Effective mode</dt>
+                <dd>@Runtime.EffectiveMode</dd>
+            </div>
+            <div>
+                <dt>Ready</dt>
+                <dd>@(Runtime.IsDegraded ? "No" : "Yes")</dd>
+            </div>
+            @if (Readiness is not null)
+            {
+                <div>
+                    <dt>Platform readiness</dt>
+                    <dd>@Readiness.Status</dd>
+                </div>
+            }
+            @if (LastRefreshUtc is not null)
+            {
+                <div>
+                    <dt>Last refresh (UTC)</dt>
+                    <dd>@LastRefreshUtc.Value.ToString("u")</dd>
+                </div>
+            }
+        </dl>
+        <p class="runtime-detail">@Runtime.Detail</p>
+    }
+
+    @if (Dependencies.Count > 0)
+    {
+        <h4>Dependencies</h4>
+        <ul class="dependency-list">
+            @foreach (var dependency in Dependencies)
+            {
+                <li class="dependency-item dependency-@dependency.Status.ToLowerInvariant()">
+                    <span class="dependency-name">@dependency.Name</span>
+                    <span class="dependency-status">@dependency.Status</span>
+                    @if (!string.IsNullOrWhiteSpace(dependency.Detail))
+                    {
+                        <span class="dependency-detail">@dependency.Detail</span>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    @if (WorkflowRun is not null)
+    {
+        <h4>Hosted run</h4>
+        <dl class="runtime-grid">
+            <div>
+                <dt>Run ID</dt>
+                <dd><code>@WorkflowRun.RunId</code></dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>@WorkflowRun.Status</dd>
+            </div>
+            <div>
+                <dt>Stage</dt>
+                <dd>@(WorkflowRun.CurrentStage ?? "n/a")</dd>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(WorkflowRun.FoundryThreadId))
+            {
+                <div>
+                    <dt>Foundry thread</dt>
+                    <dd><code>@WorkflowRun.FoundryThreadId</code></dd>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(WorkflowRun.FoundryRunId))
+            {
+                <div>
+                    <dt>Foundry run</dt>
+                    <dd><code>@WorkflowRun.FoundryRunId</code></dd>
+                </div>
+            }
+            <div>
+                <dt>Created (UTC)</dt>
+                <dd>@WorkflowRun.CreatedAt.ToString("u")</dd>
+            </div>
+            <div>
+                <dt>Updated (UTC)</dt>
+                <dd>@WorkflowRun.UpdatedAt.ToString("u")</dd>
+            </div>
+        </dl>
+
+        @if (!string.IsNullOrWhiteSpace(WorkflowRun.ErrorMessage))
+        {
+            <div class="runtime-error" role="alert">
+                <strong>Run error</strong>
+                <p>@WorkflowRun.ErrorMessage</p>
+            </div>
+        }
+    }
+
+    @if (GovernanceEvidence is not null)
+    {
+        <h4>Trace signals</h4>
+        <p class="runtime-detail">
+            Lightweight execution evidence for demo purposes. Full distributed tracing remains in Application Insights.
+        </p>
+        <dl class="runtime-grid">
+            <div>
+                <dt>Trace evidence present</dt>
+                <dd>@(GovernanceEvidence.TraceEvidencePresent ? "Yes" : "No")</dd>
+            </div>
+            <div>
+                <dt>MCP tool invocations</dt>
+                <dd>@GovernanceEvidence.McpToolInvocationCount</dd>
+            </div>
+        </dl>
+
+        @if (GovernanceEvidence.ExecutedAgentRoles.Count > 0)
+        {
+            <div class="runtime-subblock">
+                <h5>Executed agent roles</h5>
+                <FlagList Items="GovernanceEvidence.ExecutedAgentRoles" Variant="flag-warning" />
+            </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter]
+    public AgentRuntimeStatusDto? Runtime { get; set; }
+
+    [Parameter]
+    public ReadinessResponse? Readiness { get; set; }
+
+    [Parameter]
+    public WorkflowRunStatusResponse? WorkflowRun { get; set; }
+
+    [Parameter]
+    public GovernanceEvidenceSummaryDto? GovernanceEvidence { get; set; }
+
+    [Parameter]
+    public DateTimeOffset? LastRefreshUtc { get; set; }
+
+    private IReadOnlyList<DependencyHealthDto> Dependencies => Readiness?.Dependencies ?? [];
+}

@@ -1,0 +1,12 @@
+<div class="loading-block" role="status" aria-live="polite">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p class="loading-message">@Message</p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Loading...";
+}

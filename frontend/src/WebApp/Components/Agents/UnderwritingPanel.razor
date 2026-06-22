@@ -1,0 +1,249 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+@using Cohere.LoanProcessing.WebApp.Models
+
+
+
+@if (Result is not null)
+
+{
+
+    var inputFindings = StageExplainabilityUi.UnderwritingInputFindings(Result);
+
+    var decisionFindings = StageExplainabilityUi.UnderwritingDecisionFindings(Result);
+
+
+
+    <AgentPanel AgentName="Financial Assessment"
+
+                Role="Stage 2"
+
+                Purpose="Assess financial strength, surface anomalies, and form a business recommendation supported by evidence."
+
+                StatusLabel="@Result.Recommendation"
+
+                StatusCssClass="@WorkflowStageUi.RecommendationCssClass(Result.Recommendation)"
+
+                CssClass="agent-underwriting"
+
+                PanelId="stage-financial-assessment"
+
+                IsCollapsible="true"
+
+                CollapsedByDefault="true">
+
+        @if (!string.IsNullOrWhiteSpace(Result.Summary))
+
+        {
+
+            <p class="agent-summary"><strong>What happened:</strong> @Result.Summary</p>
+
+        }
+
+
+
+        @if (Result.HasCriticalAnomaly)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <FlagList Items='["Critical anomaly detected. Manual review is required before proceeding."]' Variant="flag-danger" />
+
+            </div>
+
+        }
+
+
+
+        <div class="recommendation-card @WorkflowStageUi.RecommendationCssClass(Result.Recommendation)">
+
+            <span class="recommendation-label">Business decision</span>
+
+            <span class="recommendation-value">@Result.Recommendation</span>
+
+        </div>
+
+
+
+        @if (Result.RetrievalSummary is not null)
+
+        {
+
+            <RetrievalSummaryCard Summary="Result.RetrievalSummary" />
+
+        }
+
+
+
+        @if (Result.Scores?.RiskScore is not null)
+
+        {
+
+            <p class="agent-metric"><strong>Evidence relevance:</strong> @AverageEvidenceConfidence(Result)</p>
+
+            <p class="agent-metric"><strong>Risk indicators:</strong> @Result.Scores.RiskScore.Value.ToString("P0")</p>
+
+        }
+
+
+
+        @if (inputFindings.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <h4>Inputs considered</h4>
+
+                <EvidenceList Items="inputFindings" />
+
+            </div>
+
+        }
+
+
+
+        @if (Result.RationaleItems?.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <EvidenceDisclosurePanel Title="Why it happened"
+                                         RationaleItems="Result.RationaleItems"
+                                         EmptyMessage="No rationale items recorded." />
+
+            </div>
+
+        }
+
+
+
+        @if (Result.EvidenceItems?.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <EvidenceDisclosurePanel Title="Evidence used"
+                                         StructuredItems="Result.EvidenceItems"
+                                         EmptyMessage="No policy or rule evidence was attached to this recommendation." />
+
+            </div>
+
+        }
+
+        else if (Result.Evidence.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <EvidenceDisclosurePanel Title="Evidence used"
+                                         Items="Result.Evidence"
+                                         EmptyMessage="No policy or rule evidence was attached to this recommendation." />
+
+            </div>
+
+        }
+
+
+
+        @if (decisionFindings.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <h4>Decision drivers</h4>
+
+                <EvidenceList Items="decisionFindings" />
+
+            </div>
+
+        }
+
+
+
+        @if (Result.RiskSignals.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <h4>Risk signals</h4>
+
+                <FlagList Items="Result.RiskSignals" Variant="flag-warning" />
+
+            </div>
+
+        }
+
+
+
+        @if (Result.Anomalies.Count > 0)
+
+        {
+
+            <div class="agent-detail-block">
+
+                <h4>Anomalies</h4>
+
+                <FlagList Items="Result.Anomalies" Variant="flag-danger" />
+
+            </div>
+
+        }
+
+
+
+        <div class="agent-detail-block">
+
+            <h4>Next step</h4>
+
+            <p class="agent-summary">@(Result.Recommendation.Equals("Approve", StringComparison.OrdinalIgnoreCase)
+
+                ? "Present the recommendation for mandatory human review."
+
+                : "Escalate the case to human review with the supporting findings and concerns.")</p>
+
+        </div>
+
+    </AgentPanel>
+
+}
+
+
+
+@code {
+
+    [Parameter]
+
+    public UnderwritingResultDto? Result { get; set; }
+
+
+
+    private static string AverageEvidenceConfidence(UnderwritingResultDto result)
+
+    {
+
+        if (result.EvidenceItems?.Count > 0)
+
+        {
+
+            return $"{result.EvidenceItems.Average(item => item.Relevance):P0}";
+
+        }
+
+
+
+        return result.Scores?.RiskScore is not null ? "Moderate" : "Pending";
+
+    }
+
+}
+
+

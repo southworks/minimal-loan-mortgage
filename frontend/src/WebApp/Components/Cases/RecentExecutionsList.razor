@@ -1,0 +1,49 @@
+@using Cohere.LoanProcessing.WebApp.State
+
+<div class="recent-executions">
+    <p class="recent-executions-count" aria-live="polite">
+        Showing @State.VisibleCount of @State.TotalCount recent execution@(State.TotalCount == 1 ? "" : "s")
+    </p>
+
+    <ul class="recent-executions-list" aria-label="Recent executions">
+        @foreach (var loanCase in State.VisibleCases)
+        {
+            <RecentExecutionRow Case="loanCase"
+                                Disabled="Disabled"
+                                OnOpenWorkflow="OnOpenWorkflow" />
+        }
+    </ul>
+
+    @if (State.CanExpand)
+    {
+        <div class="recent-executions-footer">
+            @if (State.IsExpanded)
+            {
+                <button type="button" class="btn btn-link" disabled="@Disabled" @onclick="ShowLess">
+                    Show less
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-link" disabled="@Disabled" @onclick="ShowMore">
+                    Show more (@State.HiddenCount more)
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public RecentExecutionsListState State { get; set; } = default!;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenWorkflow { get; set; }
+
+    private void ShowMore() => State.ShowMore();
+
+    private void ShowLess() => State.ShowLess();
+}

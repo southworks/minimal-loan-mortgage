@@ -1,0 +1,39 @@
+<button type="@Type"
+        class="@CssClass"
+        disabled="@(Disabled || IsLoading)"
+        @onclick="OnClick">
+    <span class="btn-loading-content">
+        @if (IsLoading)
+        {
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <span>@LoadingText</span>
+        }
+        else
+        {
+            @ChildContent
+        }
+    </span>
+</button>
+
+@code {
+    [Parameter]
+    public string Type { get; set; } = "button";
+
+    [Parameter]
+    public string CssClass { get; set; } = "btn btn-primary";
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string LoadingText { get; set; } = "Loading...";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+}

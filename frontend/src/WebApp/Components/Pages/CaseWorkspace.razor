@@ -1,0 +1,616 @@
+@page "/cases/{CaseId}"
+@page "/cases/{CaseId}/{ExecutionId}"
+@rendermode InteractiveServer
+@using Cohere.LoanProcessing.WebApp.Components.Agents
+@using Cohere.LoanProcessing.WebApp.Components.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Components.HumanReview
+@using Cohere.LoanProcessing.WebApp.Components.Layout
+@using Cohere.LoanProcessing.WebApp.Components.Workflow
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Models
+@using Cohere.LoanProcessing.WebApp.State
+@inject CaseWorkspaceState Workspace
+@inject CaseWorkspaceSectionState SectionState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Case @CaseId</PageTitle>
+
+@if (_isNavigatingHome)
+{
+    <PageTransitionLoader Message="Opening application portfolio..." Blocking="true" />
+}
+
+@if (!string.IsNullOrWhiteSpace(Workspace.Error))
+{
+    <ErrorState Title="Case workspace error"
+                Message="@Workspace.Error"
+                TraceId="@Workspace.ErrorTraceId"
+                CaseId="@Workspace.ErrorCaseId"
+                OnRetry="RefreshAsync" />
+}
+
+@if (Workspace.IsBusy && Workspace.CurrentCase is null)
+{
+    <LoadingBlock Message="Loading case..." />
+}
+else if (Workspace.CurrentCase is null)
+{
+    <EmptyState Title="Case not found"
+                Description="The requested case could not be loaded.">
+        <button type="button" class="btn btn-secondary" disabled="@_isNavigatingHome" @onclick="NavigateHomeAsync">Back to portfolio</button>
+    </EmptyState>
+}
+else
+{
+    var currentCase = Workspace.CurrentCase;
+    var outcome = BuildOutcomeSummary(currentCase);
+    var timelineSteps = BuildTimelineSteps(currentCase);
+    var documentSummary = GetStageSectionSummary("DocumentProcessing", currentCase);
+    var financialSummary = GetStageSectionSummary("Underwriting", currentCase);
+    var humanSummary = GetHumanReviewSectionSummary(currentCase);
+    var fairnessSummary = GetStageSectionSummary("ResponsibleAiReview", currentCase);
+    var accountSummary = GetStageSectionSummary("LoanSetup", currentCase);
+
+    <CascadingValue Value="SectionState">
+        <div class="workspace-header">
+            <div>
+                <a href="/" class="back-link" @onclick="NavigateHomeAsync" @onclick:preventDefault="true">&larr; Back to application portfolio</a>
+                <p class="workspace-kicker">Application file</p>
+                <h1>@currentCase.Applicant.FullName</h1>
+                <p class="workspace-meta">Application reference @currentCase.CaseId</p>
+            </div>
+            <div class="workspace-actions">
+                @if (Workspace.CanStartWorkflow)
+                {
+                    <LoadingButton CssClass="btn btn-primary"
+                                   Disabled="@(Workspace.IsBusy || Workspace.IsPollingWorkflow)"
+                                   IsLoading="@IsOperationLoading(StartWorkflowOperation)"
+                                   LoadingText="Starting workflow..."
+                                   OnClick="StartWorkflowAsync">
+                        Start Workflow
+                    </LoadingButton>
+                }
+                <LoadingButton CssClass="btn btn-secondary"
+                               Disabled="@Workspace.IsBusy"
+                               IsLoading="@IsOperationLoading(RefreshOperation)"
+                               LoadingText="Refreshing..."
+                               OnClick="RefreshAsync">
+                    Refresh
+                </LoadingButton>
+                @if (Workspace.CanContinueAccountSetup)
+                {
+                    <LoadingButton CssClass="btn btn-primary"
+                                   Disabled="@Workspace.IsBusy"
+                                   IsLoading="@IsOperationLoading(AccountSetupOperation)"
+                                   LoadingText="Running setup..."
+                                   OnClick="ContinueAccountSetupAsync">
+                        Run Account Setup
+                    </LoadingButton>
+                }
+            </div>
+        </div>
+
+        <WorkflowStatusBanner Status="@currentCase.Status"
+                              CurrentStage="@currentCase.CurrentWorkflowStage"
+                              Message="@GetStatusMessage(currentCase)"
+                              IsBusy="@(Workspace.IsBusy || Workspace.IsPollingWorkflow)" />
+
+        <div class="workspace-grid">
+            <div class="workspace-column workspace-column-main">
+                @if (outcome is not null)
+                {
+                    <OutcomeSummaryCard Result="outcome" />
+                }
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.DocumentReview"
+                                        Title="Document Review"
+                                        Subtitle="What was collected, verified, and carried forward."
+                                        StatusLabel="@documentSummary.Label"
+                                        StatusCssClass="@documentSummary.CssClass">
+                    @if (currentCase.DocumentProcessing is not null)
+                    {
+                        <DocumentProcessingPanel Result="currentCase.DocumentProcessing" Documents="currentCase.Documents" />
+                    }
+                    else
+                    {
+                        <EmptyState Title="Document review pending"
+                                    Description="Start the workflow to review the application package and document evidence." />
+                    }
+                    <StageTechnicalEvidencePanel StageKey="DocumentProcessing"
+                                                 GovernanceSummary="Workspace.GovernanceSummary"
+                                                 ExecutionTrace="Workspace.ExecutionTrace" />
+                </CollapsiblePageSection>
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.FinancialAssessment"
+                                        Title="Financial Assessment"
+                                        Subtitle="Risk indicators, anomalies, and recommendation."
+                                        StatusLabel="@financialSummary.Label"
+                                        StatusCssClass="@financialSummary.CssClass">
+                    @if (currentCase.Underwriting is not null)
+                    {
+                        <UnderwritingPanel Result="currentCase.Underwriting" />
+                    }
+                    else
+                    {
+                        <EmptyState Title="Financial assessment pending"
+                                    Description="This stage becomes available after document review finishes." />
+                    }
+                    <StageTechnicalEvidencePanel StageKey="Underwriting"
+                                                 GovernanceSummary="Workspace.GovernanceSummary"
+                                                 ExecutionTrace="Workspace.ExecutionTrace" />
+                </CollapsiblePageSection>
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.HumanReview"
+                                        Title="Human Review"
+                                        Subtitle="Record the mandatory human approval decision."
+                                        StatusLabel="@humanSummary.Label"
+                                        StatusCssClass="@humanSummary.CssClass">
+                    <HumanReviewPanel ExistingDecision="currentCase.HumanDecision"
+                                      Underwriting="currentCase.Underwriting"
+                                      CanDecide="Workspace.CanSubmitDecision"
+                                      IsBusy="Workspace.IsBusy"
+                                      OnDecide="SubmitDecisionAsync" />
+                    <StageTechnicalEvidencePanel StageKey="HumanDecision"
+                                                 GovernanceSummary="Workspace.GovernanceSummary"
+                                                 ExecutionTrace="Workspace.ExecutionTrace" />
+                </CollapsiblePageSection>
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.FairnessReview"
+                                        Title="Fairness Review"
+                                        Subtitle="Governance observations and escalation status."
+                                        StatusLabel="@fairnessSummary.Label"
+                                        StatusCssClass="@fairnessSummary.CssClass">
+                    @if (currentCase.ResponsibleAi is not null)
+                    {
+                        <ResponsibleAiPanel Result="currentCase.ResponsibleAi" />
+                    }
+                    else
+                    {
+                        <EmptyState Title="Fairness review pending"
+                                    Description="@GetFairnessPendingMessage(currentCase)" />
+                    }
+                    <StageTechnicalEvidencePanel StageKey="ResponsibleAiReview"
+                                                 GovernanceSummary="Workspace.GovernanceSummary"
+                                                 ExecutionTrace="Workspace.ExecutionTrace" />
+                </CollapsiblePageSection>
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.AccountSetup"
+                                        Title="Account Setup"
+                                        Subtitle="Final approval handoff and account creation."
+                                        StatusLabel="@accountSummary.Label"
+                                        StatusCssClass="@accountSummary.CssClass">
+                    @if (currentCase.LoanSetup is not null)
+                    {
+                        <LoanSetupPanel Result="currentCase.LoanSetup" />
+                    }
+                    else
+                    {
+                        <EmptyState Title="Account setup pending"
+                                    Description="@GetAccountSetupMessage(currentCase)" />
+                    }
+                    <StageTechnicalEvidencePanel StageKey="LoanSetup"
+                                                 GovernanceSummary="Workspace.GovernanceSummary"
+                                                 ExecutionTrace="Workspace.ExecutionTrace" />
+                </CollapsiblePageSection>
+            </div>
+
+            <div class="workspace-column workspace-column-side">
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.Overview"
+                                        Title="Application Summary"
+                                        Subtitle="Applicant and mortgage request summary."
+                                        StatusLabel="@currentCase.Applicant.FullName"
+                                        StatusCssClass="collapsible-status collapsible-status-neutral">
+                    <ApplicantSummaryCard Applicant="currentCase.Applicant" />
+                </CollapsiblePageSection>
+
+                <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.Workflow"
+                                        Title="Workflow Summary"
+                                        Subtitle="Track the application through each business stage."
+                                        StatusLabel="@WorkflowStageUi.ToBusinessStatusLabel(currentCase.Status)"
+                                        StatusCssClass="@($"collapsible-status {WorkflowStageUi.ToCssClass(MapCaseStatusToExecutionStatus(currentCase.Status))}")">
+                    <WorkflowTimeline Steps="timelineSteps" />
+                </CollapsiblePageSection>
+
+            </div>
+        </div>
+    </CascadingValue>
+}
+
+@code {
+    [Parameter]
+    public string CaseId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ExecutionId { get; set; }
+
+    private const string StartWorkflowOperation = "start-workflow";
+    private const string RefreshOperation = "refresh";
+    private const string SubmitDecisionOperation = "submit-decision";
+    private const string AccountSetupOperation = "account-setup";
+    private string? _previousWorkflowStage;
+    private string? _activeOperation;
+    private bool _isNavigatingHome;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Workspace.OnChange += HandleWorkspaceChanged;
+        SectionState.OnChange += HandleSectionStateChanged;
+        await Workspace.LoadCaseAsync(CaseId, ExecutionId);
+        ApplySectionDefaults();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Workspace.CurrentCase?.CaseId != CaseId
+            || !string.Equals(Workspace.ActiveWorkflowRun?.RunId, ExecutionId, StringComparison.OrdinalIgnoreCase))
+        {
+            _previousWorkflowStage = null;
+            await Workspace.LoadCaseAsync(CaseId, ExecutionId);
+            ApplySectionDefaults();
+        }
+    }
+
+    private async Task StartWorkflowAsync()
+    {
+        _activeOperation = StartWorkflowOperation;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var executionId = await Workspace.StartWorkflowAsync();
+            if (!string.IsNullOrWhiteSpace(executionId))
+            {
+                Navigation.NavigateTo($"/cases/{CaseId}/{executionId}");
+            }
+        }
+        finally
+        {
+            _activeOperation = null;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshAsync() =>
+        await RunWorkspaceOperationAsync(RefreshOperation, () => Workspace.RefreshAsync());
+
+    private async Task SubmitDecisionAsync((bool Approved, string? Notes) decision) =>
+        await RunWorkspaceOperationAsync(
+            SubmitDecisionOperation,
+            () => Workspace.SubmitDecisionAsync(decision.Approved, decision.Notes));
+
+    private async Task ContinueAccountSetupAsync() =>
+        await RunWorkspaceOperationAsync(AccountSetupOperation, () => Workspace.ContinueAccountSetupAsync());
+
+    private async Task NavigateHomeAsync()
+    {
+        if (_isNavigatingHome)
+        {
+            return;
+        }
+
+        _isNavigatingHome = true;
+        await InvokeAsync(StateHasChanged);
+        Navigation.NavigateTo("/");
+    }
+
+    private bool IsOperationLoading(string operation) =>
+        string.Equals(_activeOperation, operation, StringComparison.Ordinal);
+
+    private async Task RunWorkspaceOperationAsync(string operation, Func<Task> action)
+    {
+        _activeOperation = operation;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _activeOperation = null;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ApplySectionDefaults()
+    {
+        if (Workspace.CurrentCase is null)
+        {
+            return;
+        }
+
+        SectionState.ApplyDefaults(
+            CaseId,
+            Workspace.CurrentCase,
+            Workspace.WorkflowProgress,
+            Workspace.CanSubmitDecision,
+            Workspace.CanContinueAccountSetup);
+
+        _previousWorkflowStage = Workspace.CurrentCase.CurrentWorkflowStage;
+    }
+
+    private (string Label, string CssClass) GetStageSectionSummary(string stageKey, CaseDetailResponse currentCase)
+    {
+        var progressByKey = Workspace.WorkflowProgress?.Steps
+            .ToDictionary(step => step.StageKey, StringComparer.OrdinalIgnoreCase);
+
+        if (progressByKey?.TryGetValue(stageKey, out var step) == true)
+        {
+            return (
+                WorkflowStageUi.ToLabel(step.ExecutionStatus, step.Name, step.Summary),
+                $"collapsible-status {WorkflowStageUi.ToCssClass(step.ExecutionStatus)}");
+        }
+
+        var fallbackStatus = stageKey switch
+        {
+            "DocumentProcessing" when currentCase.DocumentProcessing is not null => "Succeeded",
+            "Underwriting" when currentCase.Underwriting is not null => "Succeeded",
+            "ResponsibleAiReview" when currentCase.ResponsibleAi is not null => "Succeeded",
+            "LoanSetup" when currentCase.LoanSetup is not null => "Succeeded",
+            _ => "NotStarted"
+        };
+
+        return (
+            WorkflowStageUi.ToLabel(fallbackStatus, WorkflowStageUi.ToBusinessStageName(stageKey), null),
+            $"collapsible-status {WorkflowStageUi.ToCssClass(fallbackStatus)}");
+    }
+
+    private (string Label, string CssClass) GetHumanReviewSectionSummary(CaseDetailResponse currentCase)
+    {
+        if (Workspace.CanSubmitDecision || currentCase.Status == "AwaitingHumanApproval")
+        {
+            return ("Action required", "collapsible-status collapsible-status-action");
+        }
+
+        if (currentCase.HumanDecision is not null)
+        {
+            var label = currentCase.HumanDecision.Approved ? "Approved" : "Rejected";
+            return (label, $"collapsible-status {(currentCase.HumanDecision.Approved ? "stage-succeeded" : "stage-failed")}");
+        }
+
+        return GetStageSectionSummary("HumanDecision", currentCase);
+    }
+
+    private static string MapCaseStatusToExecutionStatus(string status) => status switch
+    {
+        "Completed" or "Approved" => "Succeeded",
+        "Rejected" => "Succeeded",
+        "Failed" => "Failed",
+        "AwaitingHumanApproval" => "Blocked",
+        "InReview" => "InProgress",
+        _ => "NotStarted"
+    };
+
+    private OutcomeSummaryCard.OutcomeSummaryModel? BuildOutcomeSummary(CaseDetailResponse currentCase)
+    {
+        var hasAgentWork = currentCase.DocumentProcessing is not null
+            || currentCase.Underwriting is not null
+            || currentCase.ResponsibleAi is not null;
+
+        var isTerminalOrReview = currentCase.Status is
+            "Completed" or "Approved" or "Rejected" or "Failed" or "AwaitingHumanApproval";
+
+        if (!isTerminalOrReview && !hasAgentWork)
+        {
+            return null;
+        }
+
+        return new OutcomeSummaryCard.OutcomeSummaryModel(
+            currentCase.Status,
+            currentCase.CreatedAt,
+            currentCase.UpdatedAt,
+            currentCase.Underwriting?.Recommendation,
+            currentCase.Underwriting?.Scores?.RiskScore,
+            currentCase.ResponsibleAi?.Passed,
+            currentCase.HumanDecision?.Approved,
+            currentCase.LoanSetup?.DemoAccountId,
+            currentCase.DocumentProcessing?.IsComplete,
+            currentCase.DocumentProcessing?.Summary);
+    }
+
+    private IReadOnlyList<WorkflowTimeline.WorkflowStageTimelineItem> BuildTimelineSteps(CaseDetailResponse currentCase)
+    {
+        var progressByKey = Workspace.WorkflowProgress?.Steps
+            .ToDictionary(step => step.StageKey, StringComparer.OrdinalIgnoreCase)
+            ?? new Dictionary<string, WorkflowStageResponse>(StringComparer.OrdinalIgnoreCase);
+
+        return
+        [
+            BuildTimelineItem(currentCase, progressByKey, "DocumentProcessing", "Document Review"),
+            BuildTimelineItem(currentCase, progressByKey, "Underwriting", "Financial Assessment"),
+            BuildTimelineItem(currentCase, progressByKey, "HumanDecision", "Human Review"),
+            BuildTimelineItem(currentCase, progressByKey, "ResponsibleAiReview", "Fairness Review"),
+            BuildTimelineItem(currentCase, progressByKey, "LoanSetup", "Account Setup"),
+            new WorkflowTimeline.WorkflowStageTimelineItem(
+                new WorkflowStageResponse("Completed", "Completed", GetCompletionStatus(currentCase), GetCompletionSummary(currentCase)),
+                GetStageTimestamp(currentCase, "Completed"))
+        ];
+    }
+
+    private static WorkflowTimeline.WorkflowStageTimelineItem BuildTimelineItem(
+        CaseDetailResponse currentCase,
+        IReadOnlyDictionary<string, WorkflowStageResponse> progressByKey,
+        string stageKey,
+        string businessName)
+    {
+        var step = BuildTimelineStep(progressByKey, stageKey, businessName);
+        var requiresAttention = IsHumanDecisionRequired(currentCase, stageKey);
+        return new WorkflowTimeline.WorkflowStageTimelineItem(
+            step,
+            GetStageTimestamp(currentCase, stageKey),
+            requiresAttention,
+            requiresAttention ? "Decision required before the workflow can continue." : null);
+    }
+
+    private static bool IsHumanDecisionRequired(CaseDetailResponse currentCase, string stageKey) =>
+        string.Equals(stageKey, "HumanDecision", StringComparison.OrdinalIgnoreCase)
+        && (currentCase.AllowedActions.Contains("SubmitDecision") || currentCase.Status == "AwaitingHumanApproval");
+
+    private static WorkflowStageResponse BuildTimelineStep(
+        IReadOnlyDictionary<string, WorkflowStageResponse> progressByKey,
+        string stageKey,
+        string businessName)
+    {
+        return progressByKey.TryGetValue(stageKey, out var step)
+            ? step with { Name = businessName }
+            : new WorkflowStageResponse(businessName, stageKey, "NotStarted", null);
+    }
+
+    private static DateTimeOffset? GetStageTimestamp(CaseDetailResponse currentCase, string stageKey) => stageKey switch
+    {
+        "DocumentProcessing" => FindNoteTimestamp(currentCase, "Document processing completed"),
+        "Underwriting" => FindNoteTimestamp(currentCase, "Underwriting recommendation", "Underwriting blocked"),
+        "HumanDecision" => currentCase.HumanDecision?.DecidedAt
+            ?? FindNoteTimestamp(currentCase, "Human approval recorded", "Human rejection recorded", "Awaiting human approval"),
+        "ResponsibleAiReview" => FindNoteTimestamp(currentCase, "Responsible AI review completed"),
+        "LoanSetup" => currentCase.LoanSetup?.CompletedAt
+            ?? FindNoteTimestamp(currentCase, "Loan setup started", "Loan setup completed", "Loan setup failed"),
+        "Completed" when currentCase.Status is "Completed" or "Rejected" or "Failed" => currentCase.LoanSetup?.CompletedAt ?? currentCase.UpdatedAt,
+        _ => null
+    };
+
+    private static DateTimeOffset? FindNoteTimestamp(CaseDetailResponse currentCase, params string[] markers)
+    {
+        return currentCase.Notes
+            .OrderBy(note => note.RecordedAt)
+            .FirstOrDefault(note => markers.Any(marker => note.Message.Contains(marker, StringComparison.OrdinalIgnoreCase)))
+            ?.RecordedAt;
+    }
+
+    private string? GetStatusMessage(CaseDetailResponse currentCase)
+    {
+        if (!string.IsNullOrWhiteSpace(Workspace.PollingStatusMessage))
+        {
+            return Workspace.PollingStatusMessage;
+        }
+
+        if (Workspace.IsPollingWorkflow)
+        {
+            return "Workflow is running. Progress updates automatically.";
+        }
+
+        return currentCase.Status switch
+        {
+            "AwaitingHumanApproval" => "Human review is required before the application can continue.",
+            "InReview" when currentCase.HumanDecision?.Approved == true && currentCase.ResponsibleAi is null =>
+                "Human approval has been recorded. Fairness review is running or pending.",
+            "InReview" when currentCase.HumanDecision?.Approved == true && currentCase.ResponsibleAi is not null && currentCase.LoanSetup is null =>
+                currentCase.AllowedActions.Contains("ContinueAccountSetup")
+                    ? "Ready for account setup. Run the final step to complete the application."
+                    : "Fairness review raised concerns that block account setup.",
+            "Completed" => "The mortgage workflow completed successfully.",
+            "Rejected" => "The application was rejected.",
+            "Failed" => "The workflow encountered an error.",
+            _ when currentCase.AllowedActions.Contains("StartWorkflow") => "Ready to start the mortgage workflow.",
+            _ => null
+        };
+    }
+
+    private static string GetFairnessPendingMessage(CaseDetailResponse currentCase) =>
+        currentCase.HumanDecision?.Approved == true
+            ? "Fairness review is queued after human approval."
+            : "Fairness review begins after an approval decision is recorded.";
+
+    private string GetAccountSetupMessage(CaseDetailResponse currentCase)
+    {
+        if (currentCase.Status == "Rejected")
+        {
+            return "Account setup does not run when the application is rejected.";
+        }
+
+        if (Workspace.CanContinueAccountSetup)
+        {
+            return "Approval and fairness review are complete. Run account setup to finish the case.";
+        }
+
+        if (currentCase.HumanDecision?.Approved == true && currentCase.ResponsibleAi?.Passed == false)
+        {
+            return "Account setup is waiting on fairness review follow-up.";
+        }
+
+        return "Account setup becomes available after approval and fairness review are complete.";
+    }
+
+    private static string GetCompletionStatus(CaseDetailResponse currentCase) => currentCase.Status switch
+    {
+        "Failed" => "Failed",
+        "Completed" or "Rejected" => "Succeeded",
+        _ when currentCase.HumanDecision is not null || currentCase.ResponsibleAi is not null || currentCase.LoanSetup is not null => "InProgress",
+        _ => "NotStarted"
+    };
+
+    private static string GetCompletionLabel(CaseDetailResponse currentCase) => currentCase.Status switch
+    {
+        "Completed" => "Completed",
+        "Rejected" => "Closed",
+        "Failed" => "Failed",
+        _ => "Pending"
+    };
+
+    private string GetCompletionNextStep(CaseDetailResponse currentCase)
+    {
+        if (currentCase.Status == "Completed")
+        {
+            return "No further action required.";
+        }
+
+        if (currentCase.Status == "Rejected")
+        {
+            return "Archive the case with the rejection rationale.";
+        }
+
+        if (Workspace.CanContinueAccountSetup)
+        {
+            return "Run account setup.";
+        }
+
+        if (currentCase.Status == "AwaitingHumanApproval")
+        {
+            return "Record the human decision.";
+        }
+
+        return "Continue the workflow.";
+    }
+
+    private string GetCompletionSummary(CaseDetailResponse currentCase)
+    {
+        if (currentCase.LoanSetup is not null)
+        {
+            return $"Final approval completed. {currentCase.LoanSetup.SetupSummary}";
+        }
+
+        return currentCase.Status switch
+        {
+            "Rejected" => "The application ended in rejection during human review. Account setup was not executed.",
+            "Failed" => "The application could not be completed because the workflow failed.",
+            "AwaitingHumanApproval" => "The application is waiting at the mandatory human checkpoint.",
+            _ when Workspace.CanContinueAccountSetup => "The application is approved and ready for account setup.",
+            _ when currentCase.HumanDecision?.Approved == true && currentCase.ResponsibleAi?.Passed == false =>
+                "The application is waiting on fairness review follow-up before completion.",
+            _ => "The application is still moving through the workflow."
+        };
+    }
+
+    private void HandleWorkspaceChanged()
+    {
+        if (Workspace.CurrentCase is not null)
+        {
+            var currentStage = Workspace.CurrentCase.CurrentWorkflowStage;
+            SectionState.OnWorkflowStageAdvanced(_previousWorkflowStage, currentStage);
+            _previousWorkflowStage = currentStage;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSectionStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Workspace.OnChange -= HandleWorkspaceChanged;
+        SectionState.OnChange -= HandleSectionStateChanged;
+        Workspace.CancelPolling();
+    }
+}

@@ -1,0 +1,31 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+
+<article class="document-card">
+    <div class="document-icon" aria-hidden="true">📄</div>
+    <div class="document-info">
+        <p class="document-name">@Document.FileName</p>
+        <p class="document-type">@FormatDocumentType(Document.DocumentType)</p>
+    </div>
+    @if (Document.IsSynthetic)
+    {
+        <span class="document-badge">Synthetic</span>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public DocumentRecordDto Document { get; set; } = default!;
+
+    private static string FormatDocumentType(string documentType) => documentType switch
+    {
+        "application" => "Application packet",
+        "identity" => "Identity documents",
+        "income_proof" => "Income proof",
+        "employment_verification" => "Employment verification",
+        "bank_statement" => "Bank statements",
+        "credit_report" => "Credit report",
+        "property_information" => "Property information",
+        "appraisal" => "Property appraisal",
+        _ => documentType.Replace('_', ' ')
+    };
+}

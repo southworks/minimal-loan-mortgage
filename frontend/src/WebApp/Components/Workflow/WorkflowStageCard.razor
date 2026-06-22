@@ -1,0 +1,51 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Models
+
+<article class="workflow-stage @WorkflowStageUi.ToCssClass(Step.ExecutionStatus) @(RequiresAttention ? "workflow-stage-attention" : null)">
+    <div class="stage-indicator" aria-hidden="true"></div>
+    <div class="stage-content">
+        <div class="stage-header">
+            <h4 class="stage-name">@WorkflowStageUi.ToBusinessStageName(Step.StageKey, Step.Name)</h4>
+            <span class="stage-status-label">@WorkflowStageUi.ToLabel(Step.ExecutionStatus, WorkflowStageUi.ToBusinessStageName(Step.StageKey, Step.Name), Step.Summary)</span>
+        </div>
+        @if (Timestamp is not null)
+        {
+            <time class="stage-timestamp" datetime="@Timestamp.Value.ToString("O")">
+                @Timestamp.Value.ToLocalTime().ToString("g")
+            </time>
+        }
+        else
+        {
+            <span class="stage-timestamp stage-timestamp-empty">Timestamp pending</span>
+        }
+        @if (RequiresAttention && !string.IsNullOrWhiteSpace(AttentionMessage))
+        {
+            <p class="stage-attention-message">@AttentionMessage</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Step.Summary))
+        {
+            <p class="stage-summary">@Step.Summary</p>
+        }
+        @{
+            var anchor = WorkflowStageUi.GetAgentAnchor(Step.StageKey);
+        }
+        @if (!string.IsNullOrWhiteSpace(anchor))
+        {
+            <SectionAnchorLink SectionId="@anchor" CssClass="stage-detail-link">Open stage</SectionAnchorLink>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkflowStageResponse Step { get; set; } = default!;
+
+    [Parameter]
+    public DateTimeOffset? Timestamp { get; set; }
+
+    [Parameter]
+    public bool RequiresAttention { get; set; }
+
+    [Parameter]
+    public string? AttentionMessage { get; set; }
+}
