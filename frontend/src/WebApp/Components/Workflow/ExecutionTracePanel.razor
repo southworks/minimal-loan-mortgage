@@ -1,0 +1,95 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+<section class="execution-trace-card" aria-label="Execution trace">
+    <h3>Execution trace</h3>
+    <p class="execution-trace-intro">
+        Technical execution evidence for this case. Full distributed tracing remains in Application Insights when deployed.
+    </p>
+
+    @if (Trace is null)
+    {
+        <EmptyState Title="Trace unavailable"
+                    Description="Execution trace could not be loaded for this case." />
+    }
+    else
+    {
+        <dl class="runtime-grid">
+            <div>
+                <dt>Workflow span</dt>
+                <dd>@(Trace.HasWorkflowSpan ? "Yes" : "No")</dd>
+            </div>
+            <div>
+                <dt>Trace evidence present</dt>
+                <dd>@(Trace.TraceEvidencePresent ? "Yes" : "No")</dd>
+            </div>
+            <div>
+                <dt>MCP tool invocations</dt>
+                <dd>@Trace.McpToolInvocationCount</dd>
+            </div>
+        </dl>
+
+        @if (Trace.ExecutedStages.Count > 0)
+        {
+            <div class="execution-trace-block">
+                <h4>Executed stages</h4>
+                <FlagList Items="Trace.ExecutedStages" Variant="flag-warning" />
+            </div>
+        }
+
+        @if (Trace.ExecutedAgentRoles.Count > 0)
+        {
+            <div class="execution-trace-block">
+                <h4>Executed agent roles</h4>
+                <FlagList Items="Trace.ExecutedAgentRoles" Variant="flag-warning" />
+            </div>
+        }
+
+        @if (Trace.McpToolsInvoked.Count > 0)
+        {
+            <div class="execution-trace-block">
+                <h4>MCP tools invoked</h4>
+                <EvidenceList Items="Trace.McpToolsInvoked" />
+            </div>
+        }
+
+        <RetrievalTracePanel Events="Trace.RetrievalEvents" />
+
+        @if (Trace.AgentMemoryEntries.Count > 0)
+        {
+            <div class="execution-trace-block">
+                <h4>Agent memory entries</h4>
+                <EvidenceList Items="Trace.AgentMemoryEntries" MaxVisible="8" />
+            </div>
+        }
+
+        @if (Trace.LatestWorkflowRun is not null)
+        {
+            <div class="execution-trace-block">
+                <h4>Latest hosted run</h4>
+                <dl class="runtime-grid">
+                    <div>
+                        <dt>Run ID</dt>
+                        <dd><code>@Trace.LatestWorkflowRun.RunId</code></dd>
+                    </div>
+                    <div>
+                        <dt>Status</dt>
+                        <dd>@Trace.LatestWorkflowRun.Status</dd>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Trace.LatestWorkflowRun.ErrorMessage))
+                    {
+                        <div>
+                            <dt>Error</dt>
+                            <dd class="runtime-error-text">@Trace.LatestWorkflowRun.ErrorMessage</dd>
+                        </div>
+                    }
+                </dl>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter]
+    public ExecutionTraceResponse? Trace { get; set; }
+}

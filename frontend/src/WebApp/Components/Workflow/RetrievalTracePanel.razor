@@ -1,0 +1,68 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+
+@if (Events is null || Events.Count == 0)
+{
+    return;
+}
+
+<section class="retrieval-trace-block" aria-label="Retrieval provenance">
+    <details class="retrieval-trace-details">
+        <summary>How evidence was selected (@Events.Count retrieval event@(Events.Count == 1 ? "" : "s"))</summary>
+        @foreach (var retrievalEvent in Events)
+        {
+            <article class="retrieval-event-card">
+                <header class="retrieval-event-header">
+                    <strong>@retrievalEvent.ToolName</strong>
+                    <span class="retrieval-mode-badge">@retrievalEvent.RetrievalMode</span>
+                </header>
+                <dl class="retrieval-summary-grid">
+                    <div>
+                        <dt>Query</dt>
+                        <dd>@retrievalEvent.QueryText</dd>
+                    </div>
+                    <div>
+                        <dt>Candidates</dt>
+                        <dd>@retrievalEvent.CandidateCount</dd>
+                    </div>
+                    <div>
+                        <dt>Selected</dt>
+                        <dd>@retrievalEvent.SelectedCount</dd>
+                    </div>
+                    <div>
+                        <dt>Re-ranked</dt>
+                        <dd>@(retrievalEvent.RerankApplied ? "Yes" : "No")</dd>
+                    </div>
+                    @if (retrievalEvent.UsedFallback)
+                    {
+                        <div>
+                            <dt>Fallback</dt>
+                            <dd>Deterministic path</dd>
+                        </div>
+                    }
+                </dl>
+                @if (retrievalEvent.SelectedCandidates is { Count: > 0 })
+                {
+                    <ul class="retrieval-candidate-list">
+                        @foreach (var candidate in retrievalEvent.SelectedCandidates)
+                        {
+                            <li>
+                                <span class="retrieval-candidate-rank">#@candidate.Rank</span>
+                                <span class="retrieval-candidate-title">@candidate.Title</span>
+                                <span class="retrieval-candidate-score">@candidate.MatchScore.ToString("P0")</span>
+                                @if (candidate.PreRerankScore is { } pre && Math.Abs(pre - candidate.MatchScore) > 0.01)
+                                {
+                                    <span class="retrieval-candidate-pre">was @pre.ToString("P0")</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </article>
+        }
+    </details>
+</section>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<RetrievalEventDto>? Events { get; set; }
+}

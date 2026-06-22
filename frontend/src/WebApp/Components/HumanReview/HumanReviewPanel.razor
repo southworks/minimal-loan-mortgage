@@ -1,0 +1,109 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+<AgentPanel AgentName="Human Review"
+            Role="Stage 3"
+            StatusLabel="Mandatory checkpoint"
+            StatusCssClass="human-review-badge"
+            CssClass="human-review-panel"
+            PanelId="stage-human-review"
+            IsCollapsible="true"
+            CollapsedByDefault="true">
+    @if (ExistingDecision is not null)
+    {
+        <div class="human-decision-record @(ExistingDecision.Approved ? "decision-approved" : "decision-rejected")">
+            <p><strong>Decision:</strong> @(ExistingDecision.Approved ? "Approved" : "Rejected")</p>
+            @if (!string.IsNullOrWhiteSpace(ExistingDecision.Notes))
+            {
+                <p><strong>Reviewer notes:</strong> @ExistingDecision.Notes</p>
+            }
+            <p class="text-muted">Recorded @ExistingDecision.DecidedAt.ToLocalTime().ToString("g")</p>
+        </div>
+    }
+    else if (CanDecide)
+    {
+        <p class="human-review-description">
+            Record the human approval decision. Financial assessment and fairness review provide the supporting analysis in the adjacent stages.
+        </p>
+        <div class="human-review-notes">
+            <label for="reviewer-notes">Reviewer notes</label>
+            <textarea id="reviewer-notes"
+                      class="human-review-textarea"
+                      rows="3"
+                      placeholder="Explain the business reason for your decision (optional)"
+                      @bind="_reviewerNotes"
+                      disabled="@IsBusy"></textarea>
+        </div>
+        <div class="human-review-actions">
+            <LoadingButton CssClass="btn btn-success"
+                           Disabled="@IsBusy"
+                           IsLoading="@IsDecisionLoading(ApproveDecision)"
+                           LoadingText="Approving..."
+                           OnClick="ApproveAsync">
+                Approve
+            </LoadingButton>
+            <LoadingButton CssClass="btn btn-danger"
+                           Disabled="@IsBusy"
+                           IsLoading="@IsDecisionLoading(RejectDecision)"
+                           LoadingText="Rejecting..."
+                           OnClick="RejectAsync">
+                Reject
+            </LoadingButton>
+        </div>
+    }
+    else if (Underwriting is null)
+    {
+        <EmptyState Title="Waiting for financial assessment"
+                    Description="Human review becomes available once financial assessment completes." />
+    }
+    else
+    {
+        <EmptyState Title="Human approval pending"
+                    Description="The workflow will pause here for a mandatory human decision before fairness review continues." />
+    }
+</AgentPanel>
+
+@code {
+    [Parameter]
+    public HumanDecisionDto? ExistingDecision { get; set; }
+
+    [Parameter]
+    public UnderwritingResultDto? Underwriting { get; set; }
+
+    [Parameter]
+    public bool CanDecide { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<(bool Approved, string? Notes)> OnDecide { get; set; }
+
+    private string? _reviewerNotes;
+    private const string ApproveDecision = "approve";
+    private const string RejectDecision = "reject";
+    private string? _pendingDecision;
+
+    private Task ApproveAsync() =>
+        SubmitDecisionAsync(ApproveDecision, true);
+
+    private Task RejectAsync() =>
+        SubmitDecisionAsync(RejectDecision, false);
+
+    private bool IsDecisionLoading(string decision) =>
+        string.Equals(_pendingDecision, decision, StringComparison.Ordinal);
+
+    private async Task SubmitDecisionAsync(string decision, bool approved)
+    {
+        _pendingDecision = decision;
+
+        try
+        {
+            await OnDecide.InvokeAsync((approved, string.IsNullOrWhiteSpace(_reviewerNotes) ? null : _reviewerNotes.Trim()));
+        }
+        finally
+        {
+            _pendingDecision = null;
+        }
+    }
+}

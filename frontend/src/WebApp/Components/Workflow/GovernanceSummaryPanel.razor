@@ -1,0 +1,110 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Governance
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+<section class="governance-summary-card" aria-label="Governance and compliance summary">
+    <p class="governance-intro">
+        Technical audit summary with Agent Governance Toolkit decisions on MCP tool calls and execution trace evidence.
+    </p>
+
+    @if (Summary is null)
+    {
+        <EmptyState Title="Governance summary unavailable"
+                    Description="The governance summary could not be loaded for this case." />
+    }
+    else
+    {
+        <div class="governance-header">
+            <span class="governance-toolkit-version" title="Microsoft Agent Governance Toolkit integration">
+                Toolkit: @Summary.GovernanceToolkitVersion
+            </span>
+        </div>
+
+        @if (Summary.AgtIntegration is not null)
+        {
+            <div class="governance-block">
+                <h4>Agent Governance Toolkit</h4>
+                <p class="governance-agt-name">@Summary.AgtIntegration.ToolkitName</p>
+                <dl class="detail-list governance-evidence-grid">
+                    <div>
+                        <dt>Policy bundle</dt>
+                        <dd>@Summary.AgtIntegration.PolicyBundleVersion</dd>
+                    </div>
+                    <div>
+                        <dt>Allowed</dt>
+                        <dd>@Summary.AgtIntegration.AllowedCount</dd>
+                    </div>
+                    <div>
+                        <dt>Denied</dt>
+                        <dd>@Summary.AgtIntegration.DeniedCount</dd>
+                    </div>
+                    <div>
+                        <dt>Approval required</dt>
+                        <dd>@Summary.AgtIntegration.RequireApprovalCount</dd>
+                    </div>
+                </dl>
+
+                @if (Summary.AgtIntegration.RecentDecisions.Count > 0)
+                {
+                    <div class="governance-subblock">
+                        <h5>Recent governance decisions</h5>
+                        <ul class="policy-evaluation-list">
+                            @foreach (var decision in Summary.AgtIntegration.RecentDecisions)
+                            {
+                                <li class="policy-evaluation-item @(decision.Decision == "Allow" ? "policy-passed" : decision.Decision == "Deny" ? "policy-failed" : "policy-review")">
+                                    <div class="policy-evaluation-header">
+                                        <span class="policy-name">@decision.ToolName</span>
+                                        <span class="policy-status">@decision.Decision</span>
+                                    </div>
+                                    <p class="policy-severity">Agent: @decision.AgentRole (@decision.AgentId)</p>
+                                    @if (!string.IsNullOrWhiteSpace(decision.MatchedRule))
+                                    {
+                                        <p class="policy-violation">Rule: @decision.MatchedRule</p>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="governance-block">
+            <h4>Evidence summary</h4>
+            <dl class="detail-list governance-evidence-grid">
+                <div>
+                    <dt>Underwriting evidence</dt>
+                    <dd>@Summary.EvidenceSummary.UnderwritingEvidenceCount</dd>
+                </div>
+                <div>
+                    <dt>Responsible AI flags</dt>
+                    <dd>@Summary.EvidenceSummary.RaiFlagCount</dd>
+                </div>
+                <div>
+                    <dt>Responsible AI passed</dt>
+                    <dd>@(Summary.EvidenceSummary.RaiPassed is true ? "Yes" : Summary.EvidenceSummary.RaiPassed is false ? "No" : "Pending")</dd>
+                </div>
+                <div>
+                    <dt>Trace evidence present</dt>
+                    <dd>@(Summary.EvidenceSummary.TraceEvidencePresent ? "Yes" : "No")</dd>
+                </div>
+                <div>
+                    <dt>MCP tool invocations</dt>
+                    <dd>@Summary.EvidenceSummary.McpToolInvocationCount</dd>
+                </div>
+            </dl>
+
+            @if (Summary.EvidenceSummary.ExecutedAgentRoles.Count > 0)
+            {
+                <div class="governance-subblock">
+                    <h5>Executed agent roles</h5>
+                    <FlagList Items="Summary.EvidenceSummary.ExecutedAgentRoles" Variant="flag-warning" />
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public GovernanceSummaryResponse? Summary { get; set; }
+}

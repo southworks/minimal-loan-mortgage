@@ -1,0 +1,26 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+
+@if (Notes.Count == 0)
+{
+    <EmptyState Title="No audit events"
+                Description="Case activity will appear here as the workflow progresses." />
+}
+else
+{
+    <ol class="audit-timeline" aria-label="Case audit timeline">
+        @foreach (var note in Notes.OrderBy(n => n.RecordedAt))
+        {
+            <li class="audit-timeline-item">
+                <time class="audit-timeline-time" datetime="@note.RecordedAt.ToString("O")">
+                    @note.RecordedAt.ToLocalTime().ToString("HH:mm:ss")
+                </time>
+                <span class="audit-timeline-message">@note.Message</span>
+            </li>
+        }
+    </ol>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<CaseNoteDto> Notes { get; set; } = [];
+}

@@ -1,0 +1,71 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+
+<details class="evidence-disclosure">
+    <summary class="evidence-disclosure-summary">
+        <span>@Title</span>
+        <span class="evidence-disclosure-counts">@SummaryText</span>
+    </summary>
+    <div class="evidence-disclosure-body">
+        @if (StructuredItems?.Count > 0)
+        {
+            <StructuredEvidenceList Items="StructuredItems" EmptyMessage="@EmptyMessage" />
+        }
+        else if (Items?.Count > 0)
+        {
+            <EvidenceList Items="Items" />
+        }
+        else if (RationaleItems?.Count > 0)
+        {
+            <RationaleList Items="RationaleItems" />
+        }
+        else
+        {
+            <p class="text-muted">@EmptyMessage</p>
+        }
+    </div>
+</details>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Evidence";
+
+    [Parameter]
+    public string? Summary { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<EvidenceItem>? StructuredItems { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string>? Items { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<RationaleItem>? RationaleItems { get; set; }
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No evidence recorded.";
+
+    private string SummaryText =>
+        !string.IsNullOrWhiteSpace(Summary)
+            ? Summary
+            : BuildSummary();
+
+    private string BuildSummary()
+    {
+        if (StructuredItems?.Count > 0)
+        {
+            return $"{StructuredItems.Count} evidence item(s) · avg relevance {StructuredItems.Average(item => item.Relevance):P0}";
+        }
+
+        if (Items?.Count > 0)
+        {
+            return $"{Items.Count} evidence item(s)";
+        }
+
+        if (RationaleItems?.Count > 0)
+        {
+            return $"{RationaleItems.Count} rationale item(s)";
+        }
+
+        return "No evidence";
+    }
+}

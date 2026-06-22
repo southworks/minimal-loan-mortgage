@@ -1,0 +1,46 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+<li class="recent-execution-row">
+    <div class="recent-execution-row-main">
+        <span class="recent-execution-row-name">@Case.Applicant.FullName</span>
+        <span class="recent-execution-row-scenario">@Case.ScenarioId</span>
+    </div>
+    <div class="recent-execution-row-meta">
+        <StatusBadge Status="@Case.Status" Label="@WorkflowStageUi.ToBusinessStatusLabel(Case.Status)" />
+        <span class="recent-execution-row-stage">
+            @WorkflowStageUi.ToBusinessStageName(Case.CurrentWorkflowStage, Case.CurrentWorkflowStage)
+        </span>
+        <span class="recent-execution-row-updated">
+            Updated @Case.UpdatedAt.ToLocalTime().ToString("g")
+        </span>
+    </div>
+    <button type="button"
+            class="btn btn-secondary recent-execution-row-action"
+            disabled="@Disabled"
+            aria-label="@($"Open workflow for {Case.Applicant.FullName}")"
+            @onclick="OpenAsync">
+        Open Workflow
+    </button>
+</li>
+
+@code {
+    [Parameter, EditorRequired]
+    public CaseSummaryResponse Case { get; set; } = default!;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenWorkflow { get; set; }
+
+    private Task OpenAsync()
+    {
+        var routeValue = string.IsNullOrWhiteSpace(Case.ExecutionId)
+            ? Case.CaseId
+            : $"{Case.CaseId}/{Case.ExecutionId}";
+
+        return OnOpenWorkflow.InvokeAsync(routeValue);
+    }
+}

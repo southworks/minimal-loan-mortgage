@@ -1,0 +1,23 @@
+﻿<Router AppAssembly="typeof(Program).Assembly" OnNavigateAsync="HandleNavigateAsync">
+    <Navigating>
+        <PageTransitionLoader Message="Loading page..." />
+    </Navigating>
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    private static async Task HandleNavigateAsync(NavigationContext context)
+    {
+        try
+        {
+            await Task.Delay(250, context.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer navigation superseded this one.
+        }
+    }
+}

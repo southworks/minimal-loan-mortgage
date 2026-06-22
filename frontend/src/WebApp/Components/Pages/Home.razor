@@ -1,0 +1,185 @@
+@page "/"
+@rendermode InteractiveServer
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Components.Layout
+@using Cohere.LoanProcessing.WebApp.Services
+@using Cohere.LoanProcessing.WebApp.State
+@inject LoanApiClient Api
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Mortgage Application Center</PageTitle>
+
+<PageMasthead Title="Application Portfolio"
+              Kicker="Mortgage operations"
+              Subtitle="Run a synthetic mortgage use case, follow the processing stages, and review prior application decisions and evidence." />
+
+@if (_busy)
+{
+    <PageTransitionLoader Message="@_busyMessage" Blocking="true" />
+}
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <ErrorState Title="Failed to load application portfolio" Message="@_error" OnRetry="LoadAsync" />
+}
+
+<PageSection Title="Application Templates" Subtitle="Search and select a mortgage application template to start processing.">
+    @if (_loading)
+    {
+        <LoadingBlock Message="Loading application templates..." />
+    }
+    else if (_picker.Scenarios.Count == 0)
+    {
+        <EmptyState Title="No application templates available"
+                    Description="The application template catalog could not be loaded. Check that dataset-seed is available." />
+    }
+    else
+    {
+        <div class="scenario-picker">
+            <ScenarioPickerPanel State="_picker" />
+            <ScenarioPreviewPanel Scenario="_picker.SelectedScenario"
+                                  Disabled="_busy"
+                                  OnRun="RunSelectedCaseAsync" />
+        </div>
+    }
+</PageSection>
+
+<PageSection Title="Active Applications" Subtitle="Reopen a previously processed mortgage application.">
+    @if (_loading)
+    {
+        <LoadingBlock Message="Loading active applications..." />
+    }
+    else if (_recentExecutions.TotalCount == 0)
+    {
+        <EmptyState Title="No active applications" Description="Run one of the application templates above to create your first application file." />
+    }
+    else
+    {
+        <RecentExecutionsList State="_recentExecutions"
+                              Disabled="_busy"
+                              OnOpenWorkflow="OpenWorkflowAsync" />
+    }
+</PageSection>
+
+@code {
+    private readonly ScenarioPickerState _picker = new();
+    private readonly RecentExecutionsListState _recentExecutions = new();
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private string _busyMessage = "Loading page...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _picker.OnChange += HandlePickerChanged;
+        _recentExecutions.OnChange += HandleRecentExecutionsChanged;
+        await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        _picker.OnChange -= HandlePickerChanged;
+        _recentExecutions.OnChange -= HandleRecentExecutionsChanged;
+    }
+
+    private void HandlePickerChanged() => InvokeAsync(StateHasChanged);
+
+    private void HandleRecentExecutionsChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var scenariosTask = Api.GetScenariosAsync();
+            var casesTask = Api.GetCasesAsync();
+
+            await Task.WhenAll(scenariosTask, casesTask);
+
+            _picker.SetScenarios(await scenariosTask);
+            _recentExecutions.SetCases(await casesTask);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunSelectedCaseAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        var scenario = _picker.SelectedScenario;
+        if (scenario is null)
+        {
+            return;
+        }
+
+        await OpenCaseAsync(scenario.ScenarioId);
+    }
+
+    private async Task OpenCaseAsync(string caseId)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _busyMessage = "Opening application file...";
+        _error = null;
+        var navigated = false;
+
+        try
+        {
+            var created = await Api.CreateCaseAsync(caseId);
+            if (created is not null)
+            {
+                navigated = true;
+                Navigation.NavigateTo($"/cases/{created.CaseId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            if (!navigated)
+            {
+                _busy = false;
+            }
+        }
+    }
+
+    private async Task OpenWorkflowAsync(string routeValue)
+    {
+        if (routeValue.Contains('/', StringComparison.Ordinal))
+        {
+            if (_busy)
+            {
+                return;
+            }
+
+            _busy = true;
+            _busyMessage = "Opening workflow...";
+            await InvokeAsync(StateHasChanged);
+            Navigation.NavigateTo($"/cases/{routeValue}");
+            return;
+        }
+
+        await OpenCaseAsync(routeValue);
+    }
+}

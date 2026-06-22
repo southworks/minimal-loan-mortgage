@@ -1,0 +1,50 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.State
+
+<section class="scenario-preview" aria-label="Selected application template preview" aria-live="polite">
+    @if (Scenario is null)
+    {
+        <div class="scenario-preview-empty">
+            <p>Select an application template to see details.</p>
+        </div>
+    }
+    else
+    {
+        <div class="scenario-preview-body">
+            <h3 class="scenario-preview-title">@Scenario.Title</h3>
+
+            @if (!string.IsNullOrWhiteSpace(Scenario.DemoTagline))
+            {
+                <p class="scenario-demo-tagline">@Scenario.DemoTagline</p>
+            }
+
+            <p class="scenario-preview-outcome">
+                Expected outcome:
+                <span class="scenario-outcome-badge scenario-outcome-@ScenarioPickerFilter.NormalizeOutcome(Scenario.ExpectedOutcome)">
+                    @ScenarioPickerFilter.FormatOutcomeLabel(Scenario.ExpectedOutcome)
+                </span>
+            </p>
+
+            <p class="scenario-preview-description">@Scenario.Description</p>
+
+            <LoadingButton CssClass="btn btn-primary scenario-preview-run"
+                           Disabled="@Disabled"
+                           IsLoading="@Disabled"
+                           LoadingText="Running use case..."
+                           OnClick="OnRun">
+                Run use case
+            </LoadingButton>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public ScenarioSummaryResponse? Scenario { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnRun { get; set; }
+}

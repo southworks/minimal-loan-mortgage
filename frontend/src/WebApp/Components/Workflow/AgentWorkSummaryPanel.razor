@@ -1,0 +1,381 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Governance
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Health
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+<section class="agent-work-summary" aria-label="Agent activity for this case">
+    @if (Runtime is not null)
+    {
+        <div class="agent-work-runtime">
+            <span class="agent-work-runtime-label">Runtime</span>
+            <span class="agent-work-runtime-value">@Runtime.EffectiveMode</span>
+            @if (!Runtime.IsDegraded)
+            {
+                <span class="agent-work-runtime-ready">Ready</span>
+            }
+        </div>
+    }
+
+    @if (FoundryStages.Count > 0)
+    {
+        <div class="agent-work-block">
+            <h4>Foundry execution</h4>
+            <ul class="agent-foundry-runs">
+                @foreach (var stage in FoundryStages)
+                {
+                    <li>
+                        <span class="agent-foundry-stage">@stage.Stage</span>
+                        @if (!string.IsNullOrWhiteSpace(stage.RunId))
+                        {
+                            <span class="agent-foundry-meta">run <code>@Truncate(stage.RunId, 12)</code></span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(stage.ThreadId))
+                        {
+                            <span class="agent-foundry-meta">thread <code>@Truncate(stage.ThreadId, 12)</code></span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="agent-work-block">
+        <h4>Agent decisions</h4>
+        @if (Decisions.Count == 0)
+        {
+            <p class="agent-work-empty">No agent stages have completed yet.</p>
+        }
+        else
+        {
+            <ol class="agent-decision-timeline">
+                @foreach (var decision in Decisions)
+                {
+                    <li class="agent-decision-item agent-decision-@decision.StatusClass">
+                        <div class="agent-decision-header">
+                            <span class="agent-decision-role">@decision.AgentName</span>
+                            <StatusBadge Status="@decision.ExecutionStatus" Label="@decision.ExecutionStatus" />
+                        </div>
+                        <p class="agent-decision-outcome">@decision.Outcome</p>
+                        @if (!string.IsNullOrWhiteSpace(decision.Summary))
+                        {
+                            <p class="agent-decision-summary">@decision.Summary</p>
+                        }
+                        @if (decision.Details.Count > 0)
+                        {
+                            <ul class="agent-decision-details">
+                                @foreach (var detail in decision.Details)
+                                {
+                                    <li>@detail</li>
+                                }
+                            </ul>
+                        }
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+
+    @if (HumanReviewReasons.Count > 0)
+    {
+        <div class="agent-work-block">
+            <h4>Why human review was triggered</h4>
+            <FlagList Items="HumanReviewReasons" Variant="flag-warning" />
+        </div>
+    }
+
+    @if (AgtDecisions.Count > 0)
+    {
+        <div class="agent-work-block">
+            <h4>MCP tool governance (AGT)</h4>
+            <ul class="agent-agt-decisions">
+                @foreach (var agt in AgtDecisions)
+                {
+                    <li class="agent-agt-item agent-agt-@agt.DecisionClass">
+                        <span class="agent-agt-tool">@agt.ToolName</span>
+                        <span class="agent-agt-decision">@agt.Decision</span>
+                        <span class="agent-agt-agent">@agt.AgentRole</span>
+                        @if (!string.IsNullOrWhiteSpace(agt.MatchedRule))
+                        {
+                            <span class="agent-agt-rule">Rule: @agt.MatchedRule</span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (EvidenceSummary is not null)
+    {
+        <div class="agent-work-block">
+            <h4>Evidence summary</h4>
+            <RetrievalSummaryCard Summary="EvidenceSummary" />
+        </div>
+    }
+
+    @if (Trace is not null && (Trace.McpToolInvocationCount > 0 || Trace.ExecutedAgentRoles.Count > 0))
+    {
+        <div class="agent-work-block">
+            <h4>Execution signals</h4>
+            <dl class="runtime-grid">
+                <div>
+                    <dt>Agents executed</dt>
+                    <dd>@Trace.ExecutedAgentRoles.Count</dd>
+                </div>
+                <div>
+                    <dt>MCP tool calls</dt>
+                    <dd>@Trace.McpToolInvocationCount</dd>
+                </div>
+            </dl>
+            @if (Trace.McpToolsInvoked.Count > 0)
+            {
+                <EvidenceList Items="Trace.McpToolsInvoked" MaxVisible="6" />
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public CaseDetailResponse? CaseDetail { get; set; }
+
+    [Parameter]
+    public WorkflowProgressResponse? Progress { get; set; }
+
+    [Parameter]
+    public AgentRuntimeStatusDto? Runtime { get; set; }
+
+    [Parameter]
+    public GovernanceSummaryResponse? Governance { get; set; }
+
+    [Parameter]
+    public ExecutionTraceResponse? Trace { get; set; }
+
+    private IReadOnlyList<AgentDecisionItem> Decisions => BuildDecisions();
+
+    private IReadOnlyList<string> HumanReviewReasons =>
+        CaseDetail?.HumanReview?.ForcedReviewReasons ?? [];
+
+    private IReadOnlyList<AgtDecisionItem> AgtDecisions =>
+        Governance?.AgtIntegration?.RecentDecisions
+            .Select(d => new AgtDecisionItem(
+                d.ToolName,
+                d.Decision,
+                d.AgentRole ?? "unknown",
+                d.MatchedRule,
+                d.Decision switch
+                {
+                    "Allow" => "allow",
+                    "Deny" => "deny",
+                    _ => "require"
+                }))
+            .ToList()
+        ?? [];
+
+    private IReadOnlyList<FoundryStageItem> FoundryStages => ParseFoundryStages();
+
+    private RetrievalSummaryDto? EvidenceSummary => CaseDetail?.Underwriting?.RetrievalSummary;
+
+    private IReadOnlyList<AgentDecisionItem> BuildDecisions()
+    {
+        if (CaseDetail is null)
+        {
+            return [];
+        }
+
+        var items = new List<AgentDecisionItem>();
+
+        if (CaseDetail.DocumentProcessing is not null)
+        {
+            var doc = CaseDetail.DocumentProcessing;
+            var details = new List<string>
+            {
+                $"Completeness: {doc.CompletenessScore:P0}"
+            };
+            if (doc.MissingDocuments.Count > 0)
+            {
+                details.Add($"Missing: {string.Join(", ", doc.MissingDocuments)}");
+            }
+            if (doc.Flags?.Count > 0)
+            {
+                details.Add($"{doc.Flags.Count} flag(s) raised");
+            }
+
+            items.Add(new AgentDecisionItem(
+                "Document Processing Agent",
+                GetStepStatus("DocumentProcessing"),
+                doc.IsComplete ? "Documents complete" : "Documents incomplete",
+                doc.Summary,
+                details,
+                doc.IsComplete ? "success" : "review"));
+        }
+
+        if (CaseDetail.Underwriting is not null)
+        {
+            var uw = CaseDetail.Underwriting;
+            var details = new List<string>();
+            if (uw.Scores?.RiskScore is { } riskScore)
+            {
+                details.Add($"Risk score: {riskScore:P0}");
+            }
+            if (uw.Reasons.Count > 0)
+            {
+                details.AddRange(uw.Reasons.Take(3));
+            }
+            if (uw.RiskSignals.Count > 0)
+            {
+                details.Add($"Risk signals: {string.Join(", ", uw.RiskSignals.Take(3))}");
+            }
+            if (uw.EvidenceItems?.Count > 0)
+            {
+                details.Add($"Evidence sources: {uw.EvidenceItems.Count}");
+            }
+            if (uw.RetrievalSummary is not null)
+            {
+                details.Add($"Retrieval: {uw.RetrievalSummary.SelectedCount} selected from {uw.RetrievalSummary.CandidateCount} candidates");
+            }
+            if (uw.RequiresHumanReview)
+            {
+                details.Add("Agent flagged for human review");
+            }
+
+            items.Add(new AgentDecisionItem(
+                "Underwriting Agent",
+                GetStepStatus("Underwriting"),
+                $"Recommendation: {uw.Recommendation}",
+                uw.Summary,
+                details,
+                WorkflowStageUi.RecommendationCssClass(uw.Recommendation).Replace("recommendation-", "")));
+        }
+
+        if (CaseDetail.HumanDecision is not null)
+        {
+            items.Add(new AgentDecisionItem(
+                "Human reviewer",
+                "Succeeded",
+                CaseDetail.HumanDecision.Approved ? "Approved application" : "Rejected application",
+                CaseDetail.HumanDecision.Notes,
+                [],
+                CaseDetail.HumanDecision.Approved ? "success" : "danger"));
+        }
+
+        if (CaseDetail.ResponsibleAi is not null)
+        {
+            var rai = CaseDetail.ResponsibleAi;
+            var details = new List<string>();
+            if (rai.FairnessFlags.Count > 0)
+            {
+                details.Add($"Fairness flags: {string.Join(", ", rai.FairnessFlags)}");
+            }
+            if (rai.Observations.Count > 0)
+            {
+                details.AddRange(rai.Observations.Take(2));
+            }
+
+            items.Add(new AgentDecisionItem(
+                "Responsible AI Agent",
+                GetStepStatus("ResponsibleAiReview"),
+                rai.Passed ? "Fairness review passed" : "Fairness review requires attention",
+                string.IsNullOrWhiteSpace(rai.Summary) ? null : rai.Summary,
+                details,
+                rai.Passed ? "success" : "review"));
+        }
+
+        if (CaseDetail.LoanSetup is not null)
+        {
+            var setup = CaseDetail.LoanSetup;
+            var details = new List<string>();
+            if (!string.IsNullOrWhiteSpace(setup.OperationId))
+            {
+                details.Add($"Operation: {setup.OperationId}");
+            }
+
+            items.Add(new AgentDecisionItem(
+                "Account Setup",
+                GetStepStatus("LoanSetup"),
+                setup.Status ?? "Unknown",
+                setup.SetupSummary,
+                details,
+                string.Equals(setup.Status, "Completed", StringComparison.OrdinalIgnoreCase) ? "success" : "danger"));
+        }
+
+        return items;
+    }
+
+    private string GetStepStatus(string stageKey) =>
+        Progress?.Steps.FirstOrDefault(s => s.StageKey == stageKey)?.ExecutionStatus ?? "NotStarted";
+
+    private IReadOnlyList<FoundryStageItem> ParseFoundryStages()
+    {
+        if (Trace?.AgentMemoryEntries is null || Trace.AgentMemoryEntries.Count == 0)
+        {
+            if (Trace?.LatestWorkflowRun is not null)
+            {
+                return
+                [
+                    new FoundryStageItem(
+                        Trace.LatestWorkflowRun.CurrentStage ?? "Workflow",
+                        Trace.LatestWorkflowRun.FoundryRunId,
+                        Trace.LatestWorkflowRun.FoundryThreadId)
+                ];
+            }
+
+            return [];
+        }
+
+        return Trace.AgentMemoryEntries
+            .Where(e => e.Contains("stage=", StringComparison.Ordinal))
+            .Select(ParseFoundryEntry)
+            .Where(s => s is not null)
+            .Cast<FoundryStageItem>()
+            .ToList();
+    }
+
+    private static FoundryStageItem? ParseFoundryEntry(string entry)
+    {
+        string? runId = null;
+        string? threadId = null;
+        string? stage = null;
+
+        foreach (var part in entry.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (part.StartsWith("run=", StringComparison.Ordinal))
+            {
+                runId = part["run=".Length..];
+            }
+            else if (part.StartsWith("thread=", StringComparison.Ordinal))
+            {
+                threadId = part["thread=".Length..];
+            }
+            else if (part.StartsWith("stage=", StringComparison.Ordinal))
+            {
+                stage = part["stage=".Length..];
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(stage)
+            ? null
+            : new FoundryStageItem(stage, runId, threadId);
+    }
+
+    private static string Truncate(string value, int max) =>
+        value.Length <= max ? value : value[..max] + "…";
+
+    private sealed record AgentDecisionItem(
+        string AgentName,
+        string ExecutionStatus,
+        string Outcome,
+        string? Summary,
+        IReadOnlyList<string> Details,
+        string StatusClass);
+
+    private sealed record AgtDecisionItem(
+        string ToolName,
+        string Decision,
+        string AgentRole,
+        string? MatchedRule,
+        string DecisionClass);
+
+    private sealed record FoundryStageItem(string Stage, string? RunId, string? ThreadId);
+}

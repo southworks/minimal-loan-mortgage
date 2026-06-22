@@ -1,0 +1,30 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+@if (Steps.Count == 0)
+{
+    <EmptyState Title="Workflow not started" Description="Start the workflow to see the business stages progress." />
+}
+else
+{
+    <div class="workflow-timeline" role="list" aria-label="Workflow stages">
+        @foreach (var step in Steps)
+        {
+            <WorkflowStageCard Step="step.Step"
+                               Timestamp="step.Timestamp"
+                               RequiresAttention="step.RequiresAttention"
+                               AttentionMessage="@step.AttentionMessage" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<WorkflowStageTimelineItem> Steps { get; set; } = [];
+
+    public sealed record WorkflowStageTimelineItem(
+        WorkflowStageResponse Step,
+        DateTimeOffset? Timestamp,
+        bool RequiresAttention = false,
+        string? AttentionMessage = null);
+}

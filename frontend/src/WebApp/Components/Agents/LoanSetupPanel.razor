@@ -1,0 +1,113 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+@if (Result is not null)
+{
+    var setupFailed = IsFailed(Result);
+    var actionRequired = Result.RequiresAdditionalInformation
+        || string.Equals(Result.Status, "ActionRequired", StringComparison.OrdinalIgnoreCase);
+    var statusLabel = WorkflowStageUi.LoanSetupStatusLabel(Result);
+    var statusCssClass = WorkflowStageUi.LoanSetupStatusCssClass(Result);
+
+    <AgentPanel AgentName="Account Setup"
+                Role="Stage 5"
+                Purpose="Create the final account record once approval and governance checks are complete."
+                StatusLabel="@statusLabel"
+                StatusCssClass="@statusCssClass"
+                CssClass="agent-loan-setup"
+                PanelId="stage-account-setup"
+                IsCollapsible="true"
+                CollapsedByDefault="true">
+        <div class="final-result-card @(setupFailed ? "decision-rejected" : actionRequired ? "rec-review" : string.Empty)">
+            <p class="final-result-label">@GetOutcomeLabel(Result, setupFailed, actionRequired)</p>
+            @if (HasMeaningfulValue(Result.DemoAccountId))
+            {
+                <p class="final-result-value">@Result.DemoAccountId</p>
+            }
+            @if (HasMeaningfulValue(Result.Decision) && actionRequired)
+            {
+                <p class="final-result-value">@Result.Decision</p>
+            }
+            @if (HasMeaningfulValue(Result.SetupSummary))
+            {
+                <p class="final-result-summary">@Result.SetupSummary</p>
+            }
+            @if (!actionRequired || setupFailed)
+            {
+                <p class="final-result-meta">Completed @Result.CompletedAt.ToLocalTime().ToString("g")</p>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Result.Decision))
+        {
+            <div class="recommendation-card @WorkflowStageUi.DecisionCssClass(Result.Decision)">
+                <span class="recommendation-label">Setup decision</span>
+                <span class="recommendation-value">@Result.Decision</span>
+            </div>
+        }
+
+        @if (Result.EvidenceItems?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Evidence used</h4>
+                <StructuredEvidenceList Items="Result.EvidenceItems" />
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(Result.Evidence))
+        {
+            <div class="agent-detail-block">
+                <EvidenceDisclosurePanel Title="Evidence used"
+                                         Items="[Result.Evidence]"
+                                         EmptyMessage="No evidence narrative recorded." />
+            </div>
+        }
+
+        <div class="agent-detail-block">
+            <h4>Next step</h4>
+            <p class="agent-summary">@GetNextStep(Result, setupFailed, actionRequired)</p>
+        </div>
+    </AgentPanel>
+}
+
+@code {
+    [Parameter]
+    public LoanSetupResultDto? Result { get; set; }
+
+    private static bool IsFailed(LoanSetupResultDto result) =>
+        string.Equals(result.Status, "Failed", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasMeaningfulValue(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && !string.Equals(value.Trim(), "null", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetOutcomeLabel(LoanSetupResultDto result, bool setupFailed, bool actionRequired)
+    {
+        if (setupFailed)
+        {
+            return "Account setup failed";
+        }
+
+        if (actionRequired)
+        {
+            return result.Decision ?? "Additional information required";
+        }
+
+        return "Account created";
+    }
+
+    private static string GetNextStep(LoanSetupResultDto result, bool setupFailed, bool actionRequired)
+    {
+        if (setupFailed)
+        {
+            return "Review the completion issue before closing the case.";
+        }
+
+        if (actionRequired)
+        {
+            return "Collect the missing override rationale and supporting information before proceeding.";
+        }
+
+        return "Move the application to completed status and share the final summary.";
+    }
+}

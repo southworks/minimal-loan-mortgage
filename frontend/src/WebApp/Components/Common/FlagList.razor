@@ -1,0 +1,21 @@
+@if (Items.Count == 0)
+{
+    <p class="text-muted">No flags detected.</p>
+}
+else
+{
+    <div class="flag-list">
+        @foreach (var item in Items)
+        {
+            <span class="flag-chip @Variant">@item</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<string> Items { get; set; } = [];
+
+    [Parameter]
+    public string Variant { get; set; } = "flag-warning";
+}
