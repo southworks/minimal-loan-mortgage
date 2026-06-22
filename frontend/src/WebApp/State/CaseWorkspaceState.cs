@@ -92,6 +92,7 @@ public sealed class CaseWorkspaceState
         PollingStatusMessage = null;
         NotifyStateChanged();
 
+        string? runId = null;
         try
         {
             var start = await _api.StartWorkflowAsync(CurrentCase.CaseId, cancellationToken);
@@ -101,16 +102,13 @@ public sealed class CaseWorkspaceState
                 return null;
             }
 
+            runId = start.RunId;
             ActiveWorkflowRun = await _api.GetWorkflowRunAsync(CurrentCase.CaseId, start.RunId, cancellationToken);
             CurrentCase = start.Case ?? await _api.GetCaseAsync(CurrentCase.CaseId, cancellationToken);
             if (CurrentCase is not null)
             {
                 await RefreshCaseDetailsAsync(CurrentCase.CaseId, refreshTrace: true, cancellationToken);
             }
-
-            IsBusy = false;
-            NotifyStateChanged();
-            return start.RunId;
         }
         catch (Exception ex)
         {
@@ -120,9 +118,15 @@ public sealed class CaseWorkspaceState
         finally
         {
             IsBusy = false;
-            IsPollingWorkflow = false;
             NotifyStateChanged();
         }
+
+        if (CurrentCase is not null && ActiveWorkflowRun is not null && IsInProgressRun(ActiveWorkflowRun.Status))
+        {
+            await PollWorkflowRunAsync(CurrentCase.CaseId, ActiveWorkflowRun.RunId, cancellationToken);
+        }
+
+        return runId;
     }
 
     public async Task SubmitDecisionAsync(bool approved, string? notes, CancellationToken cancellationToken = default)
@@ -262,7 +266,7 @@ public sealed class CaseWorkspaceState
                 await Task.Delay(interval, pollToken);
             }
 
-            PollingStatusMessage = "Workflow is still running. Click Refresh to check for updates.";
+            PollingStatusMessage = "Workflow is still running. Progress updates will resume when you revisit this case.";
             var finalStatus = await _api.GetWorkflowRunAsync(caseId, runId, pollToken);
             if (finalStatus is not null)
             {

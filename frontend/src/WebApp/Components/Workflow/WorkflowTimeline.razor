@@ -10,21 +10,12 @@ else
     <div class="workflow-timeline" role="list" aria-label="Workflow stages">
         @foreach (var step in Steps)
         {
-            <WorkflowStageCard Step="step.Step"
-                               Timestamp="step.Timestamp"
-                               RequiresAttention="step.RequiresAttention"
-                               AttentionMessage="@step.AttentionMessage" />
+            <WorkflowStageCard Step="step" />
         }
     </div>
 }
 
 @code {
     [Parameter]
-    public IReadOnlyList<WorkflowStageTimelineItem> Steps { get; set; } = [];
-
-    public sealed record WorkflowStageTimelineItem(
-        WorkflowStageResponse Step,
-        DateTimeOffset? Timestamp,
-        bool RequiresAttention = false,
-        string? AttentionMessage = null);
+    public IReadOnlyList<WorkflowStageResponse> Steps { get; set; } = [];
 }
