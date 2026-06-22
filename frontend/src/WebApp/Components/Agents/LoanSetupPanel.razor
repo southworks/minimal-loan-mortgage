@@ -21,10 +21,6 @@
                 CollapsedByDefault="true">
         <div class="final-result-card @(setupFailed ? "decision-rejected" : actionRequired ? "rec-review" : string.Empty)">
             <p class="final-result-label">@GetOutcomeLabel(Result, setupFailed, actionRequired)</p>
-            @if (HasMeaningfulValue(Result.DemoAccountId))
-            {
-                <p class="final-result-value">@Result.DemoAccountId</p>
-            }
             @if (HasMeaningfulValue(Result.Decision) && actionRequired)
             {
                 <p class="final-result-value">@Result.Decision</p>

@@ -59,16 +59,26 @@ public sealed class CaseWorkspaceStateTests
     }
 
     [Fact]
-    public async Task StartWorkflowAsync_ReturnsExecutionIdWithoutWaitingForPolling()
+    public async Task StartWorkflowAsync_StartsPollingUntilWorkflowCompletes()
     {
-        var startStatus = CreateWorkflowStatus("exec-001", "Running", documentProcessing: true);
+        var runningStatus = CreateWorkflowStatus("exec-001", "Running", documentProcessing: true);
+        var completedStatus = CreateWorkflowStatus(
+            "exec-001",
+            "Completed",
+            documentProcessing: true,
+            underwriting: true,
+            responsibleAi: true,
+            loanSetup: true);
 
         var handler = new SequenceHandler([
             CreateDocumentsResponse("APP-001"),
             CreateHealthResponse(),
-            JsonContent.Create(startStatus, options: JsonOptions),
-            JsonContent.Create(startStatus, options: JsonOptions),
-            JsonContent.Create(startStatus, options: JsonOptions)
+            JsonContent.Create(runningStatus, options: JsonOptions),
+            JsonContent.Create(runningStatus, options: JsonOptions),
+            JsonContent.Create(runningStatus, options: JsonOptions),
+            JsonContent.Create(completedStatus, options: JsonOptions),
+            JsonContent.Create(completedStatus, options: JsonOptions),
+            JsonContent.Create(completedStatus, options: JsonOptions)
         ]);
 
         var state = CreateState(handler, intervalSeconds: 0);
@@ -76,10 +86,14 @@ public sealed class CaseWorkspaceStateTests
         var executionId = await state.StartWorkflowAsync();
 
         Assert.Equal("exec-001", executionId);
-        Assert.Equal("InReview", state.CurrentCase?.Status);
+        Assert.Equal("Completed", state.CurrentCase?.Status);
         Assert.Equal("exec-001", state.ActiveWorkflowRun?.RunId);
-        Assert.Equal("Running", state.ActiveWorkflowRun?.Status);
+        Assert.Equal("Succeeded", state.ActiveWorkflowRun?.Status);
         Assert.False(state.IsPollingWorkflow);
+        Assert.NotNull(state.WorkflowProgress);
+        Assert.Equal(5, state.WorkflowProgress!.Steps.Count);
+        Assert.Equal("Document Review", state.WorkflowProgress.Steps[0].Name);
+        Assert.Equal("Complete. Docs verified", state.WorkflowProgress.Steps[0].Summary);
     }
 
     [Fact]
