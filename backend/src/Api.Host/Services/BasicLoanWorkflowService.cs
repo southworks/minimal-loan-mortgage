@@ -396,18 +396,6 @@ public sealed class BasicLoanWorkflowService
                     completedEvent.ExecutorId,
                     completedEvent.Data,
                     isFinal: true);
-
-                if (string.Equals(
-                        MapExecutorToAgentKey(completedEvent.ExecutorId),
-                        LoanSetupKey,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    execution.Status = BasicWorkflowStatus.Completed;
-                    execution.CurrentAgent = null;
-                    execution.PendingApprovalRequest = null;
-                    execution.PendingCheckpoint = null;
-                    Touch(execution);
-                }
                 break;
 
             case ExecutorFailedEvent failedEvent:
