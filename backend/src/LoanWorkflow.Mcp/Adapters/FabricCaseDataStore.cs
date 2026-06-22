@@ -1,0 +1,82 @@
+using Azure;
+using LoanWorkflow.Mcp.Options;
+using Microsoft.Extensions.Options;
+
+namespace LoanWorkflow.Mcp.Adapters;
+
+public sealed class FabricCaseDataStore : ICaseDataStore
+{
+    private readonly IFabricLakehouseClient _client;
+    private readonly string _evidenceRoot;
+
+    public FabricCaseDataStore(IFabricLakehouseClient client, IOptions<DataSourceOptions> options)
+    {
+        _client = client;
+        _evidenceRoot = string.IsNullOrWhiteSpace(options.Value.FabricLakehouse?.EvidenceRoot)
+            ? "Files/bronze"
+            : options.Value.FabricLakehouse!.EvidenceRoot;
+    }
+
+    public async Task<string> ReadDocumentAsync(string caseId, EvidenceCategory category, string fileName, CancellationToken cancellationToken = default)
+    {
+        ValidateCaseId(caseId);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new ArgumentException("File name must be provided.", nameof(fileName));
+        }
+
+        if (!fileName.StartsWith($"{caseId}_", StringComparison.Ordinal))
+        {
+            throw new FileNotFoundException(
+                $"Case document not found: file '{fileName}' does not belong to case '{caseId}'.",
+                fileName);
+        }
+
+        var path = FilePath(category, fileName);
+        try
+        {
+            return await _client.ReadFileAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileNotFoundException ex)
+        {
+            throw new FileNotFoundException($"Case document not found: {path}", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
+    {
+        ValidateCaseId(caseId);
+        var dir = CategoryDirectory(category);
+
+        IReadOnlyList<string> all;
+        try
+        {
+            all = await _client.ListFilesAsync(dir, cancellationToken).ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            throw new KeyNotFoundException($"Case category directory not found: {dir}", ex);
+        }
+
+        var prefix = $"{caseId}_";
+        return all
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)
+                        && !name.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private string CategoryDirectory(EvidenceCategory category) =>
+        $"{_evidenceRoot}/{EvidenceCategoryFolders.For(category)}";
+
+    private string FilePath(EvidenceCategory category, string fileName) =>
+        $"{_evidenceRoot}/{EvidenceCategoryFolders.For(category)}/{fileName}";
+
+    private static void ValidateCaseId(string caseId)
+    {
+        if (string.IsNullOrWhiteSpace(caseId))
+        {
+            throw new ArgumentException("Case id must be provided.", nameof(caseId));
+        }
+    }
+}
