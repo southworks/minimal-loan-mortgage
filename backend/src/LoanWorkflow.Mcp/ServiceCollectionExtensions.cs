@@ -6,6 +6,7 @@ using LoanWorkflow.Mcp.Builders;
 using LoanWorkflow.Mcp.Options;
 using LoanWorkflow.Mcp.Startup;
 using LoanWorkflow.Mcp.Tools;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 
@@ -19,6 +20,9 @@ public static class ServiceCollectionExtensions
         services.Configure<AzureSearchOptions>(configuration.GetSection(AzureSearchOptions.SectionName));
         services.Configure<AzureFoundryModelsOptions>(configuration.GetSection(AzureFoundryModelsOptions.SectionName));
         services.Configure<McpStartupOptions>(configuration.GetSection(McpStartupOptions.SectionName));
+        services.Configure<DataSourceOptions>(configuration.GetSection(DataSourceOptions.SectionName));
+
+        RegisterCaseDataStore(services, configuration);
 
         var searchOptions = configuration.GetSection(AzureSearchOptions.SectionName).Get<AzureSearchOptions>()
             ?? new AzureSearchOptions();
@@ -44,7 +48,7 @@ public static class ServiceCollectionExtensions
             })
             .AddFoundryResilience(foundryOptions);
 
-        services.AddSingleton<LocalCaseDataAdapter>();
+        services.AddSingleton<CaseDataAdapter>();
         services.AddSingleton<PolicyParser>();
         services.AddSingleton<SearchIndexInitializer>();
         services.AddSingleton<EvidenceIndexAdapter>();
@@ -84,5 +88,32 @@ public static class ServiceCollectionExtensions
         }
 
         return tools.ToArray();
+    }
+
+    private static void RegisterCaseDataStore(IServiceCollection services, IConfiguration configuration)
+    {
+        var dsOptions = configuration.GetSection(DataSourceOptions.SectionName).Get<DataSourceOptions>()
+            ?? new DataSourceOptions();
+
+        if (dsOptions.Mode == DataSourceMode.Fabric
+            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.WorkspaceId)
+            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.LakehouseId))
+        {
+            if (!Guid.TryParse(dsOptions.FabricLakehouse!.WorkspaceId, out _)
+                || !Guid.TryParse(dsOptions.FabricLakehouse!.LakehouseId, out _))
+            {
+                throw new InvalidOperationException(
+                    "DataSource:FabricLakehouse requires WorkspaceId and LakehouseId to be valid GUIDs.");
+            }
+
+            services.AddSingleton<IFabricLakehouseClient>(sp => FabricLakehouseClient.Create(
+                dsOptions,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger<FabricLakehouseClient>()));
+            services.AddSingleton<ICaseDataStore, FabricCaseDataStore>();
+        }
+        else
+        {
+            services.AddSingleton<ICaseDataStore, LocalCaseDataStore>();
+        }
     }
 }
