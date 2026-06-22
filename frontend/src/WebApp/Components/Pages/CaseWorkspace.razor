@@ -515,6 +515,12 @@ else
 
     private string GetAccountSetupMessage(CaseDetailResponse currentCase)
     {
+        if (currentCase.LoanSetup?.RequiresAdditionalInformation == true)
+        {
+            return currentCase.LoanSetup.Decision
+                ?? "Account setup package is prepared, but additional information is required to proceed.";
+        }
+
         if (currentCase.Status == "Rejected")
         {
             return "Account setup does not run when the application is rejected.";

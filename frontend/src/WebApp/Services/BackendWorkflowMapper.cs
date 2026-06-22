@@ -206,12 +206,88 @@ internal static class BackendWorkflowMapper
     {
         return
         [
-            BuildStep("Document Review", "DocumentProcessing", session.DocumentProcessing is not null, session.DocumentProcessing?.Summary),
-            BuildStep("Financial Assessment", "Underwriting", session.Underwriting is not null, session.Underwriting?.Summary),
+            BuildStep("Document Review", "DocumentProcessing", session.DocumentProcessing is not null,
+                BuildDocumentProcessingSummary(session.DocumentProcessing)),
+            BuildStep("Financial Assessment", "Underwriting", session.Underwriting is not null,
+                BuildUnderwritingSummary(session.Underwriting)),
             BuildStep("Human Review", "HumanDecision", session.HumanDecision is not null, session.HumanDecision?.Notes),
-            BuildStep("Fairness Review", "ResponsibleAiReview", session.ResponsibleAi is not null, session.ResponsibleAi?.Summary),
-            BuildStep("Account Setup", "LoanSetup", session.LoanSetup is not null, session.LoanSetup?.SetupSummary)
+            BuildStep("Fairness Review", "ResponsibleAiReview", session.ResponsibleAi is not null,
+                BuildResponsibleAiSummary(session.ResponsibleAi)),
+            BuildStep("Account Setup", "LoanSetup", session.LoanSetup is not null,
+                BuildLoanSetupSummary(session.LoanSetup))
         ];
+    }
+
+    private static string? BuildDocumentProcessingSummary(DocumentProcessingResultDto? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Decision) && !string.IsNullOrWhiteSpace(result.Summary))
+        {
+            return $"{result.Decision}. {result.Summary}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Decision))
+        {
+            return result.Decision;
+        }
+
+        return result.Summary;
+    }
+
+    private static string? BuildUnderwritingSummary(UnderwritingResultDto? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        string decision = result.Decision ?? result.Recommendation;
+        if (!string.IsNullOrWhiteSpace(result.Summary))
+        {
+            return $"{decision}: {result.Summary}";
+        }
+
+        return decision;
+    }
+
+    private static string? BuildResponsibleAiSummary(ResponsibleAiResultDto? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        string decision = result.Decision ?? (result.Passed ? "Passed" : "Escalated");
+        if (!string.IsNullOrWhiteSpace(result.Summary))
+        {
+            return $"{decision}. {result.Summary}";
+        }
+
+        return decision;
+    }
+
+    private static string? BuildLoanSetupSummary(LoanSetupResultDto? result)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        if (result.RequiresAdditionalInformation)
+        {
+            return result.Decision ?? "Additional information required";
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Decision) && !string.Equals(result.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return result.Decision;
+        }
+
+        return result.SetupSummary;
     }
 
     private static WorkflowStageResponse BuildStep(
@@ -220,8 +296,32 @@ internal static class BackendWorkflowMapper
         bool completed,
         string? summary)
     {
-        string executionStatus = completed ? "Succeeded" : "NotStarted";
+        string executionStatus = completed ? ResolveCompletedExecutionStatus(stageKey, summary) : "NotStarted";
         return new WorkflowStageResponse(name, stageKey, executionStatus, summary);
+    }
+
+    private static string ResolveCompletedExecutionStatus(string stageKey, string? summary)
+    {
+        if (stageKey == "LoanSetup"
+            && summary?.Contains("additional information", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "Blocked";
+        }
+
+        if (stageKey == "ResponsibleAiReview"
+            && summary?.Contains("not supported", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "Blocked";
+        }
+
+        if (stageKey == "Underwriting"
+            && (summary?.StartsWith("Reject", StringComparison.OrdinalIgnoreCase) == true
+                || summary?.StartsWith("Deny", StringComparison.OrdinalIgnoreCase) == true))
+        {
+            return "Succeeded";
+        }
+
+        return "Succeeded";
     }
 
     private static void AppendWorkflowNote(CaseSession session, BasicWorkflowStatusResponse status)

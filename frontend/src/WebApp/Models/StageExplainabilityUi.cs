@@ -45,19 +45,37 @@ internal static class StageExplainabilityUi
             : "Documentation requires follow-up before continuing.";
     }
 
-    public static IReadOnlyList<string> UnderwritingInputFindings(UnderwritingResultDto result) =>
-        result.Reasons
+    public static IReadOnlyList<string> UnderwritingInputFindings(UnderwritingResultDto result)
+    {
+        if (result.KeyFacts?.Count > 0)
+        {
+            return result.KeyFacts;
+        }
+
+        return result.Reasons
             .Where(reason => reason.Contains("DTI:", StringComparison.OrdinalIgnoreCase)
                 || reason.Contains("LTV:", StringComparison.OrdinalIgnoreCase)
+                || reason.Contains("credit score:", StringComparison.OrdinalIgnoreCase)
                 || reason.Contains("Credit band:", StringComparison.OrdinalIgnoreCase)
                 || reason.Contains("Risk score:", StringComparison.OrdinalIgnoreCase)
                 || reason.Contains("Income stability:", StringComparison.OrdinalIgnoreCase)
                 || reason.Contains("Cashflow stability:", StringComparison.OrdinalIgnoreCase))
             .ToList();
+    }
 
     public static IReadOnlyList<string> UnderwritingDecisionFindings(UnderwritingResultDto result)
     {
         var inputs = UnderwritingInputFindings(result).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return result.Reasons.Where(reason => !inputs.Contains(reason)).ToList();
+        var drivers = result.Reasons.Where(reason => !inputs.Contains(reason)).ToList();
+
+        if (drivers.Count == 0 && !string.IsNullOrWhiteSpace(result.EvidenceNarrative))
+        {
+            drivers.Add(result.EvidenceNarrative);
+        }
+
+        return drivers;
     }
+
+    public static IReadOnlyList<string> UnderwritingPolicyReferences(UnderwritingResultDto result) =>
+        result.PolicyRefs?.Count > 0 ? result.PolicyRefs : result.Evidence;
 }

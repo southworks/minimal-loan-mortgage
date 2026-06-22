@@ -22,25 +22,21 @@ public sealed class StageExplainabilityUiTests
     }
 
     [Fact]
-    public void UnderwritingInputFindings_SeparatesMetricsFromDecisionDrivers()
+    public void UnderwritingInputFindings_UsesKeyFactsWhenPresent()
     {
         var result = new UnderwritingResultDto(
-            Recommendation: "Review",
-            Reasons:
-            [
-                "DTI: 28.30% (Policy threshold: 36%)",
-                "Case requires manual review because one or more metrics are borderline."
-            ],
-            Evidence: [],
+            Recommendation: "Deny",
+            Reasons: ["credit score: 684", "LTV exceeds threshold."],
+            Evidence: ["UW-100"],
             RiskSignals: [],
-            Anomalies: []);
+            Anomalies: [],
+            KeyFacts: ["credit score: 684", "LTV: 83.6%"]);
 
         var inputs = StageExplainabilityUi.UnderwritingInputFindings(result);
-        var decisions = StageExplainabilityUi.UnderwritingDecisionFindings(result);
+        var policies = StageExplainabilityUi.UnderwritingPolicyReferences(result);
 
-        Assert.Single(inputs);
-        Assert.Single(decisions);
-        Assert.Contains("DTI", inputs[0], StringComparison.Ordinal);
-        Assert.Contains("manual review", decisions[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, inputs.Count);
+        Assert.Single(policies);
+        Assert.Equal("UW-100", policies[0]);
     }
 }

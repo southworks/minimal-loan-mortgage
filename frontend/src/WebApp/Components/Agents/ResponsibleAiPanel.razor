@@ -1,13 +1,16 @@
 @using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
 @using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
 
 @if (Result is not null)
 {
+    var statusLabel = WorkflowStageUi.ResponsibleAiStatusLabel(Result);
+
     <AgentPanel AgentName="Fairness Review"
                 Role="Stage 4"
                 Purpose="Review governance signals, fairness concerns, and decision consistency before account setup."
-                StatusLabel="@(Result.Passed ? "Completed" : "Escalated")"
-                StatusCssClass="@(Result.Passed ? "agent-status-success" : "agent-status-warning")"
+                StatusLabel="@statusLabel"
+                StatusCssClass="@WorkflowStageUi.DecisionCssClass(statusLabel)"
                 CssClass="agent-rai"
                 PanelId="stage-fairness-review"
                 IsCollapsible="true"
@@ -23,7 +26,71 @@
             </p>
         }
 
-        <p class="agent-metric"><strong>Confidence:</strong> @(Result.Passed ? "High" : "Moderate")</p>
+        @if (!string.IsNullOrWhiteSpace(Result.Decision))
+        {
+            <div class="recommendation-card @WorkflowStageUi.DecisionCssClass(Result.Decision)">
+                <span class="recommendation-label">Governance decision</span>
+                <span class="recommendation-value">@Result.Decision</span>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Result.ApprovalAssessment))
+        {
+            <p class="agent-metric"><strong>Approval assessment:</strong> @Result.ApprovalAssessment</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Result.BiasRisk))
+        {
+            <p class="agent-metric"><strong>Bias risk:</strong> @Result.BiasRisk</p>
+        }
+
+        @if (Result.PolicyRefs?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Policy references</h4>
+                <EvidenceList Items="Result.PolicyRefs" />
+            </div>
+        }
+
+        @if (Result.SupportingFacts?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Supporting facts</h4>
+                <EvidenceList Items="Result.SupportingFacts" />
+            </div>
+        }
+        else if (Result.Observations.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Supporting facts</h4>
+                <EvidenceList Items="Result.Observations" />
+            </div>
+        }
+
+        @if (Result.Concerns?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Concerns</h4>
+                <FlagList Items="Result.Concerns" Variant="flag-warning" />
+            </div>
+        }
+
+        @if (Result.Recommendations?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Recommendations</h4>
+                <EvidenceList Items="Result.Recommendations" />
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Result.Evidence))
+        {
+            <div class="agent-detail-block">
+                <EvidenceDisclosurePanel Title="Evidence reviewed"
+                                         Items="[Result.Evidence]"
+                                         EmptyMessage="No evidence narrative recorded." />
+            </div>
+        }
 
         @if (Result.FlagItems?.Count > 0)
         {
@@ -33,19 +100,11 @@
             </div>
         }
 
-        @if (Result.FairnessFlags.Count > 0)
+        @if (Result.FairnessFlags.Count > 0 && Result.Concerns?.Count != Result.FairnessFlags.Count)
         {
             <div class="agent-detail-block">
-                <h4>Decision</h4>
+                <h4>Decision flags</h4>
                 <FlagList Items="Result.FairnessFlags" Variant="flag-warning" />
-            </div>
-        }
-
-        @if (Result.Observations.Count > 0)
-        {
-            <div class="agent-detail-block">
-                <h4>Governance observations</h4>
-                <EvidenceList Items="Result.Observations" />
             </div>
         }
 

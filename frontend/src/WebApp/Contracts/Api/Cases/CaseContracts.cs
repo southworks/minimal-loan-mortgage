@@ -37,7 +37,9 @@ public sealed record DocumentProcessingResultDto(
     string? Status = null,
     bool RequiresHumanReview = false,
     IReadOnlyList<EvidenceItem>? EvidenceItems = null,
-    IReadOnlyList<FlagItem>? Flags = null);
+    IReadOnlyList<FlagItem>? Flags = null,
+    string? Decision = null,
+    string? Evidence = null);
 
 public sealed record UnderwritingScoresDto(
     decimal? RiskScore = null,
@@ -56,7 +58,12 @@ public sealed record UnderwritingResultDto(
     IReadOnlyList<RationaleItem>? RationaleItems = null,
     RetrievalSummaryDto? RetrievalSummary = null,
     bool RequiresHumanReview = false,
-    bool HasCriticalAnomaly = false);
+    bool HasCriticalAnomaly = false,
+    string? Decision = null,
+    string? EvidenceNarrative = null,
+    string? RiskLevel = null,
+    IReadOnlyList<string>? PolicyRefs = null,
+    IReadOnlyList<string>? KeyFacts = null);
 
 public sealed record ResponsibleAiResultDto(
     bool Passed,
@@ -65,7 +72,15 @@ public sealed record ResponsibleAiResultDto(
     string? Summary = null,
     bool EscalationRecommended = false,
     bool RequiresHumanReview = false,
-    IReadOnlyList<FlagItem>? FlagItems = null);
+    IReadOnlyList<FlagItem>? FlagItems = null,
+    string? Decision = null,
+    string? Evidence = null,
+    string? ApprovalAssessment = null,
+    string? BiasRisk = null,
+    IReadOnlyList<string>? SupportingFacts = null,
+    IReadOnlyList<string>? Concerns = null,
+    IReadOnlyList<string>? Recommendations = null,
+    IReadOnlyList<string>? PolicyRefs = null);
 
 public sealed record LoanSetupResultDto(
     string? DemoAccountId,
@@ -73,7 +88,10 @@ public sealed record LoanSetupResultDto(
     string? Status,
     string? OperationId = null,
     DateTimeOffset CompletedAt = default,
-    IReadOnlyList<EvidenceItem>? EvidenceItems = null);
+    IReadOnlyList<EvidenceItem>? EvidenceItems = null,
+    string? Decision = null,
+    string? Evidence = null,
+    bool RequiresAdditionalInformation = false);
 
 public sealed record HumanDecisionDto(
     bool Approved,

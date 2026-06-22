@@ -29,6 +29,14 @@
             <p class="agent-summary"><strong>What happened:</strong> @Result.Summary</p>
         }
 
+        @if (!string.IsNullOrWhiteSpace(Result.Decision))
+        {
+            <div class="recommendation-card @WorkflowStageUi.DecisionCssClass(Result.Decision)">
+                <span class="recommendation-label">Agent decision</span>
+                <span class="recommendation-value">@Result.Decision</span>
+            </div>
+        }
+
         <div class="agent-detail-block">
             <h4>Primary reason</h4>
             <p class="agent-summary">@StageExplainabilityUi.DocumentProcessingPrimaryReason(Result)</p>
@@ -49,6 +57,14 @@
             <div class="agent-detail-block">
                 <EvidenceDisclosurePanel Title="Evidence analyzed"
                                          StructuredItems="Result.EvidenceItems"
+                                         EmptyMessage="No document evidence recorded." />
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(Result.Evidence))
+        {
+            <div class="agent-detail-block">
+                <EvidenceDisclosurePanel Title="Evidence analyzed"
+                                         Items="[Result.Evidence]"
                                          EmptyMessage="No document evidence recorded." />
             </div>
         }

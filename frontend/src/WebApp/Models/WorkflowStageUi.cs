@@ -1,3 +1,5 @@
+using Cohere.LoanProcessing.Shared.Contracts.Api.Cases;
+
 namespace Cohere.LoanProcessing.WebApp.Models;
 
 public static class WorkflowStageUi
@@ -62,9 +64,59 @@ public static class WorkflowStageUi
         recommendation.ToLowerInvariant() switch
         {
             "approve" => "rec-approve",
-            "deny" => "rec-deny",
+            "deny" or "reject" => "rec-deny",
             _ => "rec-review"
         };
+
+    public static string DecisionCssClass(string? decision)
+    {
+        if (string.IsNullOrWhiteSpace(decision))
+        {
+            return "rec-review";
+        }
+
+        string normalized = decision.ToLowerInvariant();
+        if (normalized.Contains("complete") || normalized.Contains("approve"))
+        {
+            return normalized.Contains("not supported") ? "rec-review" : "rec-approve";
+        }
+
+        if (normalized.Contains("reject") || normalized.Contains("deny"))
+        {
+            return "rec-deny";
+        }
+
+        if (normalized.Contains("additional information"))
+        {
+            return "rec-review";
+        }
+
+        return "rec-review";
+    }
+
+    public static string LoanSetupStatusLabel(LoanSetupResultDto result) =>
+        result.Status switch
+        {
+            "Failed" => "Failed",
+            "ActionRequired" => "Additional information required",
+            _ => "Completed"
+        };
+
+    public static string LoanSetupStatusCssClass(LoanSetupResultDto result) =>
+        result.Status switch
+        {
+            "Failed" => "agent-status-danger",
+            "ActionRequired" => "agent-status-warning",
+            _ => "agent-status-success"
+        };
+
+    public static string ResponsibleAiStatusLabel(ResponsibleAiResultDto result) =>
+        result.Decision
+        ?? result.ApprovalAssessment
+        ?? (result.Passed ? "Passed" : "Escalated");
+
+    public static string UnderwritingDisplayDecision(UnderwritingResultDto result) =>
+        result.Decision ?? result.Recommendation;
 
     public static string? GetAgentAnchor(string stageKey) => stageKey switch
     {

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Cohere.LoanProcessing.Shared.Contracts.Agents;
 using Cohere.LoanProcessing.Shared.Contracts.Api.Cases;
 
@@ -7,11 +6,6 @@ namespace Cohere.LoanProcessing.WebApp.Services;
 
 internal static class AgentOutputParser
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     public static DocumentProcessingResultDto? ParseDocumentProcessing(string? rawOutput)
     {
         AgentStructuredPayload? payload = TryParsePayload(rawOutput);
@@ -20,7 +14,7 @@ internal static class AgentOutputParser
             return null;
         }
 
-        bool isComplete = !ContainsReviewDecision(payload.Decision);
+        bool isComplete = IsCompleteDecision(payload.Decision);
         decimal completeness = isComplete ? 1m : 0.75m;
 
         return new DocumentProcessingResultDto(
@@ -32,7 +26,9 @@ internal static class AgentOutputParser
             Status: isComplete ? "Completed" : "ReviewRequired",
             RequiresHumanReview: !isComplete,
             EvidenceItems: BuildEvidenceItems(payload),
-            Flags: BuildFlags(payload));
+            Flags: BuildFlags(payload),
+            Decision: payload.Decision,
+            Evidence: payload.Evidence);
     }
 
     public static UnderwritingResultDto? ParseUnderwriting(string? rawOutput)
@@ -43,13 +39,9 @@ internal static class AgentOutputParser
             return null;
         }
 
-        var reasons = new List<string>();
-        if (payload.KeyFacts is not null)
-        {
-            reasons.AddRange(payload.KeyFacts);
-        }
-
-        if (!string.IsNullOrWhiteSpace(payload.Evidence))
+        var keyFacts = payload.KeyFacts?.ToList() ?? [];
+        var reasons = new List<string>(keyFacts);
+        if (!string.IsNullOrWhiteSpace(payload.Evidence) && keyFacts.Count == 0)
         {
             reasons.Add(payload.Evidence);
         }
@@ -71,7 +63,12 @@ internal static class AgentOutputParser
             RationaleItems: BuildRationaleItems(payload),
             RequiresHumanReview: requiresReview,
             HasCriticalAnomaly: anomalies.Any(item =>
-                item.Contains("critical", StringComparison.OrdinalIgnoreCase)));
+                item.Contains("critical", StringComparison.OrdinalIgnoreCase)),
+            Decision: payload.Decision,
+            EvidenceNarrative: payload.Evidence,
+            RiskLevel: payload.RiskLevel,
+            PolicyRefs: payload.PolicyRefs?.ToList(),
+            KeyFacts: keyFacts);
     }
 
     public static ResponsibleAiResultDto? ParseResponsibleAi(string? rawOutput)
@@ -82,18 +79,28 @@ internal static class AgentOutputParser
             return null;
         }
 
-        bool passed = !ContainsReviewDecision(payload.Decision) && !ContainsDenyDecision(payload.Decision);
-        var observations = payload.SupportingFacts?.ToList() ?? [];
-        var fairnessFlags = payload.Concerns?.ToList() ?? payload.Recommendations?.ToList() ?? [];
+        bool passed = IsResponsibleAiPassed(payload);
+        var supportingFacts = payload.SupportingFacts?.ToList() ?? [];
+        var concerns = payload.Concerns?.ToList() ?? [];
+        var recommendations = payload.Recommendations?.ToList() ?? [];
+        var fairnessFlags = concerns.Count > 0 ? concerns : recommendations;
 
         return new ResponsibleAiResultDto(
             Passed: passed,
             FairnessFlags: fairnessFlags,
-            Observations: observations,
+            Observations: supportingFacts,
             Summary: payload.Summary,
             EscalationRecommended: !passed,
             RequiresHumanReview: !passed,
-            FlagItems: BuildFlags(payload));
+            FlagItems: BuildResponsibleAiFlags(payload),
+            Decision: payload.Decision,
+            Evidence: payload.Evidence,
+            ApprovalAssessment: payload.ApprovalAssessment,
+            BiasRisk: payload.BiasRisk,
+            SupportingFacts: supportingFacts,
+            Concerns: concerns,
+            Recommendations: recommendations,
+            PolicyRefs: payload.PolicyRefs?.ToList());
     }
 
     public static LoanSetupResultDto? ParseLoanSetup(string? rawOutput)
@@ -104,16 +111,23 @@ internal static class AgentOutputParser
             return null;
         }
 
+        bool requiresAdditionalInfo = ContainsAdditionalInformationDecision(payload.Decision);
         bool failed = ContainsDenyDecision(payload.Decision) || ContainsFailureDecision(payload.Decision);
-        string? accountId = ExtractAccountId(payload);
+        string? accountId = requiresAdditionalInfo || failed ? null : ExtractAccountId(payload);
+        string status = failed ? "Failed"
+            : requiresAdditionalInfo ? "ActionRequired"
+            : "Completed";
 
         return new LoanSetupResultDto(
             DemoAccountId: accountId,
             SetupSummary: payload.Summary,
-            Status: failed ? "Failed" : "Completed",
+            Status: status,
             OperationId: payload.Decision,
             CompletedAt: DateTimeOffset.UtcNow,
-            EvidenceItems: BuildEvidenceItems(payload));
+            EvidenceItems: BuildEvidenceItems(payload),
+            Decision: payload.Decision,
+            Evidence: payload.Evidence,
+            RequiresAdditionalInformation: requiresAdditionalInfo);
     }
 
     private static AgentStructuredPayload? TryParsePayload(string? rawOutput)
@@ -240,6 +254,24 @@ internal static class AgentOutputParser
         return flags;
     }
 
+    private static IReadOnlyList<FlagItem> BuildResponsibleAiFlags(AgentStructuredPayload payload)
+    {
+        var flags = new List<FlagItem>();
+        if (payload.Concerns is not null)
+        {
+            flags.AddRange(payload.Concerns.Select((concern, index) =>
+                new FlagItem($"concern-{index + 1}", "Concern", concern, FlagSeverity.Warning, true)));
+        }
+
+        if (payload.Recommendations is not null)
+        {
+            flags.AddRange(payload.Recommendations.Select((recommendation, index) =>
+                new FlagItem($"recommendation-{index + 1}", "Recommendation", recommendation, FlagSeverity.Info, false)));
+        }
+
+        return flags;
+    }
+
     private static IReadOnlyList<string> SplitEvidence(string? evidence)
     {
         if (string.IsNullOrWhiteSpace(evidence))
@@ -268,12 +300,31 @@ internal static class AgentOutputParser
             return "Review";
         }
 
-        if (normalized.Contains("approve", StringComparison.OrdinalIgnoreCase))
+        if (normalized.Contains("approve", StringComparison.OrdinalIgnoreCase)
+            && !normalized.Contains("not supported", StringComparison.OrdinalIgnoreCase))
         {
             return "Approve";
         }
 
         return "Review";
+    }
+
+    private static bool IsCompleteDecision(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && (value.Contains("complete", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("sufficient", StringComparison.OrdinalIgnoreCase))
+        && !ContainsReviewDecision(value);
+
+    private static bool IsResponsibleAiPassed(AgentStructuredPayload payload)
+    {
+        if (ContainsDenyDecision(payload.Decision)
+            || ContainsNotSupportedDecision(payload.Decision)
+            || ContainsNotSupportedDecision(payload.ApprovalAssessment))
+        {
+            return false;
+        }
+
+        return !ContainsReviewDecision(payload.Decision);
     }
 
     private static bool ContainsReviewDecision(string? value) =>
@@ -285,6 +336,14 @@ internal static class AgentOutputParser
         !string.IsNullOrWhiteSpace(value)
         && (value.Contains("deny", StringComparison.OrdinalIgnoreCase)
             || value.Contains("reject", StringComparison.OrdinalIgnoreCase));
+
+    private static bool ContainsNotSupportedDecision(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Contains("not supported", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsAdditionalInformationDecision(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Contains("additional information", StringComparison.OrdinalIgnoreCase);
 
     private static bool ContainsFailureDecision(string? value) =>
         !string.IsNullOrWhiteSpace(value)
@@ -304,7 +363,12 @@ internal static class AgentOutputParser
             return payload.Evidence;
         }
 
-        return ContainsFailureDecision(payload.Decision) ? null : $"DEMO-{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+        if (ContainsFailureDecision(payload.Decision) || ContainsAdditionalInformationDecision(payload.Decision))
+        {
+            return null;
+        }
+
+        return $"DEMO-{Guid.NewGuid():N}"[..12].ToUpperInvariant();
     }
 
     private static IEnumerable<string> CollectJsonCandidates(string rawOutput)
