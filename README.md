@@ -1,6 +1,6 @@
 # CohereLoanAndMortgage API
 
-Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry prompt agents, with multipart document upload to Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
+Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry prompt agents, with case documents loaded from Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
 
@@ -28,7 +28,7 @@ Make the GHCR packages public after the first workflow run so Azure Container Ap
 
 ### After deployment
 
-Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work against the deployed MCP host.
+Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in Blob Storage under `cases/{caseId}/`.
 
 ## Architecture
 
@@ -42,37 +42,54 @@ Evidence indexing is split by source. Uploaded Blob documents are indexed by the
 
 This is intentionally a simple demo:
 
-- Paused workflow cases are kept in memory only and are lost if the API restarts.
+- Workflow executions are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
 - MCP auth is open for the demo host. The API uses the same MCP services internally to prepare case evidence.
+- Case documents must already exist in Azure Blob Storage under `cases/{caseId}/` in the configured container. The API does not expose create-case or document-upload endpoints.
 
 ## API Endpoints
 
 - `GET /health` — health probe
-- `POST /api/loan-mortgage/applications` — create a loan case with applicant metadata
-- `POST /api/loan-mortgage/applications/{caseId}/documents` — upload documents (multipart/form-data)
-- `POST /api/loan-mortgage/applications/{caseId}/workflow/start` — start the Agent Framework workflow
-- `GET /api/loan-mortgage/applications/{caseId}` — full case state with persisted structured agent outputs
-- `GET /api/loan-mortgage/applications/{caseId}/progress` — lightweight progress for polling
-- `POST /api/loan-mortgage/applications/{caseId}/decisions` — submit a human decision (resumes workflow internally)
+- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start` — start the basic Agent Framework workflow for a case whose documents are already in Blob Storage
+- `GET /api/loan-mortgage/executions/{executionId}/basic/status` — poll workflow status and agent outputs
+- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/executions/{executionId}/resume` — submit a human approval decision and resume the workflow
 
-A sample create-case body is available at [backend/src/Api.Host/sample-request.json](backend/src/Api.Host/sample-request.json).
+The start endpoint returns an `executionId`. Use that value for status polling and resume calls.
 
-## UI Integration Pattern
-
-1. Create the loan application with `POST /applications`.
-2. Upload documents with `POST /applications/{caseId}/documents`.
-3. Start the workflow with `POST /applications/{caseId}/workflow/start`.
-4. Poll `GET /applications/{caseId}/progress`.
-5. When status becomes `WaitingForHuman`, fetch `GET /applications/{caseId}` to show structured underwriting output.
-6. Submit a decision with `POST /applications/{caseId}/decisions`.
-7. Continue polling until status becomes `Completed`, `Rejected`, or `Failed`.
-
-Example decision body:
+### Status response shape
 
 ```json
 {
-  "decisionType": "Underwriting",
+  "executionId": "abc123...",
+  "caseId": "APP-001",
+  "status": "Running",
+  "agentOutputs": {
+    "documentProcessing": null,
+    "underwriting": null,
+    "responsibleAi": null,
+    "loanSetup": null
+  },
+  "failureReason": null,
+  "lastUpdatedUtc": "2026-06-22T12:00:00Z"
+}
+```
+
+Possible `status` values: `Pending`, `Running`, `AwaitingHumanApproval`, `Completed`, `Failed`.
+
+## UI Integration Pattern
+
+1. Ensure the case documents are available in Blob Storage at `cases/{caseId}/`.
+2. Start the workflow with `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start`.
+3. Save the returned `executionId`.
+4. Poll `GET /api/loan-mortgage/executions/{executionId}/basic/status`.
+5. When `status` becomes `AwaitingHumanApproval`, show the `agentOutputs.underwriting` content to the reviewer.
+6. Submit a decision with `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/executions/{executionId}/resume`.
+7. Continue polling until `status` becomes `Completed` or `Failed`.
+
+Example approval body:
+
+```json
+{
   "approved": true,
   "reviewerComment": "Underwriting looks acceptable."
 }
