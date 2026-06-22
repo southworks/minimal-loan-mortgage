@@ -107,7 +107,7 @@ public sealed class BasicLoanWorkflowService
     public BasicWorkflowStatusResponse GetBasicWorkflowStatus(string executionId) =>
         ToResponse(_store.GetRequired(executionId));
 
-    public async Task<BasicWorkflowStatusResponse> ResumeBasicWorkflowAsync(
+    public BasicWorkflowStatusResponse ResumeBasicWorkflowAsync(
         string caseId,
         string executionId,
         bool approved,
@@ -131,22 +131,11 @@ public sealed class BasicLoanWorkflowService
                 "Basic workflow is not waiting for human approval.");
         }
 
-        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
-        AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, execution.ExecutionId);
-
-        await using StreamingRun run = await InProcessExecution
-            .ResumeStreamingAsync(
-                workflow,
-                execution.PendingCheckpoint,
-                execution.WorkflowCheckpointManager,
-                cancellationToken)
-            .ConfigureAwait(false);
-
         execution.Status = BasicWorkflowStatus.Running;
         execution.FailureReason = null;
         Touch(execution);
 
-        await ResumeBasicWorkflowRunAsync(execution, run, approved, reviewerComment, cancellationToken).ConfigureAwait(false);
+        ResumeInBackground(executionId, approved, reviewerComment);
 
         return ToResponse(execution);
     }
@@ -182,6 +171,41 @@ public sealed class BasicLoanWorkflowService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Basic workflow failed for execution {ExecutionId}.", executionId);
+                MarkFailed(execution, ex.Message);
+            }
+        }, CancellationToken.None);
+    }
+
+    private void ResumeInBackground(string executionId, bool approved, string? reviewerComment)
+    {
+        CancellationToken stopping = _applicationLifetime.ApplicationStopping;
+
+        _ = Task.Run(async () =>
+        {
+            BasicWorkflowExecution execution = _store.GetRequired(executionId);
+
+            try
+            {
+                FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
+                AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, executionId);
+
+                await using StreamingRun run = await InProcessExecution
+                    .ResumeStreamingAsync(
+                        workflow,
+                        execution.PendingCheckpoint ?? throw new InvalidOperationException("Pending checkpoint was not initialized."),
+                        execution.WorkflowCheckpointManager ?? throw new InvalidOperationException("Checkpoint manager was not initialized."),
+                        stopping)
+                    .ConfigureAwait(false);
+
+                await ResumeBasicWorkflowRunAsync(execution, run, approved, reviewerComment, stopping).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+            {
+                MarkFailed(execution, "Workflow cancelled because the application is stopping.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Basic workflow resume failed for execution {ExecutionId}.", executionId);
                 MarkFailed(execution, ex.Message);
             }
         }, CancellationToken.None);
