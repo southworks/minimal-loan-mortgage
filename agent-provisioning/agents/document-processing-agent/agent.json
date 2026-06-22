@@ -10,5 +10,7 @@
     "Validation Failed",
     "Inconsistent Documents",
     "Suspicious Content"
-  ]
+  ],
+  "governancePolicyFile": "governance.yaml",
+  "governanceRogueFile": "rogue.yaml"
 }

@@ -6,5 +6,7 @@
   "allowedDecisions": [
     "Approve",
     "Reject"
-  ]
+  ],
+  "governancePolicyFile": "governance.yaml",
+  "governanceRogueFile": "rogue.yaml"
 }

@@ -1,6 +1,8 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
+using CohereLoanAndMortgage.Api.Host.Governance;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Workflow;
+using CohereLoanAndMortgage.Foundry.Governance;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
@@ -19,6 +21,7 @@ public sealed class BasicLoanWorkflowService
     private const string LoanSetupKey = "LoanSetup";
 
     private readonly FoundryAgentProvider _agentProvider;
+    private readonly FoundryGovernedAgentsFactory _governedAgentsFactory;
     private readonly LoanMortgageBasicWorkflowFactory _workflowFactory;
     private readonly InMemoryBasicWorkflowStore _store;
     private readonly BlobDocumentStorageService _documentStorage;
@@ -30,6 +33,7 @@ public sealed class BasicLoanWorkflowService
 
     public BasicLoanWorkflowService(
         FoundryAgentProvider agentProvider,
+        FoundryGovernedAgentsFactory governedAgentsFactory,
         LoanMortgageBasicWorkflowFactory workflowFactory,
         InMemoryBasicWorkflowStore store,
         BlobDocumentStorageService documentStorage,
@@ -40,6 +44,7 @@ public sealed class BasicLoanWorkflowService
         ILogger<BasicLoanWorkflowService> logger)
     {
         _agentProvider = agentProvider;
+        _governedAgentsFactory = governedAgentsFactory;
         _workflowFactory = workflowFactory;
         _store = store;
         _documentStorage = documentStorage;
@@ -131,7 +136,9 @@ public sealed class BasicLoanWorkflowService
                 "Basic workflow is not waiting for human approval.");
         }
 
-        FoundryAgents agents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
+        FoundryAgents rawAgents = await _agentProvider.GetAgentsAsync(cancellationToken).ConfigureAwait(false);
+        using IDisposable _ = GovernanceRunContext.Begin(execution.CaseId, execution.ExecutionId);
+        FoundryAgents agents = _governedAgentsFactory.CreateGovernedAgents(rawAgents);
         AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, execution.ExecutionId);
 
         await using StreamingRun run = await InProcessExecution
@@ -161,7 +168,9 @@ public sealed class BasicLoanWorkflowService
 
             try
             {
-                FoundryAgents agents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
+                FoundryAgents rawAgents = await _agentProvider.GetAgentsAsync(stopping).ConfigureAwait(false);
+                using IDisposable _ = GovernanceRunContext.Begin(execution.CaseId, executionId);
+                FoundryAgents agents = _governedAgentsFactory.CreateGovernedAgents(rawAgents);
                 AgentWorkflow workflow = _workflowFactory.CreateWorkflow(agents, execution.CaseId, executionId);
 
                 await using StreamingRun run = await InProcessExecution

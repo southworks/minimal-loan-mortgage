@@ -50,7 +50,7 @@ public sealed class FoundryAgentProvisioner
         try
         {
             string definitionJson = _definitionBuilder.BuildDefinitionJson(bundle, settings);
-            string desiredFingerprint = _definitionBuilder.ComputeFingerprint(definitionJson);
+            string desiredFingerprint = _definitionBuilder.ComputeFingerprint(bundle, definitionJson);
 
             ProjectsAgentVersion? existingVersion =
                 await TryGetLatestAgentVersionAsync(agentClient, agentName, cancellationToken).ConfigureAwait(false);
@@ -58,7 +58,7 @@ public sealed class FoundryAgentProvisioner
             if (existingVersion is not null)
             {
                 string existingDefinitionJson = JsonSerializer.Serialize(existingVersion.Definition);
-                string existingFingerprint = _definitionBuilder.ComputeFingerprint(existingDefinitionJson);
+                string existingFingerprint = _definitionBuilder.ComputeFingerprint(bundle, existingDefinitionJson);
                 if (string.Equals(existingFingerprint, desiredFingerprint, StringComparison.OrdinalIgnoreCase))
                 {
                     return new AgentProvisionResult
