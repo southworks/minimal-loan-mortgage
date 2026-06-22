@@ -32,3 +32,10 @@ public sealed class BasicWorkflowAgentOutputsResponse
 
     public string? LoanSetup { get; init; }
 }
+
+public sealed class ProblemDetailsResponse
+{
+    public required string Title { get; init; }
+
+    public required string Detail { get; init; }
+}
