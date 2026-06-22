@@ -56,9 +56,9 @@ else
     <CascadingValue Value="SectionState">
         <div class="workspace-header">
             <div>
-                <a href="/" class="back-link" @onclick="NavigateHomeAsync" @onclick:preventDefault="true">&larr; Back to application portfolio</a>
+                <a href="/" class="back-link" @onclick="NavigateHomeAsync" @onclick:preventDefault="true">&larr; Back to home</a>
                 <p class="workspace-kicker">Application file</p>
-                <h1>@currentCase.Applicant.FullName</h1>
+                <h1>@CaseDisplayFormatting.FormatLoanTitle(currentCase.Applicant)</h1>
                 <p class="workspace-meta">Application reference @currentCase.CaseId</p>
             </div>
             <div class="workspace-actions">
@@ -200,7 +200,7 @@ else
                 <CollapsiblePageSection Id="@CaseWorkspaceSectionState.SectionIds.Overview"
                                         Title="Application Summary"
                                         Subtitle="Applicant and mortgage request summary."
-                                        StatusLabel="@currentCase.Applicant.FullName"
+                                        StatusLabel="@CaseDisplayFormatting.FormatLoanTitle(currentCase.Applicant)"
                                         StatusCssClass="collapsible-status collapsible-status-neutral">
                     <ApplicantSummaryCard Applicant="currentCase.Applicant" />
                 </CollapsiblePageSection>

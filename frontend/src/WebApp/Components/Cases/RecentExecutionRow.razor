@@ -4,8 +4,7 @@
 
 <li class="recent-execution-row">
     <div class="recent-execution-row-main">
-        <span class="recent-execution-row-name">@Case.Applicant.FullName</span>
-        <span class="recent-execution-row-scenario">@Case.ScenarioId</span>
+        <span class="recent-execution-row-name">@CaseDisplayFormatting.FormatLoanTitle(Case.Applicant)</span>
     </div>
     <div class="recent-execution-row-meta">
         <StatusBadge Status="@Case.Status" Label="@WorkflowStageUi.ToBusinessStatusLabel(Case.Status)" />
@@ -19,7 +18,7 @@
     <button type="button"
             class="btn btn-secondary recent-execution-row-action"
             disabled="@Disabled"
-            aria-label="@($"Open workflow for {Case.Applicant.FullName}")"
+            aria-label="@($"Open workflow for {CaseDisplayFormatting.FormatLoanTitle(Case.Applicant)}")"
             @onclick="OpenAsync">
         Open Workflow
     </button>

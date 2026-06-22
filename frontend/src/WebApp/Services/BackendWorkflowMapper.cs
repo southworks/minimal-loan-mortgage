@@ -105,7 +105,7 @@ internal static class BackendWorkflowMapper
     public static ScenarioSummaryResponse ToScenario(SeedCaseDefinition seedCase) =>
         new(
             seedCase.CaseId,
-            $"{seedCase.BorrowerName} ({seedCase.CaseId})",
+            CaseDisplayFormatting.FormatLoanTitle(seedCase.BorrowerName, seedCase.RequestedLoanAmount),
             seedCase.Description,
             seedCase.ExpectedOutcome,
             seedCase.DemoTagline);
