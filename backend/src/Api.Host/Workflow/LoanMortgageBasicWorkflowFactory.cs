@@ -12,6 +12,8 @@ public static class BasicLoanWorkflowConstants
 
     public const string PendingMessagesKey = "PendingMessages";
 
+    public const string PendingUnderwritingResultKey = "PendingUnderwritingResult";
+
     public const string ApprovalPortId = "BasicHumanApproval";
 }
 
@@ -47,7 +49,9 @@ public sealed class LoanMortgageBasicWorkflowFactory
             caseId: caseId,
             executionId: executionId);
         FunctionExecutor<BasicWorkflowApprovalDecision> applyHumanApprovalDecision = CreateHumanApprovalDecisionExecutor(
-            id: "BasicWorkflowApprovalDecision");
+            id: "BasicWorkflowApprovalDecision",
+            caseId: caseId,
+            executionId: executionId);
         FunctionExecutor<IList<ChatMessage>> bridge03 = CreatePayloadBridgeExecutor(
             id: "BasicWorkflowBridge03",
             caseId: caseId,
@@ -87,6 +91,12 @@ public sealed class LoanMortgageBasicWorkflowFactory
                     result);
 
                 await context.QueueStateUpdateAsync(
+                    BasicLoanWorkflowConstants.PendingUnderwritingResultKey,
+                    result,
+                    scopeName: BasicLoanWorkflowConstants.SharedStateScope,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                await context.QueueStateUpdateAsync(
                     BasicLoanWorkflowConstants.PendingMessagesKey,
                     new List<ChatMessage> { payload },
                     scopeName: BasicLoanWorkflowConstants.SharedStateScope,
@@ -105,7 +115,10 @@ public sealed class LoanMortgageBasicWorkflowFactory
             sentMessageTypes: [typeof(BasicWorkflowApprovalPrompt)]);
     }
 
-    private static FunctionExecutor<BasicWorkflowApprovalDecision> CreateHumanApprovalDecisionExecutor(string id)
+    private static FunctionExecutor<BasicWorkflowApprovalDecision> CreateHumanApprovalDecisionExecutor(
+        string id,
+        string caseId,
+        string executionId)
     {
         return new FunctionExecutor<BasicWorkflowApprovalDecision>(
             id: id,
@@ -116,19 +129,28 @@ public sealed class LoanMortgageBasicWorkflowFactory
                     throw new InvalidOperationException("Basic workflow was rejected during human approval.");
                 }
 
-                IList<ChatMessage>? pendingMessages = await context
-                    .ReadStateAsync<IList<ChatMessage>>(
-                        BasicLoanWorkflowConstants.PendingMessagesKey,
+                AgentStepResult? underwritingResult = await context
+                    .ReadStateAsync<AgentStepResult>(
+                        BasicLoanWorkflowConstants.PendingUnderwritingResultKey,
                         scopeName: BasicLoanWorkflowConstants.SharedStateScope,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (pendingMessages is null || pendingMessages.Count == 0)
+                if (underwritingResult is null)
                 {
-                    throw new InvalidOperationException("Pending underwriting messages were not available when resuming the basic workflow.");
+                    throw new InvalidOperationException("Pending underwriting result was not available when resuming the basic workflow.");
                 }
 
-                await context.SendMessageAsync(pendingMessages, cancellationToken: cancellationToken).ConfigureAwait(false);
+                ChatMessage responsibleAiPayload = CaseWorkflowPayloadBuilder.CreateResponsibleAiReviewMessage(
+                    caseId,
+                    executionId,
+                    underwritingResult,
+                    decision.Approved,
+                    decision.ReviewerComment);
+
+                await context.SendMessageAsync(
+                    new List<ChatMessage> { responsibleAiPayload },
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
                 await context.SendMessageAsync(new TurnToken(emitEvents: true), cancellationToken: cancellationToken).ConfigureAwait(false);
             },
             sentMessageTypes: [typeof(IList<ChatMessage>), typeof(List<ChatMessage>), typeof(TurnToken)]);

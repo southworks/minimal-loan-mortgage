@@ -14,4 +14,6 @@ public sealed class BasicWorkflowApprovalPrompt
 public sealed class BasicWorkflowApprovalDecision
 {
     public required bool Approved { get; init; }
+
+    public string? ReviewerComment { get; init; }
 }

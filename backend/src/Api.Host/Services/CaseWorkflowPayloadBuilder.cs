@@ -58,6 +58,32 @@ public static class CaseWorkflowPayloadBuilder
         return CreateJsonMessage(BuildTransitionPayload(caseId, executionId, previousResult));
     }
 
+    public static ChatMessage CreateResponsibleAiReviewMessage(
+        string caseId,
+        string executionId,
+        AgentStepResult underwritingResult,
+        bool approved,
+        string? reviewerComment = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionId);
+        ArgumentNullException.ThrowIfNull(underwritingResult);
+
+        var payload = new
+        {
+            caseId,
+            executionId,
+            underwritingResult = BuildUnderwritingResultObject(underwritingResult),
+            humanDecision = new
+            {
+                approved,
+                reviewerComment = reviewerComment ?? string.Empty
+            }
+        };
+
+        return CreateJsonMessage(payload);
+    }
+
     private static object BuildTransitionPayload(
         string caseId,
         string executionId,
@@ -91,6 +117,18 @@ public static class CaseWorkflowPayloadBuilder
             keyFacts = previousResult.KeyFacts
         };
     }
+
+    private static object BuildUnderwritingResultObject(AgentStepResult underwritingResult) =>
+        new
+        {
+            summary = underwritingResult.Summary,
+            decision = underwritingResult.Decision,
+            evidence = underwritingResult.Evidence,
+            riskLevel = underwritingResult.RiskLevel ?? string.Empty,
+            policyRefs = underwritingResult.PolicyRefs ?? Array.Empty<string>(),
+            anomalies = underwritingResult.Anomalies ?? Array.Empty<string>(),
+            keyFacts = underwritingResult.KeyFacts ?? Array.Empty<string>()
+        };
 
     private static List<ChatMessage> CreateJsonMessages(object payload)
     {

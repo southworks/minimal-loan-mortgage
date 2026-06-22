@@ -13,6 +13,8 @@ public static class LoanWorkflowConstants
 
     public const string PendingMessagesKey = "PendingMessages";
 
+    public const string PendingUnderwritingResultKey = "PendingUnderwritingResult";
+
     public const string ApprovalPortId = "UnderwritingApproval";
 }
 
@@ -33,6 +35,14 @@ public sealed class LoanMortgageWorkflowFactory
                     cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 string underwritingOutput = WorkflowTextExtractor.FromChatMessages(messages);
+                AgentStepResult underwritingResult = AgentStructuredOutputParser.Parse("underwriting-agent", underwritingOutput);
+
+                await context.QueueStateUpdateAsync(
+                    LoanWorkflowConstants.PendingUnderwritingResultKey,
+                    underwritingResult,
+                    scopeName: LoanWorkflowConstants.SharedStateScope,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+
                 var prompt = new UnderwritingApprovalPrompt
                 {
                     CaseId = caseId,
@@ -56,9 +66,16 @@ public sealed class LoanMortgageWorkflowFactory
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (pendingMessages is null || pendingMessages.Count == 0)
+                AgentStepResult? underwritingResult = await context
+                    .ReadStateAsync<AgentStepResult>(
+                        LoanWorkflowConstants.PendingUnderwritingResultKey,
+                        scopeName: LoanWorkflowConstants.SharedStateScope,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (pendingMessages is null || pendingMessages.Count == 0 || underwritingResult is null)
                 {
-                    throw new InvalidOperationException("Underwriting messages were not available when processing the approval decision.");
+                    throw new InvalidOperationException("Underwriting context was not available when processing the approval decision.");
                 }
 
                 if (!decision.Approved)
@@ -67,7 +84,16 @@ public sealed class LoanMortgageWorkflowFactory
                     return;
                 }
 
-                await context.SendMessageAsync(pendingMessages, cancellationToken: cancellationToken).ConfigureAwait(false);
+                ChatMessage responsibleAiPayload = CaseWorkflowPayloadBuilder.CreateResponsibleAiReviewMessage(
+                    caseId,
+                    executionId,
+                    underwritingResult,
+                    decision.Approved,
+                    decision.ReviewerComment);
+
+                await context.SendMessageAsync(
+                    new List<ChatMessage> { responsibleAiPayload },
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
             },
             sentMessageTypes: [typeof(IList<ChatMessage>), typeof(List<ChatMessage>)],
             outputTypes: [typeof(UnderwritingApprovalDecision)]);

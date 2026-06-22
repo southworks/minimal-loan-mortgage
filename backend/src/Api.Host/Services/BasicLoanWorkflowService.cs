@@ -111,6 +111,7 @@ public sealed class BasicLoanWorkflowService
         string caseId,
         string executionId,
         bool approved,
+        string? reviewerComment,
         CancellationToken cancellationToken)
     {
         BasicWorkflowExecution execution = _store.GetRequired(executionId);
@@ -145,7 +146,7 @@ public sealed class BasicLoanWorkflowService
         execution.FailureReason = null;
         Touch(execution);
 
-        await ResumeBasicWorkflowRunAsync(execution, run, approved, cancellationToken).ConfigureAwait(false);
+        await ResumeBasicWorkflowRunAsync(execution, run, approved, reviewerComment, cancellationToken).ConfigureAwait(false);
 
         return ToResponse(execution);
     }
@@ -269,6 +270,7 @@ public sealed class BasicLoanWorkflowService
         BasicWorkflowExecution execution,
         StreamingRun run,
         bool approved,
+        string? reviewerComment,
         CancellationToken cancellationToken)
     {
         using CancellationTokenSource timeoutCts =
@@ -298,7 +300,8 @@ public sealed class BasicLoanWorkflowService
                         ExternalResponse response = requestInfoEvent.Request.CreateResponse(
                             new BasicWorkflowApprovalDecision
                             {
-                                Approved = approved
+                                Approved = approved,
+                                ReviewerComment = reviewerComment
                             });
 
                         await run.SendResponseAsync(response).ConfigureAwait(false);

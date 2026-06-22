@@ -104,6 +104,7 @@ public sealed class LoanMortgageController : ControllerBase
                 caseId,
                 executionId,
                 request.Approved,
+                request.ReviewerComment,
                 cancellationToken);
 
             return Ok(response);

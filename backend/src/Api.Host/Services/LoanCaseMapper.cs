@@ -83,6 +83,11 @@ public static class LoanCaseMapper
                 PolicyRefs = output.PolicyRefs,
                 Anomalies = output.Anomalies,
                 KeyFacts = output.KeyFacts,
+                ApprovalAssessment = output.ApprovalAssessment,
+                BiasRisk = output.BiasRisk,
+                SupportingFacts = output.SupportingFacts,
+                Concerns = output.Concerns,
+                Recommendations = output.Recommendations,
                 CompletedAtUtc = output.CompletedAtUtc
             };
 

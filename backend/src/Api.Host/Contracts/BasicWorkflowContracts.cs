@@ -18,6 +18,8 @@ public sealed class BasicWorkflowStatusResponse
 public sealed class BasicWorkflowApprovalRequest
 {
     public required bool Approved { get; init; }
+
+    public string? ReviewerComment { get; init; }
 }
 
 public sealed class BasicWorkflowAgentOutputsResponse

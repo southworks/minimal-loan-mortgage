@@ -29,6 +29,21 @@ public sealed class AgentStructuredOutput
 
     [JsonPropertyName("keyFacts")]
     public IReadOnlyList<string>? KeyFacts { get; init; }
+
+    [JsonPropertyName("approvalAssessment")]
+    public string? ApprovalAssessment { get; init; }
+
+    [JsonPropertyName("biasRisk")]
+    public string? BiasRisk { get; init; }
+
+    [JsonPropertyName("supportingFacts")]
+    public IReadOnlyList<string>? SupportingFacts { get; init; }
+
+    [JsonPropertyName("concerns")]
+    public IReadOnlyList<string>? Concerns { get; init; }
+
+    [JsonPropertyName("recommendations")]
+    public IReadOnlyList<string>? Recommendations { get; init; }
 }
 
 public sealed class AgentStepResult
@@ -49,6 +64,16 @@ public sealed class AgentStepResult
 
     public IReadOnlyList<string>? KeyFacts { get; init; }
 
+    public string? ApprovalAssessment { get; init; }
+
+    public string? BiasRisk { get; init; }
+
+    public IReadOnlyList<string>? SupportingFacts { get; init; }
+
+    public IReadOnlyList<string>? Concerns { get; init; }
+
+    public IReadOnlyList<string>? Recommendations { get; init; }
+
     public required DateTimeOffset CompletedAtUtc { get; init; }
 
     public static AgentStepResult FromStructuredOutput(string agentName, AgentStructuredOutput output) =>
@@ -62,6 +87,11 @@ public sealed class AgentStepResult
             PolicyRefs = output.PolicyRefs,
             Anomalies = output.Anomalies,
             KeyFacts = output.KeyFacts,
+            ApprovalAssessment = output.ApprovalAssessment,
+            BiasRisk = output.BiasRisk,
+            SupportingFacts = output.SupportingFacts,
+            Concerns = output.Concerns,
+            Recommendations = output.Recommendations,
             CompletedAtUtc = DateTimeOffset.UtcNow
         };
 }
@@ -175,7 +205,12 @@ public static class AgentStructuredOutputParser
                 RiskLevel = ReadOptionalString(root, "riskLevel"),
                 PolicyRefs = ReadOptionalStringArray(root, "policyRefs"),
                 Anomalies = ReadOptionalStringArray(root, "anomalies"),
-                KeyFacts = ReadOptionalStringArray(root, "keyFacts")
+                KeyFacts = ReadOptionalStringArray(root, "keyFacts"),
+                ApprovalAssessment = ReadOptionalString(root, "approvalAssessment"),
+                BiasRisk = ReadOptionalString(root, "biasRisk"),
+                SupportingFacts = ReadOptionalStringArray(root, "supportingFacts"),
+                Concerns = ReadOptionalStringArray(root, "concerns"),
+                Recommendations = ReadOptionalStringArray(root, "recommendations")
             };
         }
         catch (JsonException)

@@ -113,6 +113,16 @@ public sealed class AgentStepResultResponse
 
     public IReadOnlyList<string>? KeyFacts { get; init; }
 
+    public string? ApprovalAssessment { get; init; }
+
+    public string? BiasRisk { get; init; }
+
+    public IReadOnlyList<string>? SupportingFacts { get; init; }
+
+    public IReadOnlyList<string>? Concerns { get; init; }
+
+    public IReadOnlyList<string>? Recommendations { get; init; }
+
     public required DateTimeOffset CompletedAtUtc { get; init; }
 }
 
