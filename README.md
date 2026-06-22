@@ -3,6 +3,7 @@
 The main purpose of this repository is to show a real world use cases of Loan & Mortgage by integrating Cohere AI models, Microsoft Foundry and Microsoft Agent Framework.
 You can find in the directory the dataset-seed, infrastructure, code and deployment for a real world use cases of Loan & Mortgage.
 
+Click on "Deploy to azure" button and see how it works into your Azure Subcription.
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
 
 
