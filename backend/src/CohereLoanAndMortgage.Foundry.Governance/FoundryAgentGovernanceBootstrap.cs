@@ -99,7 +99,7 @@ public sealed class FoundryAgentGovernanceBootstrap
                 if (_enableFunctionInvocationLogging)
                 {
                     invocationLogger?.LogInformation(
-                        "Phase0 governance function middleware invoked for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}",
+                        "Governance function middleware invoked for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}",
                         role,
                         context.Function.Name,
                         GovernanceRunContext.CurrentValue?.CaseId,

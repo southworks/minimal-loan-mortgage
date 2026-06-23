@@ -67,30 +67,6 @@ public static class AgentCatalog
             }
         }
 
-        if (agentName.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
-        {
-            role = AgentRole.DocumentProcessing;
-            return true;
-        }
-
-        if (agentName.Contains("underwriting", StringComparison.OrdinalIgnoreCase))
-        {
-            role = AgentRole.Underwriting;
-            return true;
-        }
-
-        if (agentName.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase))
-        {
-            role = AgentRole.ResponsibleAi;
-            return true;
-        }
-
-        if (agentName.Contains("loan-setup", StringComparison.OrdinalIgnoreCase))
-        {
-            role = AgentRole.LoanSetup;
-            return true;
-        }
-
         return false;
     }
 }

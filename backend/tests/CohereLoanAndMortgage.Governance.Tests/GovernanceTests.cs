@@ -210,7 +210,6 @@ public sealed class McpToolGovernanceCoordinatorTests
 
     [Theory]
     [InlineData("document-processing-agent", AgentRole.DocumentProcessing)]
-    [InlineData("phase0-document-processing-agent", AgentRole.DocumentProcessing)]
     [InlineData("underwriting-agent", AgentRole.Underwriting)]
     public void TryResolveRole_MapsKnownAgentNames(string agentName, AgentRole expectedRole)
     {
