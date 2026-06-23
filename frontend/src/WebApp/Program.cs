@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://cohereloan-api-7d4ofvyd6i5mg.livelyriver-65dc46d9.westus.azurecontainerapps.io/";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5038/";
 builder.Services.AddHttpClient<LoanApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.Configure<WorkflowPollingOptions>(builder.Configuration.GetSection("WorkflowPolling"));
 builder.Services.Configure<DatasetSeedOptions>(builder.Configuration.GetSection("DatasetSeed"));
