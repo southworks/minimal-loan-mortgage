@@ -118,16 +118,18 @@ public sealed class LoanApiClientTests
         Task<CaseDetailResponse?> submitTask = client.SubmitDecisionAsync("APP-001", true, "Approved in demo UI");
         Task completedTask = await Task.WhenAny(submitTask, Task.Delay(TimeSpan.FromSeconds(1)));
 
-        Assert.Same(submitTask, completedTask);
+        Assert.NotSame(submitTask, completedTask);
+        Assert.False(submitTask.IsCompleted);
         Assert.False(resumeResponse.Task.IsCompleted);
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest?.Method);
         Assert.Contains("/resume", handler.LastRequest?.RequestUri?.AbsolutePath, StringComparison.Ordinal);
+
+        resumeResponse.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+
         var result = await submitTask;
         Assert.NotNull(result);
         Assert.True(result!.HumanDecision?.Approved);
-
-        resumeResponse.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
     }
 
     [Fact]

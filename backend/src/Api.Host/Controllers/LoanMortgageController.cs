@@ -190,7 +190,7 @@ public sealed class LoanMortgageController : ControllerBase
     }
 
     [HttpPost("applications/{caseId}/workflow/basic/executions/{executionId}/resume")]
-    public async Task<ActionResult<BasicWorkflowStatusResponse>> ResumeBasicWorkflowAsync(
+    public ActionResult<BasicWorkflowStatusResponse> ResumeBasicWorkflowAsync(
         string caseId,
         string executionId,
         [FromBody] BasicWorkflowApprovalRequest request,
@@ -198,7 +198,7 @@ public sealed class LoanMortgageController : ControllerBase
     {
         try
         {
-            BasicWorkflowStatusResponse response = await _basicWorkflowService.ResumeBasicWorkflowAsync(
+            BasicWorkflowStatusResponse response = _basicWorkflowService.ResumeBasicWorkflowAsync(
                 caseId,
                 executionId,
                 request.Approved,
