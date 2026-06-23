@@ -1,0 +1,24 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+
+<article class="card bank-form-summary">
+    <div class="card-body">
+        <h3 class="card-title">Applicant information</h3>
+        <dl class="detail-list">
+            <div><dt>Name</dt><dd>@Applicant.FullName</dd></div>
+            <div><dt>Email</dt><dd>@Applicant.Email</dd></div>
+            <div><dt>Employment</dt><dd>@Applicant.EmploymentStatus</dd></div>
+            <div><dt>Annual income</dt><dd>@Applicant.AnnualIncome.ToString("C0")</dd></div>
+            <div><dt>Requested loan</dt><dd>@Applicant.RequestedLoanAmount.ToString("C0")</dd></div>
+            <div><dt>Credit history</dt><dd>@Applicant.CreditHistorySummary</dd></div>
+            @if (!string.IsNullOrWhiteSpace(Applicant.ProductType))
+            {
+                <div><dt>Product</dt><dd>@Applicant.ProductType</dd></div>
+            }
+        </dl>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public ApplicantProfileDto Applicant { get; set; } = default!;
+}

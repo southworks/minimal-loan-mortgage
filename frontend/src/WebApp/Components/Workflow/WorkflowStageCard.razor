@@ -1,0 +1,21 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Models
+
+<article class="workflow-stage @WorkflowStageUi.ToCssClass(Step.ExecutionStatus)">
+    <div class="stage-indicator" aria-hidden="true"></div>
+    <div class="stage-content">
+        <div class="stage-header">
+            <h4 class="stage-name">@Step.Name</h4>
+            <span class="stage-status-label">@WorkflowStageUi.ToLabel(Step.ExecutionStatus, Step.Name, Step.Summary)</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Step.Summary))
+        {
+            <p class="stage-summary">@Step.Summary</p>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkflowStageResponse Step { get; set; } = default!;
+}

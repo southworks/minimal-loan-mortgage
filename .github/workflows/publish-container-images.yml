@@ -8,6 +8,7 @@ on:
       - 'backend/src/Api.Host/**'
       - 'backend/src/LoanWorkflow.Mcp/**'
       - 'agent-provisioning/**'
+      - 'frontend/src/WebApp/**'
       - 'dataset-seed/**'
       - '.github/workflows/publish-container-images.yml'
   workflow_dispatch:
@@ -33,6 +34,8 @@ jobs:
             dockerfile: backend/src/LoanWorkflow.Mcp/Dockerfile
           - image: cohereloan-provisioning
             dockerfile: agent-provisioning/Dockerfile
+          - image: cohereloan-web
+            dockerfile: frontend/src/WebApp/Dockerfile
 
     steps:
       - name: Checkout

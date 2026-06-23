@@ -1,0 +1,50 @@
+@inject NavigationManager Navigation
+
+<header class="top-bar">
+    @if (_isNavigatingHome)
+    {
+        <PageTransitionLoader Message="Opening application portfolio..." Blocking="true" />
+    }
+
+    <div class="top-bar-inner">
+        <a href="/" class="brand" @onclick="NavigateHomeAsync" @onclick:preventDefault="true">
+            <span class="brand-mark" aria-hidden="true">CBB</span>
+            <span class="brand-copy">
+                <span class="brand-title">Cohere Bank of Boston</span>
+                <span class="brand-subtitle">We take care of your future</span>
+            </span>
+        </a>
+        <nav class="top-bar-nav">
+            <a href="/" class="nav-link" @onclick="NavigateHomeAsync" @onclick:preventDefault="true">Home</a>
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+        </nav>
+    </div>
+</header>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _isNavigatingHome;
+
+    private async Task NavigateHomeAsync()
+    {
+        if (IsCurrentPageHome() || _isNavigatingHome)
+        {
+            return;
+        }
+
+        _isNavigatingHome = true;
+        await InvokeAsync(StateHasChanged);
+        Navigation.NavigateTo("/");
+    }
+
+    private bool IsCurrentPageHome()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri).TrimEnd('/');
+        return string.IsNullOrWhiteSpace(relativePath);
+    }
+}

@@ -1,0 +1,15 @@
+<div class="page-transition-loader @(Blocking ? "page-transition-loader-blocking" : null)" role="status" aria-live="polite" aria-label="@Message">
+    <div class="page-transition-bar" aria-hidden="true"></div>
+    <div class="page-transition-card">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <span>@Message</span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = "Loading page...";
+
+    [Parameter]
+    public bool Blocking { get; set; }
+}

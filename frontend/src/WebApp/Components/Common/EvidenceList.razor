@@ -1,0 +1,34 @@
+@if (Items.Count == 0)
+{
+    <p class="text-muted">No evidence recorded.</p>
+}
+else
+{
+    <ul class="evidence-list">
+        @foreach (var item in VisibleItems)
+        {
+            <li>@item</li>
+        }
+    </ul>
+    @if (Items.Count > MaxVisible)
+    {
+        <button type="button" class="btn-link" @onclick="ToggleExpanded">
+            @(Expanded ? "Show less" : $"Show {Items.Count - MaxVisible} more")
+        </button>
+    }
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<string> Items { get; set; } = [];
+
+    [Parameter]
+    public int MaxVisible { get; set; } = 5;
+
+    private bool Expanded;
+
+    private IEnumerable<string> VisibleItems =>
+        Expanded ? Items : Items.Take(MaxVisible);
+
+    private void ToggleExpanded() => Expanded = !Expanded;
+}

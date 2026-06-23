@@ -1,0 +1,42 @@
+@using Cohere.LoanProcessing.WebApp.State
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<a href="@Href"
+   class="@CssClass"
+   @onclick="ScrollAsync"
+   @onclick:preventDefault>
+    @ChildContent
+</a>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SectionId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [CascadingParameter]
+    private CaseWorkspaceSectionState? SectionState { get; set; }
+
+    private string Href
+    {
+        get
+        {
+            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+            var pathWithoutFragment = relativePath.Split('#')[0];
+            return string.IsNullOrEmpty(pathWithoutFragment)
+                ? $"#{SectionId}"
+                : $"/{pathWithoutFragment}#{SectionId}";
+        }
+    }
+
+    private async Task ScrollAsync()
+    {
+        SectionState?.Expand(SectionId);
+        await Js.InvokeVoidAsync("cohereExpandAndScrollToSection", SectionId);
+    }
+}

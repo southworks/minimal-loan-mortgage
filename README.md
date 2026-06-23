@@ -1,8 +1,16 @@
-# CohereLoanAndMortgage API
+# Cohere Loan & Mortgage workflow RIs
 
-Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry prompt agents, with case documents loaded from Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
+The main purpose of this repository is to show a real world use cases of Loan & Mortgage by integrating Cohere AI models, Microsoft Foundry and Microsoft Agent Framework.
+You can find in the directory the dataset-seed, infrastructure, code and deployment for a real world use cases of Loan & Mortgage.
+
+Click on "Deploy to azure" button and see how it works into your Azure Subcription.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
+
+
+Below you can see the workflow diagram of the entire solution
+<img width="1359" height="604" alt="image" src="https://github.com/user-attachments/assets/12b8e93c-734f-4a30-a323-2ec7813f4ef5" />
+
 
 ## Deploy to Azure
 

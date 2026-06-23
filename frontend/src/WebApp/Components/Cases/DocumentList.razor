@@ -1,0 +1,21 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+
+@if (Documents.Count == 0)
+{
+    <EmptyState Title="No documents" Description="This case has no documents attached yet." />
+}
+else
+{
+    <div class="document-list">
+        @foreach (var document in Documents)
+        {
+            <DocumentCard Document="document" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DocumentRecordDto> Documents { get; set; } = [];
+}
