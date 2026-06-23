@@ -1,0 +1,70 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+@using Cohere.LoanProcessing.WebApp.Models
+
+@if (Items is null || Items.Count == 0)
+{
+    <p class="text-muted">@EmptyMessage</p>
+}
+else
+{
+    <ul class="structured-evidence-list">
+        @foreach (var item in Items)
+        {
+            <li class="structured-evidence-item">
+                <div class="structured-evidence-header">
+                    <div class="structured-evidence-source-group">
+                        <span class="structured-evidence-type-badge">@EvidenceUiLabels.SourceTypeLabel(item.SourceType.ToString())</span>
+                        <span class="structured-evidence-source-id">@item.SourceId</span>
+                    </div>
+                    <span class="structured-evidence-relevance @GetMatchStrengthClass(item.Relevance)">
+                        @EvidenceUiLabels.MatchStrengthLabel(item.Relevance) (@item.Relevance.ToString("P0"))
+                    </span>
+                </div>
+                <p class="structured-evidence-excerpt">@item.Excerpt</p>
+                @if (item.Provenance is not null)
+                {
+                    <div class="structured-evidence-provenance">
+                        @if (item.Provenance.SelectedRank is { } rank and > 0)
+                        {
+                            <span class="provenance-chip">Rank #@rank</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(item.Provenance.RetrievalMode))
+                        {
+                            <span class="provenance-chip">@item.Provenance.RetrievalMode</span>
+                        }
+                        @if (item.Provenance.RerankApplied == true)
+                        {
+                            <span class="provenance-chip provenance-chip-highlight">Re-ranked</span>
+                        }
+                        @if (item.Provenance.PreRerankScore is { } preScore
+                             && item.Provenance.PostRerankScore is { } postScore
+                             && Math.Abs(preScore - postScore) > 0.01)
+                        {
+                            <span class="provenance-chip">
+                                Score @preScore.ToString("P0") → @postScore.ToString("P0")
+                            </span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(item.Provenance.Citation))
+                        {
+                            <span class="provenance-chip">Ref: @item.Provenance.Citation</span>
+                        }
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<EvidenceItem>? Items { get; set; }
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No structured evidence recorded.";
+
+    private static string GetMatchStrengthClass(double relevance) =>
+        relevance >= 0.85 ? "match-strong"
+        : relevance >= 0.65 ? "match-good"
+        : relevance >= 0.45 ? "match-moderate"
+        : "match-weak";
+}

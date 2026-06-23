@@ -1,8 +1,16 @@
-# CohereLoanAndMortgage API
+# Cohere Loan & Mortgage workflow RIs
 
-Educational ASP.NET Core Web API that demonstrates a thin orchestration layer over Microsoft Agent Framework workflows and Azure AI Foundry prompt agents, with case documents loaded from Azure Blob Storage, structured agent outputs, and a single human-in-the-loop approval after underwriting.
+The main purpose of this repository is to show a real world use cases of Loan & Mortgage by integrating Cohere AI models, Microsoft Foundry and Microsoft Agent Framework.
+You can find in the directory the dataset-seed, infrastructure, code and deployment for a real world use cases of Loan & Mortgage.
+
+Click on "Deploy to azure" button and see how it works into your Azure Subcription.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2Fazuredeploy.json/createUiDefinition.uri/https%3A%2F%2Fraw.githubusercontent.com%2Fsouthworks%2Fminimal-loan-mortgage%2Fmain%2Finfra%2FcreateUiDefinition.json)
+
+
+Below you can see the workflow diagram of the entire solution
+<img width="1359" height="604" alt="image" src="https://github.com/user-attachments/assets/12b8e93c-734f-4a30-a323-2ec7813f4ef5" />
+
 
 ## Deploy to Azure
 
@@ -121,6 +129,21 @@ Local development is optional and separate from the Azure deployment path.
 - Azure Storage account with a blob container for document uploads
 
 ### Run locally
+
+#### VS Code / Cursor (recommended)
+
+1. Install the [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) extension (recommended when opening the repo).
+2. Copy `backend/src/Api.Host/.env.local.example` to `backend/src/Api.Host/.env.local` and fill in your Azure values.
+3. Sign in with Azure CLI (`az login`) or another credential available to `DefaultAzureCredential`.
+4. Open **Run and Debug** and start **API + MCP** (or **Full stack (API + MCP + Web)** to include the Blazor UI).
+
+Default URLs when debugging:
+
+- API: `http://localhost:5038`
+- MCP: `http://localhost:5040`
+- Web UI: `http://localhost:5147`
+
+#### Command line
 
 ```powershell
 cd backend/src/Api.Host

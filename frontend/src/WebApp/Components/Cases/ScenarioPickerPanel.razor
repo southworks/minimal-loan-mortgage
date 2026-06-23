@@ -1,0 +1,105 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.State
+
+<div class="scenario-picker-master">
+    <label class="scenario-picker-search-label" for="scenario-search">Search application templates</label>
+    <input id="scenario-search"
+           type="search"
+           class="scenario-picker-search"
+           placeholder="Search application templates..."
+           aria-label="Search application templates"
+           value="@State.SearchQuery"
+           @oninput="OnSearchInput" />
+
+    <div class="scenario-picker-filters" role="group" aria-label="Filter by expected outcome">
+        @foreach (var filter in OutcomeFilters)
+        {
+            var isActive = State.OutcomeFilter == filter;
+            <button type="button"
+                    class="scenario-picker-chip @(isActive ? "scenario-picker-chip-active" : null)"
+                    aria-pressed="@isActive"
+                    @onclick="() => SetOutcomeFilter(filter)">
+                @FormatFilterLabel(filter)
+            </button>
+        }
+    </div>
+
+    <p class="scenario-picker-count" aria-live="polite">
+        Showing @State.FilteredScenarios.Count of @State.Scenarios.Count
+    </p>
+
+    @if (!State.HasResults)
+    {
+        <div class="scenario-picker-no-results">
+            <p>No application templates match your search.</p>
+            <button type="button" class="btn btn-secondary" @onclick="ClearFilters">
+                Clear filters
+            </button>
+        </div>
+    }
+    else
+    {
+        <ul class="scenario-picker-list"
+            role="listbox"
+            aria-label="Application templates">
+            @foreach (var scenario in State.FilteredScenarios)
+            {
+                var isSelected = string.Equals(
+                    State.SelectedScenarioId,
+                    scenario.ScenarioId,
+                    StringComparison.OrdinalIgnoreCase);
+                <li role="presentation">
+                    <button type="button"
+                            class="scenario-picker-item @(isSelected ? "scenario-picker-item-selected" : null)"
+                            role="option"
+                            aria-selected="@isSelected"
+                            @onclick="() => SelectScenario(scenario.ScenarioId)">
+                        <span class="scenario-picker-item-title">@scenario.Title</span>
+                        <span class="scenario-picker-item-outcome scenario-outcome-@ScenarioPickerFilter.NormalizeOutcome(scenario.ExpectedOutcome)">
+                            @ScenarioPickerFilter.FormatOutcomeLabel(scenario.ExpectedOutcome)
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(scenario.DemoTagline))
+                        {
+                            <span class="scenario-picker-item-tagline">@scenario.DemoTagline</span>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private static readonly ScenarioOutcomeFilter[] OutcomeFilters =
+    [
+        ScenarioOutcomeFilter.All,
+        ScenarioOutcomeFilter.Approve,
+        ScenarioOutcomeFilter.Review,
+        ScenarioOutcomeFilter.Deny
+    ];
+
+    [Parameter, EditorRequired]
+    public ScenarioPickerState State { get; set; } = default!;
+
+    private void OnSearchInput(ChangeEventArgs args) =>
+        State.SetSearch(args.Value?.ToString() ?? string.Empty);
+
+    private void SetOutcomeFilter(ScenarioOutcomeFilter filter) =>
+        State.SetOutcomeFilter(filter);
+
+    private void SelectScenario(string scenarioId) =>
+        State.SelectScenario(scenarioId);
+
+    private void ClearFilters() =>
+        State.ClearFilters();
+
+    private static string FormatFilterLabel(ScenarioOutcomeFilter filter) =>
+        filter switch
+        {
+            ScenarioOutcomeFilter.All => "All",
+            ScenarioOutcomeFilter.Approve => "Approve",
+            ScenarioOutcomeFilter.Review => "Review",
+            ScenarioOutcomeFilter.Deny => "Deny",
+            _ => filter.ToString()
+        };
+}

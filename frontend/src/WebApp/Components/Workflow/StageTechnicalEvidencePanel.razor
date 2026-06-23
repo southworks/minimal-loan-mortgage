@@ -1,0 +1,118 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Governance
+@using Cohere.LoanProcessing.WebApp.Models
+
+@{
+    var evidence = StageTechnicalEvidenceUi.Build(StageKey, GovernanceSummary, ExecutionTrace);
+}
+
+<details class="stage-technical-evidence">
+    <summary class="stage-technical-summary">
+        <span>Technical evidence</span>
+        <span class="stage-technical-counts">
+            @GetSummaryText(evidence)
+        </span>
+    </summary>
+
+    <div class="stage-technical-body">
+        @if (!evidence.HasEvidence)
+        {
+            <p class="stage-technical-note">No stage-specific technical evidence available yet.</p>
+        }
+        else
+        {
+            @if (evidence.GovernanceDecisions.Count > 0)
+            {
+                <section class="stage-technical-block">
+                    <h5>Governance decisions</h5>
+                    <ul class="stage-technical-list">
+                        @foreach (var decision in evidence.GovernanceDecisions)
+                        {
+                            <li class="stage-technical-decision">
+                                <div class="stage-technical-row">
+                                    <span class="stage-technical-name">@decision.ToolName</span>
+                                    <span class="stage-technical-badge @GetDecisionCssClass(decision.Decision)">@decision.Decision</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(decision.MatchedRule))
+                                {
+                                    <p class="stage-technical-detail">Rule: @decision.MatchedRule</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(decision.Reason))
+                                {
+                                    <p class="stage-technical-detail">@decision.Reason</p>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            @if (evidence.ToolsAssociated.Count > 0)
+            {
+                <section class="stage-technical-block">
+                    <h5>Associated MCP tools</h5>
+                    <ul class="stage-technical-list stage-technical-chip-list">
+                        @foreach (var toolName in evidence.ToolsAssociated)
+                        {
+                            <li>@toolName</li>
+                        }
+                    </ul>
+                    <p class="stage-technical-note">Tool associations are inferred from existing trace names.</p>
+                </section>
+            }
+
+            @if (evidence.ExecutedAgentRoles.Count > 0 || evidence.ExecutedStages.Count > 0)
+            {
+                <section class="stage-technical-block">
+                    <h5>Trace signals</h5>
+                    @if (evidence.ExecutedAgentRoles.Count > 0)
+                    {
+                        <p class="stage-technical-label">Agent roles</p>
+                        <ul class="stage-technical-list stage-technical-chip-list">
+                            @foreach (var agentRole in evidence.ExecutedAgentRoles)
+                            {
+                                <li>@agentRole</li>
+                            }
+                        </ul>
+                    }
+                    @if (evidence.ExecutedStages.Count > 0)
+                    {
+                        <p class="stage-technical-label">Executed stages</p>
+                        <ul class="stage-technical-list stage-technical-chip-list">
+                            @foreach (var stage in evidence.ExecutedStages)
+                            {
+                                <li>@stage</li>
+                            }
+                        </ul>
+                    }
+                </section>
+            }
+        }
+    </div>
+</details>
+
+@code {
+    [Parameter, EditorRequired]
+    public string StageKey { get; set; } = string.Empty;
+
+    [Parameter]
+    public GovernanceSummaryResponse? GovernanceSummary { get; set; }
+
+    [Parameter]
+    public ExecutionTraceResponse? ExecutionTrace { get; set; }
+
+    private static string GetSummaryText(StageTechnicalEvidenceModel evidence)
+    {
+        if (!evidence.HasEvidence)
+        {
+            return "No stage evidence";
+        }
+
+        return $"{evidence.ToolsAssociated.Count} associated tool(s) · {evidence.AllowedCount} allowed · {evidence.DeniedCount} denied";
+    }
+
+    private static string GetDecisionCssClass(string decision) =>
+        decision.Equals("Allow", StringComparison.OrdinalIgnoreCase) ? "stage-technical-badge-allow"
+        : decision.Equals("Deny", StringComparison.OrdinalIgnoreCase) ? "stage-technical-badge-deny"
+        : "stage-technical-badge-review";
+}

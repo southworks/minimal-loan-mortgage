@@ -1,0 +1,68 @@
+<div class="alert alert-error" role="alert">
+    <strong>@Title</strong>
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(TraceId) || !string.IsNullOrWhiteSpace(CaseId))
+    {
+        <dl class="error-correlation">
+            @if (!string.IsNullOrWhiteSpace(TraceId))
+            {
+                <div>
+                    <dt>Trace ID</dt>
+                    <dd><code>@TraceId</code></dd>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(CaseId))
+            {
+                <div>
+                    <dt>Case ID</dt>
+                    <dd><code>@CaseId</code></dd>
+                </div>
+            }
+        </dl>
+    }
+    @if (OnRetry.HasDelegate)
+    {
+        <LoadingButton CssClass="btn btn-secondary"
+                       IsLoading="_isRetrying"
+                       LoadingText="Retrying..."
+                       OnClick="RetryAsync">
+            Retry
+        </LoadingButton>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "Something went wrong";
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public string? TraceId { get; set; }
+
+    [Parameter]
+    public string? CaseId { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    private bool _isRetrying;
+
+    private async Task RetryAsync()
+    {
+        _isRetrying = true;
+
+        try
+        {
+            await OnRetry.InvokeAsync();
+        }
+        finally
+        {
+            _isRetrying = false;
+        }
+    }
+}

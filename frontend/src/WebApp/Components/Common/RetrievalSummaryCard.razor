@@ -1,0 +1,50 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+
+@if (Summary is null)
+{
+    return;
+}
+
+<section class="retrieval-summary-card" aria-label="Knowledge retrieval summary">
+    <div class="retrieval-summary-header">
+        <h4>Evidence basis</h4>
+        <span class="retrieval-mode-badge">@Summary.RetrievalMode retrieval</span>
+    </div>
+    <p class="retrieval-summary-intro">
+        Recommendation grounded in @Summary.SelectedCount selected source@(Summary.SelectedCount == 1 ? "" : "s")
+        from @Summary.CandidateCount candidate@(Summary.CandidateCount == 1 ? "" : "s").
+    </p>
+    <dl class="retrieval-summary-grid">
+        <div>
+            <dt>Query</dt>
+            <dd>@Summary.QueryText</dd>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Summary.ProductType))
+        {
+            <div>
+                <dt>Product</dt>
+                <dd>@Summary.ProductType</dd>
+            </div>
+        }
+        <div>
+            <dt>Selected</dt>
+            <dd>@Summary.SelectedCount of @Summary.CandidateCount</dd>
+        </div>
+        <div>
+            <dt>Re-ranked</dt>
+            <dd>@(Summary.RerankApplied ? "Yes" : "No")</dd>
+        </div>
+        @if (Summary.UsedFallback)
+        {
+            <div>
+                <dt>Fallback</dt>
+                <dd>Deterministic knowledge path used</dd>
+            </div>
+        }
+    </dl>
+</section>
+
+@code {
+    [Parameter]
+    public RetrievalSummaryDto? Summary { get; set; }
+}

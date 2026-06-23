@@ -1,0 +1,75 @@
+@using Cohere.LoanProcessing.WebApp.State
+@inject CaseWorkspaceSectionState SectionState
+@implements IDisposable
+
+<section class="collapsible-section page-section @(IsExpanded ? "is-expanded" : "is-collapsed")"
+         id="@Id"
+         data-section-id="@Id">
+    <div class="collapsible-section-header">
+        <button type="button"
+                class="collapsible-section-toggle"
+                aria-expanded="@IsExpanded"
+                aria-controls="@BodyId"
+                @onclick="ToggleAsync">
+            <span class="collapsible-section-chevron" aria-hidden="true"></span>
+            <span class="collapsible-section-heading">
+                <span class="collapsible-section-title">@Title</span>
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <span class="collapsible-section-subtitle">@Subtitle</span>
+                }
+            </span>
+            @if (!string.IsNullOrWhiteSpace(StatusLabel))
+            {
+                <span class="collapsible-section-status @StatusCssClass">@StatusLabel</span>
+            }
+        </button>
+    </div>
+    @if (IsExpanded)
+    {
+        <div class="collapsible-section-body" id="@BodyId">
+            @ChildContent
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? StatusLabel { get; set; }
+
+    [Parameter]
+    public string? StatusCssClass { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string BodyId => $"{Id}-body";
+
+    private bool IsExpanded => SectionState.IsExpanded(Id);
+
+    protected override void OnInitialized()
+    {
+        SectionState.OnChange += HandleSectionStateChanged;
+    }
+
+    private void ToggleAsync()
+    {
+        SectionState.Toggle(Id);
+    }
+
+    private void HandleSectionStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        SectionState.OnChange -= HandleSectionStateChanged;
+    }
+}
