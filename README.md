@@ -16,13 +16,35 @@ Below you can see the workflow diagram of the entire solution
 
 The primary deployment path is a single end-to-end Azure deployment from the README button.
 
+### Fabric prerequisites (required)
+
+The MCP container app reads case data from a Microsoft Fabric Lakehouse, so a Fabric workspace is mandatory. Before clicking Deploy, prepare the UAMI that the Bicep will reuse as the MCP identity:
+
+1. A Fabric workspace (capacity-backed). Note its name.
+2. From the repo root, in a PowerShell 7 terminal, run:
+
+   ```powershell
+   ./infra/scripts/setup-fabric-provision-identity.ps1 `
+     -ResourceGroupName <rg> `
+     -WorkspaceName <fabric-ws> `
+     -Location eastus `
+     -FabricRole Contributor
+   ```
+
+   The script creates the resource group if it does not already exist, creates a user-assigned managed identity inside it, assigns the workspace role, and prints two values: `managedIdentityResourceId` and `managedIdentityClientId`.
+
+3. In the Deploy-to-Azure form, on the **Fabric prerequisites** step, paste those values along with the workspace and lakehouse names. The lakehouse is created at deploy time if it does not exist.
+
+Without those values the deployment will fail at the Fabric seed step (the last step) and the MCP will not be able to read case data.
+
 When you deploy:
 
 1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
-2. The API and MCP hosts start as Azure Container Apps.
-3. A Container Apps Job seeds the policy index.
+2. The API and MCP hosts start as Azure Container Apps. The MCP runs as the UAMI created by the prerequisite step.
+3. A Container Apps Job seeds the policy index into AI Search.
 4. A deployment script starts the agent provisioning Container Apps Job.
-5. The deployment outputs the live API URL.
+5. A final deployment script creates a Fabric Lakehouse in the supplied workspace and uploads the bundled `dataset-seed/` to OneLake: raw documents go to `Files/raw/`, structured JSONs go to `Files/bronze/`, and policy RAG goes to `Files/policy_rag/`. No structured tables are created — the MCP reads directly from the uploaded files.
+6. The deployment outputs the live API URL plus the Fabric workspace and lakehouse names.
 
 You do **not** need to run a separate agent CLI after deployment.
 
@@ -36,7 +58,11 @@ Make the GHCR packages public after the first workflow run so Azure Container Ap
 
 ### After deployment
 
-Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in Blob Storage under `cases/{caseId}/`.
+Open the `apiUrl` output from the deployment and use the API endpoints below.
+
+Case data is read from the Fabric Lakehouse created during deployment. The deployment outputs `fabricWorkspaceName` and `fabricLakehouseName`. The MCP container app reads through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in that lakehouse. Use the Fabric portal to inspect or upload additional cases.
+
+To temporarily bypass the Fabric step (e.g. while you repair the workspace or the UAMI role assignment), redeploy `infra/main.bicep` with `enableFabricSeed=false`. The MCP will not be able to read case data while the step is off.
 
 ## Architecture
 
@@ -53,7 +79,7 @@ This is intentionally a simple demo:
 - Workflow executions are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
 - MCP auth is open for the demo host. The API uses the same MCP services internally to prepare case evidence.
-- Case documents must already exist in Azure Blob Storage under `cases/{caseId}/` in the configured container. The API does not expose create-case or document-upload endpoints.
+- Case documents live in a Microsoft Fabric Lakehouse populated at deploy time. The MCP serves them through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in the lakehouse named by the `fabricLakehouseName` deployment output. The API does not expose create-case or document-upload endpoints.
 
 ## API Endpoints
 

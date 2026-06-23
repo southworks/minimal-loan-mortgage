@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "5898292499407664720"
+      "templateHash": "262072762977419568"
     }
   },
   "parameters": {
@@ -172,9 +172,84 @@
       "metadata": {
         "description": "Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved."
       }
+    },
+    "fabricWorkspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Fabric workspace name. Required. Must be capacity-backed and accessible to the operator."
+      }
+    },
+    "fabricLakehouseName": {
+      "type": "string",
+      "defaultValue": "LoanProcessingLakehouse",
+      "metadata": {
+        "description": "Fabric lakehouse name. Created at deploy time if missing."
+      }
+    },
+    "fabricUamiResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity."
+      }
+    },
+    "fabricUamiClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "UAMI client ID (matches fabricUamiResourceId)."
+      }
+    },
+    "enableFabricSeed": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Escape hatch: skip the Fabric seed deployment script. Use only for partial-failure recovery; the MCP will not have case data while this is off."
+      }
+    },
+    "fabricRepositoryArchiveUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip",
+      "metadata": {
+        "description": "Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/."
+      }
+    },
+    "fabricGithubToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional GitHub PAT for private repos or higher rate limits."
+      }
+    },
+    "fabricSkipRaw": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Skip the raw OneLake upload phase."
+      }
+    },
+    "fabricSkipStructured": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Skip the structured table loading phase."
+      }
+    },
+    "fabricSkipPolicy": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Skip the policy document upload phase."
+      }
+    },
+    "fabricSeedTimeout": {
+      "type": "string",
+      "defaultValue": "PT60M",
+      "metadata": {
+        "description": "Timeout (ISO 8601) for the Fabric seed deployment script."
+      }
     }
   },
   "variables": {
+    "$fxv#0": "$ErrorActionPreference = 'Stop'\n\n$envWorkspaceName = $env:FABRIC_WORKSPACE_NAME\n$envLakehouseName = $env:FABRIC_LAKEHOUSE_NAME\n$envResourceGroupName = $env:RESOURCE_GROUP_NAME\n$envRepositoryArchiveUrl = $env:REPOSITORY_ARCHIVE_URL\n$envGithubToken = $env:GITHUB_TOKEN\n$envSkipRaw = $env:SKIP_RAW\n$envSkipStructured = $env:SKIP_STRUCTURED\n$envSkipPolicy = $env:SKIP_POLICY\n\nif ([string]::IsNullOrWhiteSpace($envWorkspaceName)) {\n    throw 'FABRIC_WORKSPACE_NAME is required (set by Bicep runFabricSeed environment variables).'\n}\nif ([string]::IsNullOrWhiteSpace($envLakehouseName)) {\n    throw 'FABRIC_LAKEHOUSE_NAME is required (set by Bicep runFabricSeed environment variables).'\n}\nif ([string]::IsNullOrWhiteSpace($envResourceGroupName)) {\n    throw 'RESOURCE_GROUP_NAME is required.'\n}\nif ([string]::IsNullOrWhiteSpace($envRepositoryArchiveUrl)) {\n    $envRepositoryArchiveUrl = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'\n}\n\n$envWorkspaceId = ''\n$envLakehouseId = ''\n\nfunction Get-ScratchRoot {\n    foreach ($candidate in @($env:TEMP, $env:TMPDIR, '/tmp')) {\n        if (-not [string]::IsNullOrWhiteSpace($candidate)) {\n            return $candidate\n        }\n    }\n    return '/tmp'\n}\n\nfunction Expand-ArchiveCrossPlatform {\n    param(\n        [Parameter(Mandatory = $true)]\n        [string]$ArchivePath,\n        [Parameter(Mandatory = $true)]\n        [string]$DestinationPath\n    )\n\n    try {\n        Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force\n        return\n    }\n    catch {\n        Write-Host \"Expand-Archive failed, trying unzip: $($_.Exception.Message)\"\n    }\n\n    $unzip = Get-Command unzip -ErrorAction SilentlyContinue\n    if (-not $unzip) {\n        throw 'Could not extract repository archive: Expand-Archive failed and unzip is unavailable.'\n    }\n\n    & $unzip.Source -o $ArchivePath -d $DestinationPath\n    if ($LASTEXITCODE -ne 0) {\n        throw \"unzip failed with exit code $LASTEXITCODE\"\n    }\n}\n\nWrite-Host '=== Fabric Data Seed (deployment script) ==='\nWrite-Host \"WorkspaceName: $envWorkspaceName\"\nWrite-Host \"LakehouseName: $envLakehouseName\"\nWrite-Host \"ResourceGroupName: $envResourceGroupName\"\nWrite-Host \"RepositoryArchiveUrl: $envRepositoryArchiveUrl\"\nWrite-Host \"SkipRaw: $envSkipRaw\"\nWrite-Host \"SkipStructured: $envSkipStructured\"\nWrite-Host \"SkipPolicy: $envSkipPolicy\"\n\n$workDir = Join-Path (Get-ScratchRoot) 'fabric-seed'\nif (Test-Path -LiteralPath $workDir) {\n    Remove-Item -LiteralPath $workDir -Recurse -Force\n}\nNew-Item -ItemType Directory -Force -Path $workDir | Out-Null\n\n$archivePath = Join-Path $workDir 'repo.zip'\nWrite-Host \"Downloading repository archive: $envRepositoryArchiveUrl\"\n$downloadHeaders = @{}\nif (-not [string]::IsNullOrWhiteSpace($envGithubToken)) {\n    $downloadHeaders['Authorization'] = \"Bearer $envGithubToken\"\n}\nInvoke-WebRequest -Uri $envRepositoryArchiveUrl -Headers $downloadHeaders -OutFile $archivePath -UseBasicParsing\n\nWrite-Host 'Extracting repository archive...'\nExpand-ArchiveCrossPlatform -ArchivePath $archivePath -DestinationPath $workDir\n\n$repoRoot = Get-ChildItem $workDir -Directory | Where-Object {\n    (Test-Path (Join-Path $_.FullName 'infra/scripts') -PathType Container) -and\n    (Test-Path (Join-Path $_.FullName 'dataset-seed')   -PathType Container)\n} | Select-Object -First 1\n\nif (-not $repoRoot) {\n    if ((Test-Path (Join-Path $workDir 'infra/scripts') -PathType Container) -and\n        (Test-Path (Join-Path $workDir 'dataset-seed')   -PathType Container)) {\n        $repoRoot = Get-Item $workDir\n    }\n}\n\nif (-not $repoRoot) {\n    throw \"Could not locate extracted repository root. Expected either a wrapper directory containing both 'infra/scripts' and 'dataset-seed', or those two directories at the top level of the archive.\"\n}\n\n$scriptsDirectory = Join-Path $repoRoot.FullName 'infra/scripts'\n\nWrite-Host 'Pre-resolving Fabric lakehouse from workspace name...'\ntry {\n    $provisionResult = & (Join-Path $scriptsDirectory 'provision-fabric-lakehouse.ps1') `\n        -WorkspaceName $envWorkspaceName `\n        -LakehouseName $envLakehouseName\n}\ncatch {\n    throw \"provision-fabric-lakehouse.ps1 threw: $($_.Exception.Message)`n$($_.ScriptStackTrace)\"\n}\nif ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {\n    throw \"provision-fabric-lakehouse.ps1 failed with exit code $LASTEXITCODE\"\n}\n\n$envWorkspaceId = [string]$provisionResult.WorkspaceId\n$envLakehouseId = [string]$provisionResult.LakehouseId\n$envSqlServer = [string]$provisionResult.SqlServer\n$envSqlDatabase = [string]$provisionResult.SqlDatabase\n\nif ([string]::IsNullOrWhiteSpace($envWorkspaceId) -or [string]::IsNullOrWhiteSpace($envLakehouseId)) {\n    throw 'Pre-resolve did not return a valid workspaceId and lakehouseId.'\n}\n\nWrite-Host \"Resolved WorkspaceId: $envWorkspaceId\"\nWrite-Host \"Resolved LakehouseId: $envLakehouseId\"\nif (-not [string]::IsNullOrWhiteSpace($envSqlServer)) {\n    Write-Host \"Resolved SqlServer: $envSqlServer\"\n    Write-Host \"Resolved SqlDatabase: $envSqlDatabase\"\n}\n\n$seedParams = @{\n    ResourceGroupName = $envResourceGroupName\n    WorkspaceId = $envWorkspaceId\n    LakehouseId = $envLakehouseId\n    LakehouseName = $envLakehouseName\n    RequireFabricIds = $true\n}\n\nif ($envSkipRaw -eq 'true') {\n    $seedParams['SkipRaw'] = $true\n}\nif ($envSkipStructured -eq 'true') {\n    $seedParams['SkipStructured'] = $true\n}\nif ($envSkipPolicy -eq 'true') {\n    $seedParams['SkipPolicy'] = $true\n}\n\nWrite-Host 'Running seed-synthetic-data.ps1 with resolved Fabric context...'\n$seedScript = Join-Path $scriptsDirectory 'seed-synthetic-data.ps1'\n& $seedScript @seedParams\nif ($LASTEXITCODE -ne 0) {\n    throw \"seed-synthetic-data.ps1 failed with exit code $LASTEXITCODE\"\n}\n\n$DeploymentScriptOutputs = @{}\n$DeploymentScriptOutputs['workspaceId'] = $envWorkspaceId\n$DeploymentScriptOutputs['lakehouseId'] = $envLakehouseId\n$DeploymentScriptOutputs['lakehouseName'] = $envLakehouseName\n$DeploymentScriptOutputs['sqlServer'] = $envSqlServer\n$DeploymentScriptOutputs['sqlDatabase'] = $envSqlDatabase\n\nWrite-Host 'Fabric data seed completed successfully.'\nWrite-Host \"WorkspaceId: $envWorkspaceId\"\nWrite-Host \"LakehouseId: $envLakehouseId\"\nif (-not [string]::IsNullOrWhiteSpace($envSqlServer)) {\n    Write-Host \"SqlServer: $envSqlServer\"\n    Write-Host \"SqlDatabase: $envSqlDatabase\"\n}\n",
     "resolvedFoundryProjectName": "[if(empty(parameters('foundryProjectName')), format('{0}-project', parameters('baseName')), parameters('foundryProjectName'))]",
     "resourceTags": {
       "project": "inesite"
@@ -407,13 +482,6 @@
     {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2023-01-31",
-      "name": "[format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))]",
-      "location": "[parameters('location')]",
-      "tags": "[variables('resourceTags')]"
-    },
-    {
-      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-      "apiVersion": "2023-01-31",
       "name": "[format('{0}-provision-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))]",
       "location": "[parameters('location')]",
       "tags": "[variables('resourceTags')]"
@@ -514,14 +582,13 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
-      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
       ]
     },
@@ -529,14 +596,13 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]",
-      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
+      "name": "[guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
       ]
     },
@@ -544,16 +610,15 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+      "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'CognitiveServicesUser', parameters('nameSuffix'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
-        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').principalId]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]"
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('foundryAccountName'), variables('resolvedFoundryProjectName'))]"
       ]
     },
     {
@@ -599,7 +664,7 @@
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))))]": {}
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))))]": {}
         }
       },
       "properties": {
@@ -620,7 +685,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1Gi"
               },
-              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
+              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'DataSource__Mode', 'value', 'Fabric'), createObject('name', 'FabricLakehouse__WorkspaceName', 'value', parameters('fabricWorkspaceName')), createObject('name', 'FabricLakehouse__LakehouseName', 'value', parameters('fabricLakehouseName')), createObject('name', 'FabricLakehouse__TimeoutSeconds', 'value', '60'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
               "probes": [
                 {
                   "type": "Liveness",
@@ -643,7 +708,6 @@
       "dependsOn": [
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
       ]
     },
@@ -807,7 +871,7 @@
       "identity": {
         "type": "UserAssigned",
         "userAssignedIdentities": {
-          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))))]": {}
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))))]": {}
         }
       },
       "properties": {
@@ -835,7 +899,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1Gi"
               },
-              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'AzureFoundryModels__MaxRetryAttempts', 'value', '10'), createObject('name', 'AzureFoundryModels__MaxDelaySeconds', 'value', '60')))]"
+              "env": "[concat(concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', format('https://{0}.search.windows.net', variables('searchServiceName'))), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'DataSource__Mode', 'value', 'Fabric'), createObject('name', 'FabricLakehouse__WorkspaceName', 'value', parameters('fabricWorkspaceName')), createObject('name', 'FabricLakehouse__LakehouseName', 'value', parameters('fabricLakehouseName')), createObject('name', 'FabricLakehouse__TimeoutSeconds', 'value', '60'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId)), createArray(createObject('name', 'AzureFoundryModels__EmbedDeploymentName', 'value', parameters('embedDeploymentName')), createObject('name', 'AzureFoundryModels__RerankDeploymentName', 'value', parameters('rerankDeploymentName')), createObject('name', 'AzureFoundryModels__EmbedModelName', 'value', parameters('embedModelName')), createObject('name', 'AzureFoundryModels__RerankModelName', 'value', parameters('rerankModelName')), createObject('name', 'AzureFoundryModels__EmbedEndpoint', 'value', format('{0}/openai/deployments/{1}', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName), parameters('embedDeploymentName'))), createObject('name', 'AzureFoundryModels__RerankEndpoint', 'value', format('https://{0}.services.ai.azure.com', reference(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), '2025-06-01').customSubDomainName)), createObject('name', 'AzureFoundryModels__EmbeddingDimensions', 'value', '1024'), createObject('name', 'AzureFoundryModels__EmbeddingBatchSize', 'value', '16'), createObject('name', 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', 'value', '1'), createObject('name', 'AzureFoundryModels__MaxConcurrentRerankRequests', 'value', '2'))), createArray(createObject('name', 'AzureFoundryModels__MaxRetryAttempts', 'value', '10'), createObject('name', 'AzureFoundryModels__MaxDelaySeconds', 'value', '60')))]"
             }
           ]
         }
@@ -843,10 +907,9 @@
       "dependsOn": [
         "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppsEnvironmentName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName'))]",
-        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'CognitiveServicesUser', parameters('nameSuffix')))]",
-        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix')))]",
-        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchServiceContributor', parameters('nameSuffix')))]",
-        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-mcp-identity-{1}', parameters('baseName'), variables('deploymentSuffix'))), 'SearchIndexDataContributor', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.CognitiveServices/accounts', variables('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'CognitiveServicesUser', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchServiceContributor', parameters('nameSuffix')))]",
+        "[extensionResourceId(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Search/searchServices', variables('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchIndexDataContributor', parameters('nameSuffix')))]",
         "[resourceId('Microsoft.Search/searchServices', variables('searchServiceName'))]"
       ]
     },
@@ -1056,6 +1119,72 @@
         "[resourceId('Microsoft.App/jobs', variables('provisioningJobName'))]",
         "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', variables('deploymentSuffix')))]"
       ]
+    },
+    {
+      "condition": "[parameters('enableFabricSeed')]",
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "[format('run-fabric-seed-{0}', variables('deploymentSuffix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('resourceTags')]",
+      "kind": "AzurePowerShell",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))))]": {}
+        }
+      },
+      "properties": {
+        "azPowerShellVersion": "11.0",
+        "retentionInterval": "P1D",
+        "timeout": "[parameters('fabricSeedTimeout')]",
+        "cleanupPreference": "OnSuccess",
+        "forceUpdateTag": "[variables('deploymentSuffix')]",
+        "scriptContent": "[variables('$fxv#0')]",
+        "environmentVariables": [
+          {
+            "name": "AZURE_CLIENT_ID",
+            "value": "[parameters('fabricUamiClientId')]"
+          },
+          {
+            "name": "FABRIC_WORKSPACE_NAME",
+            "value": "[parameters('fabricWorkspaceName')]"
+          },
+          {
+            "name": "FABRIC_LAKEHOUSE_NAME",
+            "value": "[parameters('fabricLakehouseName')]"
+          },
+          {
+            "name": "RESOURCE_GROUP_NAME",
+            "value": "[resourceGroup().name]"
+          },
+          {
+            "name": "REPOSITORY_ARCHIVE_URL",
+            "value": "[parameters('fabricRepositoryArchiveUrl')]"
+          },
+          {
+            "name": "GITHUB_TOKEN",
+            "secureValue": "[parameters('fabricGithubToken')]"
+          },
+          {
+            "name": "SKIP_RAW",
+            "value": "[string(parameters('fabricSkipRaw'))]"
+          },
+          {
+            "name": "SKIP_STRUCTURED",
+            "value": "[string(parameters('fabricSkipStructured'))]"
+          },
+          {
+            "name": "SKIP_POLICY",
+            "value": "[string(parameters('fabricSkipPolicy'))]"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', variables('mcpAppName'))]",
+        "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', variables('deploymentSuffix')))]",
+        "[resourceId('Microsoft.Resources/deploymentScripts', format('run-agent-provisioning-{0}', variables('deploymentSuffix')))]"
+      ]
     }
   ],
   "outputs": {
@@ -1142,6 +1271,26 @@
     "provisioningJobName": {
       "type": "string",
       "value": "[variables('provisioningJobName')]"
+    },
+    "fabricWorkspaceName": {
+      "type": "string",
+      "value": "[parameters('fabricWorkspaceName')]"
+    },
+    "fabricLakehouseName": {
+      "type": "string",
+      "value": "[parameters('fabricLakehouseName')]"
+    },
+    "fabricSqlServer": {
+      "type": "string",
+      "value": "[if(parameters('enableFabricSeed'), reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-seed-{0}', variables('deploymentSuffix'))), '2023-08-01').outputs.sqlServer, '')]"
+    },
+    "fabricSqlDatabase": {
+      "type": "string",
+      "value": "[if(parameters('enableFabricSeed'), reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-seed-{0}', variables('deploymentSuffix'))), '2023-08-01').outputs.sqlDatabase, '')]"
+    },
+    "fabricSeedDeploymentScriptName": {
+      "type": "string",
+      "value": "[if(parameters('enableFabricSeed'), format('run-fabric-seed-{0}', variables('deploymentSuffix')), '')]"
     }
   }
 }

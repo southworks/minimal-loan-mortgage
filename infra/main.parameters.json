@@ -46,6 +46,21 @@
     },
     "provisioningContainerImage": {
       "value": "ghcr.io/southworks/cohereloan-provisioning:demo"
+    },
+    "fabricWorkspaceName": {
+      "value": ""
+    },
+    "fabricLakehouseName": {
+      "value": "LoanProcessingLakehouse"
+    },
+    "fabricUamiResourceId": {
+      "value": ""
+    },
+    "fabricUamiClientId": {
+      "value": ""
+    },
+    "fabricRepositoryArchiveUrl": {
+      "value": "https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip"
     }
   }
 }

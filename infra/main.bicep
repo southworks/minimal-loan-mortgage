@@ -72,6 +72,40 @@ param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisi
 @description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
 param nameSuffix string = ''
 
+@description('Fabric workspace name. Required. Must be capacity-backed and accessible to the operator.')
+param fabricWorkspaceName string
+
+@description('Fabric lakehouse name. Created at deploy time if missing.')
+param fabricLakehouseName string = 'LoanProcessingLakehouse'
+
+@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity.')
+param fabricUamiResourceId string
+
+@description('UAMI client ID (matches fabricUamiResourceId).')
+param fabricUamiClientId string
+
+@description('Escape hatch: skip the Fabric seed deployment script. Use only for partial-failure recovery; the MCP will not have case data while this is off.')
+param enableFabricSeed bool = true
+
+@description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
+param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
+
+@description('Optional GitHub PAT for private repos or higher rate limits.')
+@secure()
+param fabricGithubToken string = ''
+
+@description('Skip the raw OneLake upload phase.')
+param fabricSkipRaw bool = false
+
+@description('Skip the structured table loading phase.')
+param fabricSkipStructured bool = false
+
+@description('Skip the policy document upload phase.')
+param fabricSkipPolicy bool = false
+
+@description('Timeout (ISO 8601) for the Fabric seed deployment script.')
+param fabricSeedTimeout string = 'PT60M'
+
 var resourceTags = {
   project: 'inesite'
 }
@@ -283,10 +317,8 @@ resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
   tags: resourceTags
 }
 
-resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-mcp-identity-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
+resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: last(split(fabricUamiResourceId, '/'))
 }
 
 resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -443,6 +475,10 @@ var mcpContainerEnv = concat([
   { name: 'AzureSearch__VectorDimensions', value: '1024' }
   { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
   { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
+  { name: 'DataSource__Mode', value: 'Fabric' }
+  { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
+  { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
+  { name: 'FabricLakehouse__TimeoutSeconds', value: '60' }
   { name: 'AZURE_CLIENT_ID', value: mcpIdentity.properties.clientId }
 ], mcpFoundryModelEnv)
 
@@ -880,6 +916,43 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
   ]
 }
 
+resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabricSeed) {
+  name: 'run-fabric-seed-${deploymentSuffix}'
+  location: location
+  tags: resourceTags
+  kind: 'AzurePowerShell'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${mcpIdentity.id}': {}
+    }
+  }
+  properties: {
+    azPowerShellVersion: '11.0'
+    retentionInterval: 'P1D'
+    timeout: fabricSeedTimeout
+    cleanupPreference: 'OnSuccess'
+    forceUpdateTag: deploymentSuffix
+    scriptContent: loadTextContent('scripts/seed-fabric-data.ps1')
+    environmentVariables: [
+      { name: 'AZURE_CLIENT_ID',         value: fabricUamiClientId }
+      { name: 'FABRIC_WORKSPACE_NAME',   value: fabricWorkspaceName }
+      { name: 'FABRIC_LAKEHOUSE_NAME',   value: fabricLakehouseName }
+      { name: 'RESOURCE_GROUP_NAME',     value: resourceGroup().name }
+      { name: 'REPOSITORY_ARCHIVE_URL',  value: fabricRepositoryArchiveUrl }
+      { name: 'GITHUB_TOKEN',            secureValue: fabricGithubToken }
+      { name: 'SKIP_RAW',                value: string(fabricSkipRaw) }
+      { name: 'SKIP_STRUCTURED',         value: string(fabricSkipStructured) }
+      { name: 'SKIP_POLICY',             value: string(fabricSkipPolicy) }
+    ]
+  }
+  dependsOn: [
+    runPolicySeedScript
+    runProvisioningScript
+    mcpApp
+  ]
+}
+
 output storageAccountName string = storageAccount.name
 output blobServiceUri string = storageAccount.properties.primaryEndpoints.blob
 output documentsContainerName string = documentsContainerName
@@ -901,3 +974,8 @@ output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
 output policySeedJobName string = policySeedJob.name
 output provisioningJobName string = provisioningJob.name
+output fabricWorkspaceName string = fabricWorkspaceName
+output fabricLakehouseName string = fabricLakehouseName
+output fabricSqlServer string = enableFabricSeed ? runFabricSeed.properties.outputs.sqlServer : ''
+output fabricSqlDatabase string = enableFabricSeed ? runFabricSeed.properties.outputs.sqlDatabase : ''
+output fabricSeedDeploymentScriptName string = enableFabricSeed ? runFabricSeed.name : ''
