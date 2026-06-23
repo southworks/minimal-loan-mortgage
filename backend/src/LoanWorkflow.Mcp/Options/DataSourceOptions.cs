@@ -16,8 +16,8 @@ public sealed class DataSourceOptions
 
 public sealed class FabricLakehouseOptions
 {
-    public string WorkspaceId { get; set; } = string.Empty;
-    public string LakehouseId { get; set; } = string.Empty;
+    public string WorkspaceName { get; set; } = string.Empty;
+    public string LakehouseName { get; set; } = string.Empty;
     public string EvidenceRoot { get; set; } = "Files/bronze";
     public int TimeoutSeconds { get; set; } = 30;
 }

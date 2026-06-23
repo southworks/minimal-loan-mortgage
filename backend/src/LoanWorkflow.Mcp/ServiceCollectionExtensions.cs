@@ -96,16 +96,9 @@ public static class ServiceCollectionExtensions
             ?? new DataSourceOptions();
 
         if (dsOptions.Mode == DataSourceMode.Fabric
-            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.WorkspaceId)
-            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.LakehouseId))
+            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.WorkspaceName)
+            && !string.IsNullOrWhiteSpace(dsOptions.FabricLakehouse?.LakehouseName))
         {
-            if (!Guid.TryParse(dsOptions.FabricLakehouse!.WorkspaceId, out _)
-                || !Guid.TryParse(dsOptions.FabricLakehouse!.LakehouseId, out _))
-            {
-                throw new InvalidOperationException(
-                    "DataSource:FabricLakehouse requires WorkspaceId and LakehouseId to be valid GUIDs.");
-            }
-
             services.AddSingleton<IFabricLakehouseClient>(sp => FabricLakehouseClient.Create(
                 dsOptions,
                 sp.GetRequiredService<ILoggerFactory>().CreateLogger<FabricLakehouseClient>()));

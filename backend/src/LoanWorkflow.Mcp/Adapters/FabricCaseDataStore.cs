@@ -46,31 +46,64 @@ public sealed class FabricCaseDataStore : ICaseDataStore
     public async Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        var dir = CategoryDirectory(category);
+        var categoryFolder = EvidenceCategoryFolders.For(category);
 
         IReadOnlyList<string> all;
         try
         {
-            all = await _client.ListFilesAsync(dir, cancellationToken).ConfigureAwait(false);
+            all = await _client.ListFilesAsync(_evidenceRoot, cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
-            throw new KeyNotFoundException($"Case category directory not found: {dir}", ex);
+            throw new KeyNotFoundException($"Case evidence root not found: {_evidenceRoot}", ex);
         }
 
         var prefix = $"{caseId}_";
         return all
-            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal)
-                        && !name.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
+            .Where(path => PathBelongsToCategory(path, categoryFolder)
+                        && IsCaseDocument(path, prefix))
+            .Select(ExtractFileName)
+            .Where(name => name is not null)
+            .Select(name => name!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
     }
 
-    private string CategoryDirectory(EvidenceCategory category) =>
-        $"{_evidenceRoot}/{EvidenceCategoryFolders.For(category)}";
-
     private string FilePath(EvidenceCategory category, string fileName) =>
         $"{_evidenceRoot}/{EvidenceCategoryFolders.For(category)}/{fileName}";
+
+    private static bool PathBelongsToCategory(string fullPath, string categoryFolder)
+    {
+        var lastSlash = fullPath.LastIndexOf('/');
+        if (lastSlash < 0)
+        {
+            return false;
+        }
+        var parent = fullPath[..lastSlash];
+        var parentLastSlash = parent.LastIndexOf('/');
+        var parentFolder = parentLastSlash >= 0 ? parent[(parentLastSlash + 1)..] : parent;
+        return string.Equals(parentFolder, categoryFolder, StringComparison.Ordinal);
+    }
+
+    private static string? ExtractFileName(string blobPath)
+    {
+        var lastSlash = blobPath.LastIndexOf('/');
+        return lastSlash >= 0 ? blobPath[(lastSlash + 1)..] : blobPath;
+    }
+
+    private static bool IsCaseDocument(string fullPath, string caseIdPrefix)
+    {
+        var fileName = ExtractFileName(fullPath);
+        if (fileName is null)
+        {
+            return false;
+        }
+        if (fileName.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        return fileName.StartsWith(caseIdPrefix, StringComparison.Ordinal);
+    }
 
     private static void ValidateCaseId(string caseId)
     {

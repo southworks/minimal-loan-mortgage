@@ -50,7 +50,8 @@ public sealed partial class CaseDataAdapter
             foreach (var fileName in files.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
             {
                 var content = await _dataStore.ReadDocumentAsync(caseId, category, fileName, cancellationToken);
-                using var document = JsonDocument.Parse(content);
+                var jsonText = content.TrimStart('\uFEFF');
+                using var document = JsonDocument.Parse(jsonText);
                 var root = document.RootElement.Clone();
 
                 documents.Add(new CaseDocument

@@ -11,25 +11,26 @@ public sealed class FabricLakehouseClient : IFabricLakehouseClient, IDisposable
 {
     private const string FabricOneLakeEndpoint = "https://onelake.dfs.fabric.microsoft.com";
     private const string FabricBlobEndpoint = "https://onelake.blob.fabric.microsoft.com";
+    private const string LakehouseSuffix = ".lakehouse";
 
     private readonly DataLakeFileSystemClient _fileSystemClient;
-    private readonly string _fileSystemName;
-    private readonly string _workspaceId;
+    private readonly string _lakehouseName;
+    private readonly string _workspaceName;
     private readonly DefaultAzureCredential _credential;
     private readonly int _timeoutSeconds;
     private readonly ILogger<FabricLakehouseClient> _logger;
 
     private FabricLakehouseClient(
         DataLakeFileSystemClient fileSystemClient,
-        string fileSystemName,
-        string workspaceId,
+        string lakehouseName,
+        string workspaceName,
         DefaultAzureCredential credential,
         int timeoutSeconds,
         ILogger<FabricLakehouseClient> logger)
     {
         _fileSystemClient = fileSystemClient;
-        _fileSystemName = fileSystemName;
-        _workspaceId = workspaceId;
+        _lakehouseName = lakehouseName;
+        _workspaceName = workspaceName;
         _credential = credential;
         _timeoutSeconds = timeoutSeconds;
         _logger = logger;
@@ -37,27 +38,28 @@ public sealed class FabricLakehouseClient : IFabricLakehouseClient, IDisposable
 
     public static FabricLakehouseClient Create(DataSourceOptions options, ILogger<FabricLakehouseClient> logger)
     {
-        var workspaceId = options.FabricLakehouse?.WorkspaceId;
-        var lakehouseId = options.FabricLakehouse?.LakehouseId;
-        if (string.IsNullOrWhiteSpace(workspaceId) || string.IsNullOrWhiteSpace(lakehouseId))
+        var workspaceName = options.FabricLakehouse?.WorkspaceName;
+        var lakehouseName = options.FabricLakehouse?.LakehouseName;
+        if (string.IsNullOrWhiteSpace(workspaceName) || string.IsNullOrWhiteSpace(lakehouseName))
         {
             throw new InvalidOperationException(
-                "FabricLakehouse:WorkspaceId and FabricLakehouse:LakehouseId are required when DataSource:Mode is Fabric.");
+                "FabricLakehouse:WorkspaceName and FabricLakehouse:LakehouseName are required when DataSource:Mode is Fabric.");
         }
 
         var credential = new DefaultAzureCredential();
-        var serviceUri = new Uri($"{FabricOneLakeEndpoint}/{workspaceId}");
+        var serviceUri = new Uri($"{FabricOneLakeEndpoint}/{workspaceName}");
         var serviceClient = new DataLakeServiceClient(serviceUri, credential);
-        var fileSystemClient = serviceClient.GetFileSystemClient(lakehouseId);
+        var fileSystemClient = serviceClient.GetFileSystemClient(lakehouseName + LakehouseSuffix);
         var timeoutSeconds = options.FabricLakehouse?.TimeoutSeconds ?? 30;
 
         logger.LogInformation(
-            "FabricLakehouseClient initialized against workspace {WorkspaceId} lakehouse {LakehouseId} timeout {TimeoutSeconds}s.",
-            workspaceId,
-            lakehouseId,
+            "FabricLakehouseClient initialized against workspace {WorkspaceName} lakehouse {LakehouseName}{Suffix} timeout {TimeoutSeconds}s.",
+            workspaceName,
+            lakehouseName,
+            LakehouseSuffix,
             timeoutSeconds);
 
-        return new FabricLakehouseClient(fileSystemClient, lakehouseId, workspaceId, credential, timeoutSeconds, logger);
+        return new FabricLakehouseClient(fileSystemClient, lakehouseName, workspaceName, credential, timeoutSeconds, logger);
     }
 
     public async Task<bool> FileExistsAsync(string relativePath, CancellationToken cancellationToken = default)
@@ -82,7 +84,7 @@ public sealed class FabricLakehouseClient : IFabricLakehouseClient, IDisposable
     {
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_timeoutSeconds));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        var blobUri = new Uri($"{FabricBlobEndpoint}/{_workspaceId}/{_fileSystemName}/{relativePath}");
+        var blobUri = new Uri($"{FabricBlobEndpoint}/{_workspaceName}/{_lakehouseName}{LakehouseSuffix}/{relativePath.TrimStart('/')}");
         var blobClient = new BlobClient(blobUri, _credential);
         try
         {
@@ -92,7 +94,7 @@ public sealed class FabricLakehouseClient : IFabricLakehouseClient, IDisposable
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
             throw new FileNotFoundException(
-                $"Fabric file '{relativePath}' was not found in lakehouse '{_fileSystemName}'.",
+                $"Fabric file '{relativePath}' was not found in lakehouse '{_lakehouseName}{LakehouseSuffix}'.",
                 ex);
         }
     }
@@ -111,17 +113,7 @@ public sealed class FabricLakehouseClient : IFabricLakehouseClient, IDisposable
                 continue;
             }
 
-            var name = pathItem.Name;
-            var lastSlash = name.LastIndexOf('/');
-            if (lastSlash >= 0)
-            {
-                name = name[(lastSlash + 1)..];
-            }
-
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                results.Add(name);
-            }
+            results.Add(pathItem.Name);
         }
 
         return results;
