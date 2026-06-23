@@ -235,6 +235,32 @@ module containerJobs 'modules/container-jobs.bicep' = {
   }
 }
 
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: take('${baseName}-appi-${deploymentSuffix}', 260)
+  location: location
+  tags: resourceTags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: containerAppsEnvironmentName
+  location: location
+  tags: resourceTags
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
+    }
+  }
+}
+
 module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
   name: 'post-deploy-scripts'
   params: {
@@ -285,3 +311,5 @@ output fabricLakehouseName string = fabricProvision.outputs.lakehouseName
 output fabricSqlServer string = fabricProvision.outputs.sqlServer
 output fabricSqlDatabase string = fabricProvision.outputs.sqlDatabase
 output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName
+output applicationInsightsName string = applicationInsights.name
+output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString

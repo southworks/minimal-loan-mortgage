@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Models;
+using LoanWorkflow.Mcp.Observability;
 using ModelContextProtocol.Server;
 
 namespace LoanWorkflow.Mcp.Tools;
@@ -34,7 +35,13 @@ public sealed class UnderwritingRulesTools
         string caseId,
         string executionId,
         CancellationToken cancellationToken = default) =>
-        _evidenceIndexAdapter.GetApplicationProfileAsync(caseId, executionId, cancellationToken);
+        McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.underwriting.get_application_profile",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "underwriting",
+            agentName: "underwriting-agent",
+            action: () => _evidenceIndexAdapter.GetApplicationProfileAsync(caseId, executionId, cancellationToken));
 
     [McpServerTool]
     [Description("Searches indexed case evidence using Azure AI Search and Azure Foundry rerank.")]
@@ -47,7 +54,13 @@ public sealed class UnderwritingRulesTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
-        return SearchEvidenceAsync(caseId, executionId, query, topK, cancellationToken);
+        return McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.underwriting.search_case_evidence",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "underwriting",
+            agentName: "underwriting-agent",
+            action: () => SearchEvidenceAsync(caseId, executionId, query, topK, cancellationToken));
     }
 
     [McpServerTool]
@@ -57,31 +70,40 @@ public sealed class UnderwritingRulesTools
         string executionId,
         CancellationToken cancellationToken = default)
     {
-        var categories = new List<UnderwritingCategoryContext>();
-
-        foreach (var category in UnderwritingCategories)
-        {
-            var matches = await _evidenceIndexAdapter.SearchCategoryAsync(
-                caseId,
-                executionId,
-                category,
-                $"Summarize {category} evidence for underwriting.",
-                topK: 2,
-                cancellationToken: cancellationToken);
-
-            categories.Add(new UnderwritingCategoryContext
+        return await McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.underwriting.get_underwriting_context",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "underwriting",
+            agentName: "underwriting-agent",
+            action: async () =>
             {
-                Category = category,
-                Matches = matches
-            });
-        }
+                var categories = new List<UnderwritingCategoryContext>();
 
-        return new GetUnderwritingContextResponse
-        {
-            CaseId = caseId,
-            ExecutionId = executionId,
-            Categories = categories
-        };
+                foreach (var category in UnderwritingCategories)
+                {
+                    var matches = await _evidenceIndexAdapter.SearchCategoryAsync(
+                        caseId,
+                        executionId,
+                        category,
+                        $"Summarize {category} evidence for underwriting.",
+                        topK: 2,
+                        cancellationToken: cancellationToken);
+
+                    categories.Add(new UnderwritingCategoryContext
+                    {
+                        Category = category,
+                        Matches = matches
+                    });
+                }
+
+                return new GetUnderwritingContextResponse
+                {
+                    CaseId = caseId,
+                    ExecutionId = executionId,
+                    Categories = categories
+                };
+            });
     }
 
     [McpServerTool]
@@ -94,7 +116,13 @@ public sealed class UnderwritingRulesTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
-        return _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+        return McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.underwriting.get_relevant_policies",
+            caseId: caseContext ?? "n/a",
+            executionId: "n/a",
+            agentRole: "underwriting",
+            agentName: "underwriting-agent",
+            action: () => _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken));
     }
 
     private async Task<SearchCaseEvidenceResponse> SearchEvidenceAsync(

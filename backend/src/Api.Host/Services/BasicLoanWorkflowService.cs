@@ -1,6 +1,8 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Workflow;
+using System.Diagnostics;
+using LoanWorkflow.Mcp.Observability;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
@@ -17,6 +19,8 @@ public sealed class BasicLoanWorkflowService
     private const string UnderwritingKey = "Underwriting";
     private const string ResponsibleAiKey = "ResponsibleAi";
     private const string LoanSetupKey = "LoanSetup";
+    private const string InProcessExecutionMode = "in_process";
+    private const string HostedExecutionMode = "hosted";
 
     private readonly FoundryAgentProvider _agentProvider;
     private readonly LoanMortgageBasicWorkflowFactory _workflowFactory;
@@ -55,6 +59,13 @@ public sealed class BasicLoanWorkflowService
         string executionId,
         CancellationToken cancellationToken)
     {
+        using Activity? activity = LoanWorkflowTelemetry.StartWorkflowActivity(
+            name: "workflow.start",
+            runId: executionId,
+            executionMode: InProcessExecutionMode,
+            caseId: caseId,
+            kind: ActivityKind.Internal);
+
         if (string.IsNullOrWhiteSpace(caseId))
         {
             throw new InvalidOperationException("CaseId is required.");
@@ -65,8 +76,11 @@ public sealed class BasicLoanWorkflowService
             throw new InvalidOperationException("ExecutionId is required.");
         }
 
+        var loadDocumentsStopwatch = Stopwatch.StartNew();
         IReadOnlyList<LoadedCaseDocument> documents =
             await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
+        loadDocumentsStopwatch.Stop();
+        RecordWorkflowStageDuration(executionId, caseId, "documents.load", loadDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
         if (documents.Count == 0)
         {
@@ -74,15 +88,21 @@ public sealed class BasicLoanWorkflowService
                 $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
         }
 
+        var extractDocumentsStopwatch = Stopwatch.StartNew();
         IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
             .ExtractAsync(documents, cancellationToken)
             .ConfigureAwait(false);
+        extractDocumentsStopwatch.Stop();
+        RecordWorkflowStageDuration(executionId, caseId, "documents.extract", extractDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
         if (_caseWorkflowOptions.PreIndexCaseDocuments)
         {
+            var preIndexStopwatch = Stopwatch.StartNew();
             await _caseEvidenceIndexingService
                 .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
                 .ConfigureAwait(false);
+            preIndexStopwatch.Stop();
+            RecordWorkflowStageDuration(executionId, caseId, "documents.pre_index", preIndexStopwatch.Elapsed.TotalMilliseconds);
         }
 
         var execution = new BasicWorkflowExecution
@@ -90,9 +110,17 @@ public sealed class BasicLoanWorkflowService
             ExecutionId = executionId,
             CaseId = caseId.Trim(),
             Status = BasicWorkflowStatus.Running,
+            StartedAtUtc = DateTimeOffset.UtcNow,
             WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
         };
         _store.Save(execution);
+
+        LoanWorkflowTelemetry.WorkflowStartedCounter.Add(
+            1,
+            LoanWorkflowTelemetry.BuildWorkflowTags(
+                executionId,
+                execution.CaseId,
+                executionMode: InProcessExecutionMode));
 
         List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
             caseId,
@@ -114,6 +142,15 @@ public sealed class BasicLoanWorkflowService
         string? reviewerComment,
         CancellationToken cancellationToken)
     {
+        using Activity? activity = LoanWorkflowTelemetry.StartWorkflowActivity(
+            name: "workflow.resume",
+            runId: executionId,
+            executionMode: InProcessExecutionMode,
+            caseId: caseId,
+            kind: ActivityKind.Internal);
+
+        activity?.SetTag("workflow.approved", approved);
+
         BasicWorkflowExecution execution = _store.GetRequired(executionId);
 
         if (!string.Equals(execution.CaseId, caseId.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -133,6 +170,17 @@ public sealed class BasicLoanWorkflowService
 
         execution.Status = BasicWorkflowStatus.Running;
         execution.FailureReason = null;
+
+        if (execution.AwaitingHumanApprovalAtUtc is { } awaitingAt)
+        {
+            RecordWorkflowStageDuration(
+                execution.ExecutionId,
+                execution.CaseId,
+                "human_review.wait",
+                (DateTimeOffset.UtcNow - awaitingAt).TotalMilliseconds);
+            execution.AwaitingHumanApprovalAtUtc = null;
+        }
+
         Touch(execution);
 
         ResumeInBackground(executionId, approved, reviewerComment);
@@ -147,6 +195,13 @@ public sealed class BasicLoanWorkflowService
         _ = Task.Run(async () =>
         {
             BasicWorkflowExecution execution = _store.GetRequired(executionId);
+            var workflowRunStopwatch = Stopwatch.StartNew();
+            using Activity? activity = LoanWorkflowTelemetry.StartWorkflowActivity(
+                name: "workflow.run",
+                runId: execution.ExecutionId,
+                executionMode: InProcessExecutionMode,
+                caseId: execution.CaseId,
+                kind: ActivityKind.Internal);
 
             try
             {
@@ -166,12 +221,24 @@ public sealed class BasicLoanWorkflowService
             }
             catch (OperationCanceledException) when (stopping.IsCancellationRequested)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, "Application stopping");
                 MarkFailed(execution, "Workflow cancelled because the application is stopping.");
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.AddException(ex);
                 _logger.LogError(ex, "Basic workflow failed for execution {ExecutionId}.", executionId);
                 MarkFailed(execution, ex.Message);
+            }
+            finally
+            {
+                workflowRunStopwatch.Stop();
+                RecordWorkflowStageDuration(
+                    execution.ExecutionId,
+                    execution.CaseId,
+                    "workflow.run",
+                    workflowRunStopwatch.Elapsed.TotalMilliseconds);
             }
         }, CancellationToken.None);
     }
@@ -264,11 +331,7 @@ public sealed class BasicLoanWorkflowService
             switch (status)
             {
                 case RunStatus.Ended:
-                    execution.Status = BasicWorkflowStatus.Completed;
-                    execution.CurrentAgent = null;
-                    execution.PendingApprovalRequest = null;
-                    execution.PendingCheckpoint = null;
-                    Touch(execution);
+                    MarkCompleted(execution);
                     return;
 
                 case RunStatus.PendingRequests:
@@ -357,11 +420,7 @@ public sealed class BasicLoanWorkflowService
             switch (status)
             {
                 case RunStatus.Ended:
-                    execution.Status = BasicWorkflowStatus.Completed;
-                    execution.CurrentAgent = null;
-                    execution.PendingApprovalRequest = null;
-                    execution.PendingCheckpoint = null;
-                    Touch(execution);
+                    MarkCompleted(execution);
                     return;
 
                 case RunStatus.PendingRequests:
@@ -425,22 +484,27 @@ public sealed class BasicLoanWorkflowService
             case ExecutorFailedEvent failedEvent:
                 string message = failedEvent.Data?.Message
                     ?? $"Executor '{failedEvent.ExecutorId}' failed.";
+                MarkExecutorFailed(execution, failedEvent.ExecutorId, message);
                 MarkFailed(execution, message);
                 break;
 
             case WorkflowOutputEvent:
-                execution.Status = BasicWorkflowStatus.Completed;
-                execution.CurrentAgent = null;
-                execution.PendingApprovalRequest = null;
-                execution.PendingCheckpoint = null;
-                Touch(execution);
+                MarkCompleted(execution);
                 break;
 
             case RequestInfoEvent requestInfoEvent
-                when requestInfoEvent.Request.TryGetDataAs(out BasicWorkflowApprovalPrompt? prompt):
+                when requestInfoEvent.Request.TryGetDataAs(out BasicWorkflowApprovalPrompt? _):
                 execution.Status = BasicWorkflowStatus.AwaitingHumanApproval;
                 execution.CurrentAgent = null;
                 execution.PendingApprovalRequest = requestInfoEvent.Request;
+                execution.AwaitingHumanApprovalAtUtc = DateTimeOffset.UtcNow;
+                LoanWorkflowTelemetry.WorkflowAwaitingHumanReviewCounter.Add(
+                    1,
+                    LoanWorkflowTelemetry.BuildWorkflowTags(
+                        execution.ExecutionId,
+                        execution.CaseId,
+                        stage: "human_review",
+                        executionMode: InProcessExecutionMode));
                 Touch(execution);
                 break;
 
@@ -464,6 +528,22 @@ public sealed class BasicLoanWorkflowService
 
         AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
         state.Status = BasicWorkflowStatus.Running;
+        state.StartedAtUtc = DateTimeOffset.UtcNow;
+        state.CompletedAtUtc = null;
+
+        Activity? agentActivity = LoanWorkflowTelemetry.StartAgentActivity(
+            name: $"agent.execute.{agentKey}",
+            runId: execution.ExecutionId,
+            executionMode: HostedExecutionMode,
+            agentRole: ToAgentRole(agentKey),
+            agentName: ToAgentName(agentKey),
+            caseId: execution.CaseId,
+            kind: ActivityKind.Client);
+
+        if (agentActivity is not null)
+        {
+            execution.AgentActivities[agentKey] = agentActivity;
+        }
 
         Touch(execution);
     }
@@ -478,6 +558,19 @@ public sealed class BasicLoanWorkflowService
 
         AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
         state.Status = BasicWorkflowStatus.Completed;
+        state.CompletedAtUtc = DateTimeOffset.UtcNow;
+
+        if (state.StartedAtUtc is { } startedAtUtc)
+        {
+            RecordAgentDuration(execution, agentKey, (state.CompletedAtUtc.Value - startedAtUtc).TotalMilliseconds);
+        }
+
+        if (execution.AgentActivities.TryGetValue(agentKey, out Activity? agentActivity))
+        {
+            agentActivity.SetStatus(ActivityStatusCode.Ok);
+            agentActivity.Dispose();
+            execution.AgentActivities.Remove(agentKey);
+        }
 
         if (string.Equals(execution.CurrentAgent, agentKey, StringComparison.OrdinalIgnoreCase))
         {
@@ -627,7 +720,139 @@ public sealed class BasicLoanWorkflowService
         execution.FailureReason = reason;
         execution.PendingApprovalRequest = null;
         execution.PendingCheckpoint = null;
+
+        foreach (Activity activity in execution.AgentActivities.Values)
+        {
+            activity.SetStatus(ActivityStatusCode.Error, reason);
+            activity.Dispose();
+        }
+
+        execution.AgentActivities.Clear();
+
+        LoanWorkflowTelemetry.WorkflowFailedCounter.Add(
+            1,
+            LoanWorkflowTelemetry.BuildWorkflowTags(
+                execution.ExecutionId,
+                execution.CaseId,
+                executionMode: InProcessExecutionMode));
+
+        if (execution.StartedAtUtc is { } startedAt)
+        {
+            RecordWorkflowStageDuration(
+                execution.ExecutionId,
+                execution.CaseId,
+                "workflow.total",
+                (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds);
+        }
+
         Touch(execution);
+    }
+
+    private void MarkCompleted(BasicWorkflowExecution execution)
+    {
+        execution.Status = BasicWorkflowStatus.Completed;
+        execution.CurrentAgent = null;
+        execution.PendingApprovalRequest = null;
+        execution.PendingCheckpoint = null;
+
+        foreach (Activity activity in execution.AgentActivities.Values)
+        {
+            activity.SetStatus(ActivityStatusCode.Ok);
+            activity.Dispose();
+        }
+
+        execution.AgentActivities.Clear();
+
+        LoanWorkflowTelemetry.WorkflowCompletedCounter.Add(
+            1,
+            LoanWorkflowTelemetry.BuildWorkflowTags(
+                execution.ExecutionId,
+                execution.CaseId,
+                executionMode: InProcessExecutionMode));
+
+        if (execution.StartedAtUtc is { } startedAt)
+        {
+            RecordWorkflowStageDuration(
+                execution.ExecutionId,
+                execution.CaseId,
+                "workflow.total",
+                (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds);
+        }
+
+        Touch(execution);
+    }
+
+    private void MarkExecutorFailed(BasicWorkflowExecution execution, string executorId, string reason)
+    {
+        string? agentKey = MapExecutorToAgentKey(executorId);
+        if (agentKey is null)
+        {
+            return;
+        }
+
+        AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
+        state.Status = BasicWorkflowStatus.Failed;
+        state.CompletedAtUtc = DateTimeOffset.UtcNow;
+
+        if (execution.AgentActivities.TryGetValue(agentKey, out Activity? agentActivity))
+        {
+            agentActivity.SetStatus(ActivityStatusCode.Error, reason);
+            agentActivity.SetTag("error.type", "ExecutorFailed");
+            agentActivity.Dispose();
+            execution.AgentActivities.Remove(agentKey);
+        }
+    }
+
+    private static string ToAgentRole(string agentKey)
+    {
+        return agentKey switch
+        {
+            DocumentProcessingKey => "document-processing",
+            UnderwritingKey => "underwriting",
+            ResponsibleAiKey => "responsible-ai",
+            LoanSetupKey => "loan-setup",
+            _ => "unknown"
+        };
+    }
+
+    private static string ToAgentName(string agentKey)
+    {
+        return agentKey switch
+        {
+            DocumentProcessingKey => "document-processing-agent",
+            UnderwritingKey => "underwriting-agent",
+            ResponsibleAiKey => "responsible-ai-agent",
+            LoanSetupKey => "loan-setup-agent",
+            _ => "unknown-agent"
+        };
+    }
+
+    private static void RecordWorkflowStageDuration(
+        string executionId,
+        string caseId,
+        string stage,
+        double durationMs)
+    {
+        LoanWorkflowTelemetry.WorkflowStageDurationMs.Record(
+            durationMs,
+            LoanWorkflowTelemetry.BuildWorkflowTags(
+                executionId,
+                caseId,
+                stage: stage,
+                executionMode: InProcessExecutionMode));
+    }
+
+    private static void RecordAgentDuration(BasicWorkflowExecution execution, string agentKey, double durationMs)
+    {
+        LoanWorkflowTelemetry.AgentDurationMs.Record(
+            durationMs,
+            LoanWorkflowTelemetry.BuildWorkflowTags(
+                execution.ExecutionId,
+                execution.CaseId,
+                stage: "agent.execute",
+                executionMode: HostedExecutionMode,
+                agentRole: ToAgentRole(agentKey),
+                agentName: ToAgentName(agentKey)));
     }
 
     private static void Touch(BasicWorkflowExecution execution)

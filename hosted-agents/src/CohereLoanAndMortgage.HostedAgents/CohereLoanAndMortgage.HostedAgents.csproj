@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.AI.Projects" Version="2.1.0-beta.2" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.7.0" />
     <PackageReference Include="Microsoft.Agents.AI.Foundry" Version="1.10.0-preview.260610.1" />
     <PackageReference Include="Microsoft.Agents.AI.Foundry.Hosting" Version="1.10.0-preview.260610.1" />
     <!-- AgentHost telemetry pulls Microsoft.OpenTelemetry, which expects Extensions 10.x on net9.0. -->

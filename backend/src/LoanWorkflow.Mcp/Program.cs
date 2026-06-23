@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using LoanWorkflow.Mcp;
+using LoanWorkflow.Mcp.Observability;
 using LoanWorkflow.Mcp.Startup;
 using ModelContextProtocol.Server;
 
@@ -7,6 +8,10 @@ if (args.Contains("--seed-policies", StringComparer.OrdinalIgnoreCase))
 {
     var seedBuilder = WebApplication.CreateBuilder(args);
     seedBuilder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
+    seedBuilder.Services.AddCloudFirstOpenTelemetry(
+        seedBuilder.Configuration,
+        seedBuilder.Environment,
+        serviceName: "cohereloan-mcp-seed");
     seedBuilder.Services.AddLoanWorkflowMcpServices(seedBuilder.Configuration);
 
     var seedApp = seedBuilder.Build();
@@ -23,6 +28,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
 
+builder.Services.AddCloudFirstOpenTelemetry(
+    builder.Configuration,
+    builder.Environment,
+    serviceName: "cohereloan-mcp");
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
 builder.Services.AddHostedService<McpStartupInitializer>();
 
@@ -56,6 +65,7 @@ var app = builder.Build();
 
 ServiceCollectionExtensions.PopulateToolDictionary(app.Services, toolDictionary);
 
+app.UseMcpCorrelationEnrichment();
 app.MapMcp("/document-retrieval/mcp");
 app.MapMcp("/underwriting-rules/mcp");
 app.MapMcp("/policy-knowledge/mcp");

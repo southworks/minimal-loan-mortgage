@@ -49,6 +49,21 @@ When you deploy:
 
 You do **not** need to run a separate agent CLI after deployment.
 
+## Observability
+
+OpenTelemetry standardization is documented in:
+
+- [docs/observability/OTEL_STANDARD.md](docs/observability/OTEL_STANDARD.md)
+- [docs/observability/DEPLOYMENT_CONTRACT.md](docs/observability/DEPLOYMENT_CONTRACT.md)
+- [docs/observability/OPERATIONS_CHECKLIST.md](docs/observability/OPERATIONS_CHECKLIST.md)
+- [docs/observability/KQL_QUERIES.md](docs/observability/KQL_QUERIES.md)
+
+If you need to re-wire telemetry variables after deployment, run:
+
+```powershell
+pwsh ./infra/scripts/bootstrap-observability.ps1 -ResourceGroupName <your-resource-group>
+```
+
 Container images are published automatically to GitHub Container Registry by [.github/workflows/publish-container-images.yml](.github/workflows/publish-container-images.yml) on pushes to `main`. The deployment template uses these default image URIs:
 
 - `ghcr.io/southworks/cohereloan-api:demo`

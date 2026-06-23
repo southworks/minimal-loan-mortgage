@@ -2,9 +2,14 @@ using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Services;
 using CohereLoanAndMortgage.Api.Host.Workflow;
 using LoanWorkflow.Mcp;
+using LoanWorkflow.Mcp.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCloudFirstOpenTelemetry(
+    builder.Configuration,
+    builder.Environment,
+    serviceName: "cohereloan-api");
 builder.Services.AddControllers();
 
 builder.Services.Configure<AzureFoundryOptions>(options =>

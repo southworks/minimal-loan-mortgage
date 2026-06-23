@@ -1,8 +1,10 @@
 using Azure.AI.Projects;
 using Azure.Identity;
 using CohereLoanAndMortgage.HostedAgents;
+using CohereLoanAndMortgage.HostedAgents.Observability;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Foundry.Hosting;
+using System.Diagnostics;
 
 HostedAgentDefinition agentDefinition = HostedAgentCatalog.GetRequired(
     HostedAgentEnvironment.GetAgentCatalogName());
@@ -23,10 +25,28 @@ AIAgent agent = new AIProjectClient(modelEndpoint, new DefaultAzureCredential())
         name: agentDefinition.Name);
 
 var builder = AgentHost.CreateBuilder(args);
+
+builder.Services.AddTransient<OutgoingCorrelationHeaderHandler>();
+builder.Services.AddSingleton<Microsoft.Extensions.Http.IHttpMessageHandlerBuilderFilter, CorrelationHeaderHandlerFilter>();
 builder.Services.AddSingleton<HostedSessionIsolationKeyProvider, LocalSessionIsolationKeyProvider>();
+
+string agentRole = agentDefinition.Name.EndsWith("-agent", StringComparison.OrdinalIgnoreCase)
+    ? agentDefinition.Name[..^"-agent".Length]
+    : agentDefinition.Name;
+
+builder.Services.Configure<HostedAgentCorrelationOptions>(options =>
+{
+    options.AgentRole = agentRole;
+    options.AgentName = agentDefinition.Name;
+});
+
+builder.Services.AddHostedAgentOpenTelemetry(
+    serviceName: $"cohereloan-hosted-agent-{agentDefinition.Name}",
+    environmentName: "Production");
 builder.Services.AddFoundryResponses(agent);
 builder.Services.AddFoundryToolboxes(agentDefinition.ToolboxName);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
 
 var app = builder.Build();
+
 app.Run();

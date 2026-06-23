@@ -2,8 +2,10 @@ using Azure.AI.Projects;
 using Azure.AI.Projects.Agents;
 using Azure.Identity;
 using CohereLoanAndMortgage.Api.Host.Options;
+using LoanWorkflow.Mcp.Observability;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
 
@@ -33,6 +35,12 @@ public sealed class FoundryAgentProvider
 
     public async Task<FoundryAgents> GetAgentsAsync(CancellationToken cancellationToken)
     {
+        using Activity? activity = LoanWorkflowTelemetry.StartWorkflowActivity(
+            name: "workflow.resolve_agents",
+            runId: "startup",
+            executionMode: "hosted",
+            kind: ActivityKind.Client);
+
         if (_agents is not null)
         {
             return _agents;
@@ -93,6 +101,12 @@ public sealed class FoundryAgentProvider
             };
 
             return _agents;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddException(ex);
+            throw;
         }
         finally
         {
