@@ -40,6 +40,10 @@ The deployed MCP endpoints are:
 
 Health check: `GET /health`
 
+## Governance
+
+When `Governance:EnableMcpToolGovernance` is `true` (default), each MCP tool call is wrapped with AGT policy evaluation before the handler runs. Callers must send `X-Agent-Role` (e.g. `document-processing-agent`) when `RequireMcpAgentRoleHeader` is enabled. See [docs/agent-foundry-governance.md](../../../docs/agent-foundry-governance.md).
+
 ## Container Image
 
 The MCP image is built from [Dockerfile](Dockerfile). It includes:

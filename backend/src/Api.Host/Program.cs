@@ -2,9 +2,15 @@ using CohereLoanAndMortgage.Api.Host.Governance;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Services;
 using CohereLoanAndMortgage.Api.Host.Workflow;
+using CohereLoanAndMortgage.Foundry.Governance;
 using LoanWorkflow.Mcp;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddJsonFile(
+    $"appsettings.{builder.Environment.EnvironmentName}.local.json",
+    optional: true,
+    reloadOnChange: true);
 
 builder.Services.AddControllers();
 
@@ -46,8 +52,8 @@ builder.Services.Configure<DocumentExtractionOptions>(
     builder.Configuration.GetSection(DocumentExtractionOptions.SectionName));
 builder.Services.Configure<CaseWorkflowOptions>(
     builder.Configuration.GetSection(CaseWorkflowOptions.SectionName));
-builder.Services.Configure<GovernanceOptions>(
-    builder.Configuration.GetSection(GovernanceOptions.SectionName));
+builder.Services.Configure<GovernanceSettings>(
+    builder.Configuration.GetSection(GovernanceSettings.SectionName));
 
 StartupConfigurationValidator.Validate(builder.Configuration);
 

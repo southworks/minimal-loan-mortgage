@@ -1,4 +1,3 @@
-using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Services;
 using CohereLoanAndMortgage.Foundry.Governance;
 using Microsoft.Extensions.Options;
@@ -7,11 +6,11 @@ namespace CohereLoanAndMortgage.Api.Host.Governance;
 
 public sealed class FoundryGovernedAgentsFactory
 {
-    private readonly GovernanceOptions _options;
+    private readonly GovernanceSettings _options;
     private readonly FoundryAgentGovernanceFactory _governanceFactory;
 
     public FoundryGovernedAgentsFactory(
-        IOptions<GovernanceOptions> options,
+        IOptions<GovernanceSettings> options,
         FoundryAgentGovernanceFactory governanceFactory)
     {
         _options = options.Value;

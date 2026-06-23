@@ -1,8 +1,9 @@
 using AgentGovernance;
 using AgentGovernance.Integration;
 using AgentGovernance.Policy;
-using CohereLoanAndMortgage.Api.Host.Governance;
 using CohereLoanAndMortgage.Foundry.Governance;
+using CohereLoanAndMortgage.Foundry.Governance.Audit;
+using CohereLoanAndMortgage.Foundry.Governance.Mcp;
 using Microsoft.Extensions.AI;
 
 namespace CohereLoanAndMortgage.Governance.Tests;
@@ -172,5 +173,48 @@ public sealed class FileAgentGovernanceAuditStoreTests
         Assert.False(tamperedStore.VerifyIntegrity());
 
         Directory.Delete(directory, recursive: true);
+    }
+}
+
+public sealed class McpToolGovernanceCoordinatorTests
+{
+    [Fact]
+    public void DeniesBlockedTool_ForDocumentProcessingRole()
+    {
+        var bootstrap = new FoundryAgentGovernanceBootstrap(policiesBaseDirectory: AppContext.BaseDirectory);
+        string directory = Path.Combine(Path.GetTempPath(), "mcp-governance-audit-" + Guid.NewGuid().ToString("N"));
+        var auditStore = new FileAgentGovernanceAuditStore(directory);
+        var coordinator = new McpToolGovernanceCoordinator(
+            bootstrap,
+            auditStore,
+            Microsoft.Extensions.Options.Options.Create(new GovernanceSettings
+            {
+                EnableMcpToolGovernance = true,
+                LogFunctionInvocations = false
+            }));
+
+        McpToolGovernanceDecision decision = coordinator.EvaluateToolCall(
+            AgentRole.DocumentProcessing,
+            "get_case_documents",
+            new Dictionary<string, System.Text.Json.JsonElement>
+            {
+                ["caseId"] = System.Text.Json.JsonSerializer.SerializeToElement("APP-001"),
+                ["executionId"] = System.Text.Json.JsonSerializer.SerializeToElement("exec-001")
+            });
+
+        Assert.False(decision.Allowed);
+        Assert.Single(auditStore.ReadAll());
+
+        Directory.Delete(directory, recursive: true);
+    }
+
+    [Theory]
+    [InlineData("document-processing-agent", AgentRole.DocumentProcessing)]
+    [InlineData("phase0-document-processing-agent", AgentRole.DocumentProcessing)]
+    [InlineData("underwriting-agent", AgentRole.Underwriting)]
+    public void TryResolveRole_MapsKnownAgentNames(string agentName, AgentRole expectedRole)
+    {
+        Assert.True(AgentCatalog.TryResolveRole(agentName, out AgentRole role));
+        Assert.Equal(expectedRole, role);
     }
 }

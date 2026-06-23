@@ -1,6 +1,6 @@
 using AgentGovernance.Audit;
-using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Foundry.Governance;
+using CohereLoanAndMortgage.Foundry.Governance.Audit;
 using Microsoft.Extensions.Options;
 
 namespace CohereLoanAndMortgage.Api.Host.Governance;
@@ -11,17 +11,17 @@ public static class FoundryAgentGovernanceRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<GovernanceOptions>(configuration.GetSection(GovernanceOptions.SectionName));
+        services.Configure<GovernanceSettings>(configuration.GetSection(GovernanceSettings.SectionName));
 
         services.AddSingleton<IAgentGovernanceAuditStore>(sp =>
         {
-            GovernanceOptions options = sp.GetRequiredService<IOptions<GovernanceOptions>>().Value;
+            GovernanceSettings options = sp.GetRequiredService<IOptions<GovernanceSettings>>().Value;
             return new FileAgentGovernanceAuditStore(options.AgentAuditStoreDirectory);
         });
 
         services.AddSingleton<FoundryAgentGovernanceBootstrap>(sp =>
         {
-            GovernanceOptions options = sp.GetRequiredService<IOptions<GovernanceOptions>>().Value;
+            GovernanceSettings options = sp.GetRequiredService<IOptions<GovernanceSettings>>().Value;
             IAgentGovernanceAuditStore auditStore = sp.GetRequiredService<IAgentGovernanceAuditStore>();
             var bootstrap = new FoundryAgentGovernanceBootstrap(
                 enableFunctionInvocationLogging: options.LogFunctionInvocations,

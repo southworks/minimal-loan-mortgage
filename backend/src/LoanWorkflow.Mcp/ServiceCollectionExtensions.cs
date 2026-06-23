@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Azure.Search.Documents;
+using CohereLoanAndMortgage.Foundry.Governance;
+using CohereLoanAndMortgage.Foundry.Governance.Mcp;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Builders;
+using LoanWorkflow.Mcp.Governance;
 using LoanWorkflow.Mcp.Options;
 using LoanWorkflow.Mcp.Startup;
 using LoanWorkflow.Mcp.Tools;
@@ -66,13 +69,38 @@ public static class ServiceCollectionExtensions
         IServiceProvider serviceProvider,
         ConcurrentDictionary<string, McpServerTool[]> toolDictionary)
     {
-        toolDictionary["document-retrieval"] = CreateTools(serviceProvider.GetRequiredService<DocumentRetrievalTools>());
-        toolDictionary["underwriting-rules"] = CreateTools(serviceProvider.GetRequiredService<UnderwritingRulesTools>());
-        toolDictionary["policy-knowledge"] = CreateTools(serviceProvider.GetRequiredService<PolicyKnowledgeTools>());
-        toolDictionary["loan-setup"] = CreateTools(serviceProvider.GetRequiredService<LoanSetupTools>());
+        GovernanceSettings settings = serviceProvider
+            .GetRequiredService<IOptions<GovernanceSettings>>()
+            .Value;
+        McpToolGovernanceCoordinator? coordinator = settings.EnableMcpToolGovernance
+            ? serviceProvider.GetRequiredService<McpToolGovernanceCoordinator>()
+            : null;
+        IHttpContextAccessor? httpContextAccessor = settings.EnableMcpToolGovernance
+            ? serviceProvider.GetRequiredService<IHttpContextAccessor>()
+            : null;
+
+        toolDictionary["document-retrieval"] = CreateTools(
+            serviceProvider.GetRequiredService<DocumentRetrievalTools>(),
+            coordinator,
+            httpContextAccessor);
+        toolDictionary["underwriting-rules"] = CreateTools(
+            serviceProvider.GetRequiredService<UnderwritingRulesTools>(),
+            coordinator,
+            httpContextAccessor);
+        toolDictionary["policy-knowledge"] = CreateTools(
+            serviceProvider.GetRequiredService<PolicyKnowledgeTools>(),
+            coordinator,
+            httpContextAccessor);
+        toolDictionary["loan-setup"] = CreateTools(
+            serviceProvider.GetRequiredService<LoanSetupTools>(),
+            coordinator,
+            httpContextAccessor);
     }
 
-    private static McpServerTool[] CreateTools<T>(T target)
+    private static McpServerTool[] CreateTools<T>(
+        T target,
+        McpToolGovernanceCoordinator? coordinator,
+        IHttpContextAccessor? httpContextAccessor)
     {
         var tools = new List<McpServerTool>();
         var methods = typeof(T).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
@@ -80,7 +108,10 @@ public static class ServiceCollectionExtensions
 
         foreach (var method in methods)
         {
-            tools.Add(McpServerTool.Create(method, target));
+            McpServerTool innerTool = McpServerTool.Create(method, target);
+            tools.Add(coordinator is not null && httpContextAccessor is not null
+                ? new GovernedMcpServerTool(innerTool, coordinator, httpContextAccessor)
+                : innerTool);
         }
 
         return tools.ToArray();

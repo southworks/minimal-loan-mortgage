@@ -49,4 +49,48 @@ public static class AgentCatalog
         AgentRole.ResponsibleAi,
         AgentRole.LoanSetup
     ];
+
+    public static bool TryResolveRole(string? agentName, out AgentRole role)
+    {
+        role = default;
+        if (string.IsNullOrWhiteSpace(agentName))
+        {
+            return false;
+        }
+
+        foreach (AgentRole candidate in AllRoles)
+        {
+            if (string.Equals(agentName, ToFolderName(candidate), StringComparison.OrdinalIgnoreCase))
+            {
+                role = candidate;
+                return true;
+            }
+        }
+
+        if (agentName.Contains("document-processing", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.DocumentProcessing;
+            return true;
+        }
+
+        if (agentName.Contains("underwriting", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.Underwriting;
+            return true;
+        }
+
+        if (agentName.Contains("responsible-ai", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.ResponsibleAi;
+            return true;
+        }
+
+        if (agentName.Contains("loan-setup", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.LoanSetup;
+            return true;
+        }
+
+        return false;
+    }
 }

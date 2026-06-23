@@ -30,7 +30,11 @@ public sealed class AgentDefinitionBuilder
                     ["type"] = "mcp",
                     ["server_label"] = bundle.Mcp.ServerLabel,
                     ["server_url"] = serverUrl,
-                    ["require_approval"] = "never"
+                    ["require_approval"] = "never",
+                    ["headers"] = new JsonObject
+                    {
+                        ["X-Agent-Role"] = bundle.Manifest.Name
+                    }
                 }
             },
             ["text"] = new JsonObject

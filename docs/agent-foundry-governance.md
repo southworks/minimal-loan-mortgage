@@ -4,9 +4,18 @@ This document describes how the loan and mortgage demo applies the [Agent Govern
 
 ## Three governance acts
 
-1. **Tool sandboxing** — per-agent `governance.yaml` policies (`apiVersion: governance.toolkit/v1`) evaluated through MAF function middleware before remote MCP tool calls execute.
+1. **Tool sandboxing** — per-agent `governance.yaml` policies (`apiVersion: governance.toolkit/v1`) evaluated before tool execution.
 2. **Rogue detection** — per-agent `rogue.yaml` sliding-window detection blocks repeated calls to a configured risky tool.
-3. **Audit** — AGT governance events append to a hash-chain JSONL store under `data/agent-governance-audit`.
+3. **Audit** — governance events append to a hash-chain JSONL store under `data/agent-governance-audit`.
+
+### Enforcement layers
+
+| Layer | When it applies | Component |
+|-------|-----------------|-----------|
+| **MCP server (primary)** | Remote Foundry→MCP tool calls | `GovernedMcpServerTool` + `McpToolGovernanceCoordinator` in `LoanWorkflow.Mcp` |
+| **API agent wrap (secondary)** | Local MAF function invocations on wrapped `AIAgent` | `FoundryAgentGovernanceBootstrap.WrapAgent` in `Api.Host` |
+
+Phase 0 confirmed hosted MCP calls bypass the API wrap. **MCP-layer governance is the effective enforcement point** for Azure Foundry prompt agents with remote MCP tools.
 
 ## Co-located policy layout
 
@@ -28,7 +37,21 @@ agent-provisioning/agents/
     ...
 ```
 
-At runtime, `CohereLoanAndMortgage.Foundry.Governance` copies these files to `policies/{agent-name}/` in the API host output directory.
+At runtime, `CohereLoanAndMortgage.Foundry.Governance` copies these files to `policies/{agent-name}/` in the API host and MCP server output directories.
+
+## MCP-layer governance
+
+Remote Foundry agents call MCP over HTTP. The MCP server enforces governance **before** each tool handler runs:
+
+1. **`McpAgentRoleMiddleware`** — requires `X-Agent-Role` header (e.g. `document-processing-agent`) on MCP routes when `Governance:RequireMcpAgentRoleHeader` is `true`.
+2. **`GovernedMcpServerTool`** — wraps each MCP tool; delegates to `McpToolGovernanceCoordinator`.
+3. **`McpToolGovernanceCoordinator`** — evaluates `governance.yaml`, applies rogue detection (keyed by role + `caseId` + `executionId` from tool args), writes audit records, and logs:
+
+```text
+MCP governance tool invocation for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}
+```
+
+Blocked calls return an MCP error result; denied tools never reach the handler.
 
 ## Per-run wrap vs cached raw agents
 
@@ -94,12 +117,16 @@ Defaults: `windowSize: 10`, `triggerCount: 5`.
 ```json
 "Governance": {
   "EnableFoundryAgentGovernance": true,
+  "EnableMcpToolGovernance": true,
+  "RequireMcpAgentRoleHeader": true,
   "AgentAuditStoreDirectory": "data/agent-governance-audit",
   "RogueDetectionWindowSize": 10,
   "RogueDetectionTriggerCount": 5,
   "LogFunctionInvocations": true
 }
 ```
+
+Set `EnableMcpToolGovernance: false` or `RequireMcpAgentRoleHeader: false` for local MCP testing without agent headers.
 
 Mount a persistent volume for `AgentAuditStoreDirectory` in production.
 
