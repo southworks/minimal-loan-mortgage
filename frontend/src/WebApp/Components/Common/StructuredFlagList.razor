@@ -1,0 +1,38 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Agents
+
+@if (Items is null || Items.Count == 0)
+{
+    <p class="text-muted">No structured flags recorded.</p>
+}
+else
+{
+    <ul class="structured-flag-list">
+        @foreach (var item in Items)
+        {
+            <li class="structured-flag-item @SeverityClass(item.Severity)">
+                <div class="structured-flag-header">
+                    <span class="structured-flag-code">@item.FlagCode</span>
+                    <span class="structured-flag-category">@item.Category</span>
+                </div>
+                <p class="structured-flag-message">@item.Message</p>
+                @if (item.RequiresHumanReview)
+                {
+                    <span class="structured-flag-review">Requires human review</span>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<FlagItem>? Items { get; set; }
+
+    private static string SeverityClass(FlagSeverity severity) => severity switch
+    {
+        FlagSeverity.Critical => "flag-severity-critical",
+        FlagSeverity.High => "flag-severity-high",
+        FlagSeverity.Warning => "flag-severity-warning",
+        _ => "flag-severity-info"
+    };
+}

@@ -1,0 +1,26 @@
+<section class="page-section" id="@Id">
+    <header class="section-header">
+        <h2 class="section-title">@Title</h2>
+        @if (!string.IsNullOrWhiteSpace(Subtitle))
+        {
+            <p class="section-subtitle">@Subtitle</p>
+        }
+    </header>
+    <div class="section-body">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

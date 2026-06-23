@@ -1,0 +1,132 @@
+@using Cohere.LoanProcessing.Shared.Contracts.Api.Cases
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+@if (Result is not null)
+{
+    <AgentPanel AgentName="Document Review"
+                Role="Stage 1"
+                Purpose="Review the application package, confirm the required evidence is present, and identify any gaps before financial assessment."
+                StatusLabel="@StageExplainabilityUi.DocumentProcessingStatusLabel(Result)"
+                StatusCssClass="@StageExplainabilityUi.DocumentProcessingStatusCssClass(Result)"
+                CssClass="agent-doc-processing"
+                PanelId="stage-document-review"
+                IsCollapsible="true"
+                CollapsedByDefault="true">
+        <div class="agent-detail-block">
+            <h4>Stage status</h4>
+            <p class="agent-summary">
+                <strong>Technical status:</strong> @Result.Status
+                @if (Result.RequiresHumanReview)
+                {
+                    <span class="review-required-badge">Human review recommended</span>
+                }
+            </p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Result.Summary))
+        {
+            <p class="agent-summary"><strong>What happened:</strong> @Result.Summary</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Result.Decision))
+        {
+            <div class="recommendation-card @WorkflowStageUi.DecisionCssClass(Result.Decision)">
+                <span class="recommendation-label">Agent decision</span>
+                <span class="recommendation-value">@Result.Decision</span>
+            </div>
+        }
+
+        <div class="agent-detail-block">
+            <h4>Primary reason</h4>
+            <p class="agent-summary">@StageExplainabilityUi.DocumentProcessingPrimaryReason(Result)</p>
+        </div>
+
+        <p class="agent-metric"><strong>Completeness:</strong> @Result.CompletenessScore.ToString("P0")</p>
+
+        @if (Documents.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Inputs reviewed</h4>
+                <EvidenceList Items="Documents.Select(d => DocumentLabel(d.DocumentType, d.FileName)).Distinct(StringComparer.OrdinalIgnoreCase).ToList()" />
+            </div>
+        }
+
+        @if (Result.EvidenceItems?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <EvidenceDisclosurePanel Title="Evidence analyzed"
+                                         StructuredItems="Result.EvidenceItems"
+                                         EmptyMessage="No document evidence recorded." />
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(Result.Evidence))
+        {
+            <div class="agent-detail-block">
+                <EvidenceDisclosurePanel Title="Evidence analyzed"
+                                         Items="[Result.Evidence]"
+                                         EmptyMessage="No document evidence recorded." />
+            </div>
+        }
+
+        @if (Result.MissingDocuments.Count > 0 || Result.Inconsistencies.Count > 0 || Result.Flags?.Count > 0)
+        {
+            <div class="agent-detail-block">
+                <h4>Business findings</h4>
+                @if (Result.MissingDocuments.Count > 0)
+                {
+                    <FlagList Items="Result.MissingDocuments.Select(FormatFinding).ToList()" Variant="flag-danger" />
+                }
+                @if (Result.Inconsistencies.Count > 0)
+                {
+                    <EvidenceList Items="Result.Inconsistencies" />
+                }
+                @if (Result.Flags?.Count > 0)
+                {
+                    <StructuredFlagList Items="Result.Flags" />
+                }
+            </div>
+        }
+
+        <div class="agent-detail-block">
+            <h4>Business decision</h4>
+            <p class="agent-summary">@(Result.IsComplete ? "Documentation is sufficient to continue to financial assessment." : "Documentation requires follow-up before the case can move forward confidently.")</p>
+        </div>
+
+        <div class="agent-detail-block">
+            <h4>Next step</h4>
+            <p class="agent-summary">@(Result.IsComplete ? "Proceed to financial assessment." : "Address the document gaps and route the case into review.")</p>
+        </div>
+    </AgentPanel>
+}
+
+@code {
+    [Parameter]
+    public DocumentProcessingResultDto? Result { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<DocumentRecordDto> Documents { get; set; } = [];
+
+    private static string DocumentLabel(string documentType, string fileName) => documentType switch
+    {
+        "application" => "Application packet",
+        "identity" => "Identity documents",
+        "income_proof" => "Income proof",
+        "employment_verification" => "Employment verification",
+        "bank_statement" => "Bank statements",
+        "credit_report" => "Credit report",
+        "property_information" => "Property information",
+        "appraisal" => "Property appraisal",
+        _ => fileName
+    };
+
+    private static string FormatFinding(string missingDocument) =>
+        missingDocument switch
+        {
+            "bank_statement" => "Missing bank statements",
+            "income_proof" => "Missing income proof",
+            "identity" => "Missing identity documents",
+            _ => $"Missing {missingDocument.Replace('_', ' ')}"
+        };
+}
+

@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "LoanWorkflow.Mcp",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-mcp",
+      "program": "${workspaceFolder}/backend/src/LoanWorkflow.Mcp/bin/Debug/net9.0/LoanWorkflow.Mcp.dll",
+      "cwd": "${workspaceFolder}/backend/src/LoanWorkflow.Mcp",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5040"
+      },
+      "envFile": "${workspaceFolder}/backend/src/Api.Host/.env.local"
+    },
+    {
+      "name": "Api.Host",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api-host",
+      "program": "${workspaceFolder}/backend/src/Api.Host/bin/Debug/net9.0/CohereLoanAndMortgage.Api.Host.dll",
+      "cwd": "${workspaceFolder}/backend/src/Api.Host",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5038"
+      },
+      "envFile": "${workspaceFolder}/backend/src/Api.Host/.env.local"
+    },
+    {
+      "name": "WebApp",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-webapp",
+      "program": "${workspaceFolder}/frontend/src/WebApp/bin/Debug/net9.0/Cohere.LoanProcessing.WebApp.dll",
+      "cwd": "${workspaceFolder}/frontend/src/WebApp",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5147"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "API + MCP",
+      "configurations": ["LoanWorkflow.Mcp", "Api.Host"],
+      "stopAll": true,
+      "preLaunchTask": "build-solution"
+    },
+    {
+      "name": "Full stack (API + MCP + Web)",
+      "configurations": ["LoanWorkflow.Mcp", "Api.Host", "WebApp"],
+      "stopAll": true,
+      "preLaunchTask": "build-all"
+    }
+  ]
+}

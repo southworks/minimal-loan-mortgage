@@ -1,0 +1,109 @@
+@using Cohere.LoanProcessing.WebApp.Components.Common
+@using Cohere.LoanProcessing.WebApp.Models
+
+@if (Result is not null)
+{
+    <section id="outcome" class="outcome-summary-card outcome-@Result.Status.ToLowerInvariant()" aria-label="Case outcome">
+        <div class="outcome-summary-header">
+            <div>
+                <p class="outcome-summary-label">Application outcome</p>
+                <h3 class="outcome-summary-status">@GetOutcomeLabel(Result.Status)</h3>
+            </div>
+        </div>
+
+        <div class="outcome-summary-grid">
+            @if (Result.DocComplete is not null)
+            {
+                <div class="outcome-metric">
+                    <span class="outcome-metric-label">Documents</span>
+                    <span class="outcome-metric-value @(Result.DocComplete == true ? "outcome-ok" : "outcome-warn")">
+                        @(Result.DocComplete == true ? "Complete" : "Incomplete")
+                    </span>
+                </div>
+            }
+            @if (Result.UnderwritingRecommendation is not null)
+            {
+                <div class="outcome-metric">
+                    <span class="outcome-metric-label">Underwriting</span>
+                    <span class="outcome-metric-value @WorkflowStageUi.RecommendationCssClass(Result.UnderwritingRecommendation)">
+                        @Result.UnderwritingRecommendation
+                    </span>
+                </div>
+            }
+            @if (Result.RiskScore is not null)
+            {
+                <div class="outcome-metric">
+                    <span class="outcome-metric-label">Risk score</span>
+                    <span class="outcome-metric-value">@Result.RiskScore.Value.ToString("P0")</span>
+                </div>
+            }
+            @if (Result.ResponsibleAiPassed is not null)
+            {
+                <div class="outcome-metric">
+                    <span class="outcome-metric-label">Fairness review</span>
+                    <span class="outcome-metric-value @GetFairnessOutcomeCssClass(Result.ResponsibleAiPassed)">
+                        @GetFairnessOutcomeLabel(Result.ResponsibleAiPassed)
+                    </span>
+                </div>
+            }
+            @if (Result.HumanDecisionApproved is not null)
+            {
+                <div class="outcome-metric">
+                    <span class="outcome-metric-label">Human decision</span>
+                    <span class="outcome-metric-value @(Result.HumanDecisionApproved == true ? "outcome-ok" : "outcome-danger")">
+                        @(Result.HumanDecisionApproved == true ? "Approved" : "Rejected")
+                    </span>
+                </div>
+            }
+        </div>
+
+        <p class="outcome-summary-meta">
+            Duration: @FormatDuration(Result.CreatedAt, Result.UpdatedAt)
+            @if (!string.IsNullOrWhiteSpace(Result.DocProcessingSummary))
+            {
+                <span> · @Result.DocProcessingSummary</span>
+            }
+        </p>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public OutcomeSummaryModel? Result { get; set; }
+
+    private static string GetOutcomeLabel(string status) => status switch
+    {
+        "Completed" => "Application completed",
+        "Approved" => "Application approved",
+        "Rejected" => "Application rejected",
+        "Failed" => "Workflow failed",
+        "AwaitingHumanApproval" => "Waiting for human review",
+        _ => status
+    };
+
+    private static string GetFairnessOutcomeLabel(bool? passed) =>
+        passed == true ? "Passed" : "Escalated";
+
+    private static string GetFairnessOutcomeCssClass(bool? passed) =>
+        passed == true ? "outcome-ok" : "outcome-warn";
+
+    private static string FormatDuration(DateTimeOffset start, DateTimeOffset end)
+    {
+        var span = end - start;
+        return span.TotalMinutes >= 1
+            ? $"{span.TotalMinutes:F0} min"
+            : $"{span.TotalSeconds:F0} sec";
+    }
+
+    public sealed record OutcomeSummaryModel(
+        string Status,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt,
+        string? UnderwritingRecommendation = null,
+        decimal? RiskScore = null,
+        bool? ResponsibleAiPassed = null,
+        bool? HumanDecisionApproved = null,
+        string? DemoAccountId = null,
+        bool? DocComplete = null,
+        string? DocProcessingSummary = null);
+}
