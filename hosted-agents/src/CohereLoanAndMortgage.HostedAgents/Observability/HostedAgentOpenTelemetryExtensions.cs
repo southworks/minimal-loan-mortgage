@@ -16,8 +16,7 @@ internal static class HostedAgentOpenTelemetryExtensions
         string environmentName)
     {
         string? applicationInsightsConnectionString =
-            Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")
-            ?? Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
+            Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
 
         bool hasAzureMonitorExporter = !string.IsNullOrWhiteSpace(applicationInsightsConnectionString);
         bool isDevelopment = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase);

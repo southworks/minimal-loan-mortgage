@@ -40,9 +40,12 @@ builder.Services.Configure<HostedAgentCorrelationOptions>(options =>
     options.AgentName = agentDefinition.Name;
 });
 
+string environmentName =
+    Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
 builder.Services.AddHostedAgentOpenTelemetry(
     serviceName: $"cohereloan-hosted-agent-{agentDefinition.Name}",
-    environmentName: "Production");
+    environmentName: environmentName);
 builder.Services.AddFoundryResponses(agent);
 builder.Services.AddFoundryToolboxes(agentDefinition.ToolboxName);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());

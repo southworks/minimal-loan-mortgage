@@ -7,6 +7,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using AgentWorkflow = Microsoft.Agents.AI.Workflows.Workflow;
+using OpenTelemetry.Trace;
 
 namespace CohereLoanAndMortgage.Api.Host.Services;
 
@@ -66,70 +67,79 @@ public sealed class BasicLoanWorkflowService
             caseId: caseId,
             kind: ActivityKind.Internal);
 
-        if (string.IsNullOrWhiteSpace(caseId))
+        try
         {
-            throw new InvalidOperationException("CaseId is required.");
-        }
+            if (string.IsNullOrWhiteSpace(caseId))
+            {
+                throw new InvalidOperationException("CaseId is required.");
+            }
 
-        if (string.IsNullOrWhiteSpace(executionId))
-        {
-            throw new InvalidOperationException("ExecutionId is required.");
-        }
+            if (string.IsNullOrWhiteSpace(executionId))
+            {
+                throw new InvalidOperationException("ExecutionId is required.");
+            }
 
-        var loadDocumentsStopwatch = Stopwatch.StartNew();
-        IReadOnlyList<LoadedCaseDocument> documents =
-            await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
-        loadDocumentsStopwatch.Stop();
-        RecordWorkflowStageDuration(executionId, caseId, "documents.load", loadDocumentsStopwatch.Elapsed.TotalMilliseconds);
+            var loadDocumentsStopwatch = Stopwatch.StartNew();
+            IReadOnlyList<LoadedCaseDocument> documents =
+                await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
+            loadDocumentsStopwatch.Stop();
+            RecordWorkflowStageDuration(executionId, caseId, "documents.load", loadDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
-        if (documents.Count == 0)
-        {
-            throw new KeyNotFoundException(
-                $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
-        }
+            if (documents.Count == 0)
+            {
+                throw new KeyNotFoundException(
+                    $"Case '{caseId}' was not found in local dataset assets or has no documents under directory '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
+            }
 
-        var extractDocumentsStopwatch = Stopwatch.StartNew();
-        IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
-            .ExtractAsync(documents, cancellationToken)
-            .ConfigureAwait(false);
-        extractDocumentsStopwatch.Stop();
-        RecordWorkflowStageDuration(executionId, caseId, "documents.extract", extractDocumentsStopwatch.Elapsed.TotalMilliseconds);
-
-        if (_caseWorkflowOptions.PreIndexCaseDocuments)
-        {
-            var preIndexStopwatch = Stopwatch.StartNew();
-            await _caseEvidenceIndexingService
-                .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
+            var extractDocumentsStopwatch = Stopwatch.StartNew();
+            IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
+                .ExtractAsync(documents, cancellationToken)
                 .ConfigureAwait(false);
-            preIndexStopwatch.Stop();
-            RecordWorkflowStageDuration(executionId, caseId, "documents.pre_index", preIndexStopwatch.Elapsed.TotalMilliseconds);
-        }
+            extractDocumentsStopwatch.Stop();
+            RecordWorkflowStageDuration(executionId, caseId, "documents.extract", extractDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
-        var execution = new BasicWorkflowExecution
-        {
-            ExecutionId = executionId,
-            CaseId = caseId.Trim(),
-            Status = BasicWorkflowStatus.Running,
-            StartedAtUtc = DateTimeOffset.UtcNow,
-            WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
-        };
-        _store.Save(execution);
+            if (_caseWorkflowOptions.PreIndexCaseDocuments)
+            {
+                var preIndexStopwatch = Stopwatch.StartNew();
+                await _caseEvidenceIndexingService
+                    .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
+                    .ConfigureAwait(false);
+                preIndexStopwatch.Stop();
+                RecordWorkflowStageDuration(executionId, caseId, "documents.pre_index", preIndexStopwatch.Elapsed.TotalMilliseconds);
+            }
 
-        LoanWorkflowTelemetry.WorkflowStartedCounter.Add(
-            1,
-            LoanWorkflowTelemetry.BuildWorkflowTags(
+            var execution = new BasicWorkflowExecution
+            {
+                ExecutionId = executionId,
+                CaseId = caseId.Trim(),
+                Status = BasicWorkflowStatus.Running,
+                StartedAtUtc = DateTimeOffset.UtcNow,
+                WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
+            };
+            _store.Save(execution);
+
+            LoanWorkflowTelemetry.WorkflowStartedCounter.Add(
+                1,
+                LoanWorkflowTelemetry.BuildWorkflowTags(
+                    executionId,
+                    execution.CaseId,
+                    executionMode: InProcessExecutionMode));
+
+            List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
+                caseId,
                 executionId,
-                execution.CaseId,
-                executionMode: InProcessExecutionMode));
+                normalizedDocuments,
+                _caseWorkflowOptions.PreIndexCaseDocuments);
+            RunInBackground(executionId, input);
 
-        List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
-            caseId,
-            executionId,
-            normalizedDocuments,
-            _caseWorkflowOptions.PreIndexCaseDocuments);
-        RunInBackground(executionId, input);
-
-        return ToResponse(execution);
+            return ToResponse(execution);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.RecordException(ex);
+            throw;
+        }
     }
 
     public BasicWorkflowStatusResponse GetBasicWorkflowStatus(string executionId) =>

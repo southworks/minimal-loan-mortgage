@@ -67,6 +67,23 @@ function Resolve-ContainerAppName {
     return $resolved.Trim()
 }
 
+function Set-ContainerAppTelemetrySecret {
+    param(
+        [string]$ResourceGroup,
+        [string]$ContainerAppName,
+        [string]$ConnectionString
+    )
+
+    # Store connection string as a Container App secret and bind env var through secretref
+    # to avoid persisting plain text values in container environment settings.
+    az containerapp update `
+        --name $ContainerAppName `
+        --resource-group $ResourceGroup `
+        --set-secrets "appinsights-connection-string=$ConnectionString" `
+        --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string" `
+        --output none
+}
+
 Get-RequiredTool -Name "az"
 
 Write-Host "Resolving Application Insights component..."
@@ -86,19 +103,17 @@ if ([string]::IsNullOrWhiteSpace($connectionString)) {
 $apiApp = Resolve-ContainerAppName -ResourceGroup $ResourceGroupName -ExplicitName $ApiContainerAppName -SuffixHint "-api-"
 $mcpApp = Resolve-ContainerAppName -ResourceGroup $ResourceGroupName -ExplicitName $McpContainerAppName -SuffixHint "-mcp-"
 
-Write-Host "Injecting APPLICATIONINSIGHTS_CONNECTION_STRING into Container App '$apiApp'..."
-az containerapp update `
-    --name $apiApp `
-    --resource-group $ResourceGroupName `
-    --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=$connectionString" `
-    --output none
+Write-Host "Configuring telemetry secret for Container App '$apiApp'..."
+Set-ContainerAppTelemetrySecret `
+    -ResourceGroup $ResourceGroupName `
+    -ContainerAppName $apiApp `
+    -ConnectionString $connectionString
 
-Write-Host "Injecting APPLICATIONINSIGHTS_CONNECTION_STRING into Container App '$mcpApp'..."
-az containerapp update `
-    --name $mcpApp `
-    --resource-group $ResourceGroupName `
-    --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=$connectionString" `
-    --output none
+Write-Host "Configuring telemetry secret for Container App '$mcpApp'..."
+Set-ContainerAppTelemetrySecret `
+    -ResourceGroup $ResourceGroupName `
+    -ContainerAppName $mcpApp `
+    -ConnectionString $connectionString
 
 Write-Host "Observability bootstrap completed successfully."
 Write-Host "  Resource Group: $ResourceGroupName"

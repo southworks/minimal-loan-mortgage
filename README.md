@@ -47,6 +47,14 @@ When you deploy:
 6. A deployment script seeds the lakehouse with case data from `dataset-seed/` (runs only when `enableFabricSeed=true`). Raw documents go to `Files/raw/`, structured JSONs to `Files/bronze/`, and policy RAG to `Files/policy_rag/`. This step runs as a postscript — it does not block the MCP or other infrastructure.
 7. The deployment outputs the live API and frontend URLs, Fabric workspace and lakehouse names, and SQL endpoint.
 
+Infrastructure is now organized with a modular approach under `infra/modules` so the current `infra/main.bicep` can keep acting as an orchestration entrypoint while resources are progressively split into focused modules.
+
+Current modules include:
+
+- `infra/modules/foundry.bicep`: provisions Foundry account/project/deployments and orchestrates Foundry monitoring connection setup.
+- `infra/modules/foundry-appinsights-connection.bicep`: creates the Foundry project connection to Application Insights.
+- `infra/modules/workload.bicep`: centralizes workload runtime environment configuration consumed by API/MCP apps and jobs.
+
 You do **not** need to run a separate agent CLI after deployment.
 
 ## Observability
@@ -58,7 +66,9 @@ OpenTelemetry standardization is documented in:
 - [docs/observability/OPERATIONS_CHECKLIST.md](docs/observability/OPERATIONS_CHECKLIST.md)
 - [docs/observability/KQL_QUERIES.md](docs/observability/KQL_QUERIES.md)
 
-If you need to re-wire telemetry variables after deployment, run:
+Telemetry wiring is handled by infrastructure during standard deployment.
+
+Use bootstrap only for recovery (for example, drift or manual configuration changes):
 
 ```powershell
 pwsh ./infra/scripts/bootstrap-observability.ps1 -ResourceGroupName <your-resource-group>

@@ -4,18 +4,21 @@
 - `APPLICATIONINSIGHTS_CONNECTION_STRING`
 
 ## Auto-configured in infrastructure
-From `infra/main.bicep`:
+From `infra/main.bicep` orchestration and `infra/modules/*` modules:
 - App Insights resource is provisioned and linked to Log Analytics.
+- Foundry project is connected to App Insights through `infra/modules/foundry-appinsights-connection.bicep`.
+- The App Insights connection string is passed to Foundry connection/workload modules via secure module parameters.
 - `APPLICATIONINSIGHTS_CONNECTION_STRING` is injected into:
   - API Container App
   - MCP Container App
 
-## Post-deploy bootstrap
+## Post-deploy recovery bootstrap (optional)
 Script: `infra/scripts/bootstrap-observability.ps1`
 
 Purpose:
-- Resolve App Insights connection string from resource group
-- Inject `APPLICATIONINSIGHTS_CONNECTION_STRING` into API and MCP Container Apps
+- Recover telemetry wiring if configuration drift occurs after deployment.
+- Resolve App Insights connection string from resource group.
+- Store the value as a Container App secret and set `APPLICATIONINSIGHTS_CONNECTION_STRING` through `secretref:`.
 
 Usage:
 
@@ -40,4 +43,5 @@ pwsh ./infra/scripts/bootstrap-observability.ps1 \
 
 ## Security contract
 - No secrets are hardcoded in source.
-- Connection string is provided via environment and/or Azure resource resolution.
+- Standard deployment passes the connection string via secure module parameters.
+- Recovery bootstrap stores the connection string as Container App secret and binds env vars via `secretref:`.

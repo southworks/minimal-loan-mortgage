@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "8273036962313063448"
+      "templateHash": "243228609825362434"
     }
   },
   "parameters": {
@@ -125,6 +125,13 @@
         "description": "Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures."
       }
     },
+    "documentsContainerName": {
+      "type": "string",
+      "defaultValue": "loan-documents",
+      "metadata": {
+        "description": "Blob container for uploaded loan documents."
+      }
+    },
     "memoryStoreName": {
       "type": "string",
       "defaultValue": "loan-mortgage-agent-memory",
@@ -173,46 +180,6 @@
       "metadata": {
         "description": "Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved."
       }
-    },
-    "fabricWorkspaceName": {
-      "type": "string",
-      "metadata": {
-        "description": "Fabric workspace name. Required. Must be capacity-backed and accessible to the operator."
-      }
-    },
-    "fabricLakehouseName": {
-      "type": "string",
-      "defaultValue": "LoanProcessingLakehouse",
-      "metadata": {
-        "description": "Fabric lakehouse name. Created at deploy time if missing."
-      }
-    },
-    "fabricUamiResourceId": {
-      "type": "string",
-      "metadata": {
-        "description": "UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment."
-      }
-    },
-    "enableFabricSeed": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime."
-      }
-    },
-    "fabricRepositoryArchiveUrl": {
-      "type": "string",
-      "defaultValue": "https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip",
-      "metadata": {
-        "description": "Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/."
-      }
-    },
-    "fabricGithubToken": {
-      "type": "securestring",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Optional GitHub PAT for private repos or higher rate limits."
-      }
     }
   },
   "variables": {
@@ -254,7 +221,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "3886048614764266717"
+              "templateHash": "2451008556485665797"
             }
           },
           "parameters": {
@@ -278,6 +245,10 @@
             "deploymentSuffix": {
               "type": "string",
               "value": "[variables('deploymentSuffix')]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "value": "[toLower(take(replace(format('{0}st{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 24))]"
             },
             "foundryAccountName": {
               "type": "string",
@@ -355,6 +326,12 @@
           "resourceTags": {
             "value": "[variables('resourceTags')]"
           },
+          "storageAccountName": {
+            "value": "[reference('naming').outputs.storageAccountName.value]"
+          },
+          "documentsContainerName": {
+            "value": "[parameters('documentsContainerName')]"
+          },
           "searchServiceName": {
             "value": "[reference('naming').outputs.searchServiceName.value]"
           },
@@ -372,7 +349,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10031045735430986618"
+              "templateHash": "7860076756919912959"
             }
           },
           "parameters": {
@@ -381,6 +358,12 @@
             },
             "resourceTags": {
               "type": "object"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "documentsContainerName": {
+              "type": "string"
             },
             "searchServiceName": {
               "type": "string"
@@ -393,6 +376,41 @@
             }
           },
           "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "supportsHttpsTrafficOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('documentsContainerName'))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
             {
               "type": "Microsoft.Search/searchServices",
               "apiVersion": "2023-11-01",
@@ -431,6 +449,22 @@
             }
           ],
           "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "blobServiceUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
+            },
+            "documentsContainerName": {
+              "type": "string",
+              "value": "[parameters('documentsContainerName')]"
+            },
             "searchServiceName": {
               "type": "string",
               "value": "[parameters('searchServiceName')]"
@@ -531,7 +565,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "2249509682450205195"
+              "templateHash": "4676589322987748788"
             }
           },
           "parameters": {
@@ -615,7 +649,7 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.44.1.10279",
-                      "templateHash": "7206106359026983504"
+                      "templateHash": "5406973211883195719"
                     }
                   },
                   "parameters": {
@@ -643,11 +677,7 @@
                       "identity": {
                         "type": "SystemAssigned"
                       },
-                      "properties": {
-                        "allowProjectManagement": true,
-                        "customSubDomainName": "[parameters('foundryAccountName')]",
-                        "publicNetworkAccess": "Enabled"
-                      }
+                      "properties": "[createObject('allowProjectManagement', true(), 'customSubDomainName', parameters('foundryAccountName'), 'publicNetworkAccess', 'Enabled')]"
                     }
                   ],
                   "outputs": {
@@ -1126,8 +1156,14 @@
           "apiIdentityName": {
             "value": "[reference('naming').outputs.apiIdentityName.value]"
           },
+          "mcpIdentityName": {
+            "value": "[reference('naming').outputs.mcpIdentityName.value]"
+          },
           "provisioningIdentityName": {
             "value": "[reference('naming').outputs.provisioningIdentityName.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference('dataServices').outputs.storageAccountName.value]"
           },
           "foundryAccountName": {
             "value": "[reference('foundry').outputs.foundryAccountName.value]"
@@ -1140,9 +1176,6 @@
           },
           "documentIntelligenceAccountName": {
             "value": "[reference('dataServices').outputs.documentIntelligenceAccountName.value]"
-          },
-          "fabricUamiResourceId": {
-            "value": "[parameters('fabricUamiResourceId')]"
           }
         },
         "template": {
@@ -1152,7 +1185,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "245562855113630628"
+              "templateHash": "6800217610822785156"
             }
           },
           "parameters": {
@@ -1168,7 +1201,13 @@
             "apiIdentityName": {
               "type": "string"
             },
+            "mcpIdentityName": {
+              "type": "string"
+            },
             "provisioningIdentityName": {
+              "type": "string"
+            },
+            "storageAccountName": {
               "type": "string"
             },
             "foundryAccountName": {
@@ -1181,9 +1220,6 @@
               "type": "string"
             },
             "documentIntelligenceAccountName": {
-              "type": "string"
-            },
-            "fabricUamiResourceId": {
               "type": "string"
             }
           },
@@ -1198,9 +1234,30 @@
             {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
               "apiVersion": "2023-01-31",
+              "name": "[parameters('mcpIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
               "name": "[parameters('provisioningIdentityName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('resourceTags')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'StorageBlobDataContributor', parameters('nameSuffix'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
@@ -1273,34 +1330,43 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), 'SearchServiceContributor', parameters('nameSuffix'))]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), 'CognitiveServicesUser', parameters('nameSuffix'))]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
@@ -1342,11 +1408,11 @@
             },
             "mcpIdentityId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/')))]"
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
             },
             "mcpIdentityClientId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').clientId]"
             },
             "provisioningIdentityId": {
               "type": "string",
@@ -1362,142 +1428,6 @@
       "dependsOn": [
         "dataServices",
         "foundry",
-        "naming"
-      ]
-    },
-    "fabricProvision": {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "fabric-provision",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "resourceTags": {
-            "value": "[variables('resourceTags')]"
-          },
-          "deploymentSuffix": {
-            "value": "[reference('naming').outputs.deploymentSuffix.value]"
-          },
-          "fabricUamiResourceId": {
-            "value": "[parameters('fabricUamiResourceId')]"
-          },
-          "fabricWorkspaceName": {
-            "value": "[parameters('fabricWorkspaceName')]"
-          },
-          "fabricLakehouseName": {
-            "value": "[parameters('fabricLakehouseName')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "111898327010590826"
-            }
-          },
-          "parameters": {
-            "location": {
-              "type": "string"
-            },
-            "resourceTags": {
-              "type": "object"
-            },
-            "deploymentSuffix": {
-              "type": "string"
-            },
-            "fabricUamiResourceId": {
-              "type": "string"
-            },
-            "fabricWorkspaceName": {
-              "type": "string"
-            },
-            "fabricLakehouseName": {
-              "type": "string"
-            }
-          },
-          "variables": {
-            "$fxv#0": "param(\n    [string]$WorkspaceName = '',\n    [string]$WorkspaceId = '',\n    [string]$LakehouseName = 'LoanProcessingLakehouse',\n    [string]$LakehouseId = '',\n    [int]$SqlEndpointWaitTimeoutSeconds = 600,\n    [int]$SqlEndpointPollIntervalSeconds = 15\n)\n\n$ErrorActionPreference = 'Stop'\n\nif ([string]::IsNullOrWhiteSpace($WorkspaceName)) { $WorkspaceName = $env:FABRIC_WORKSPACE_NAME }\nif ([string]::IsNullOrWhiteSpace($WorkspaceId)) { $WorkspaceId = $env:FABRIC_WORKSPACE_ID }\nif ([string]::IsNullOrWhiteSpace($LakehouseName)) { $LakehouseName = $env:FABRIC_LAKEHOUSE_NAME }\nif ([string]::IsNullOrWhiteSpace($LakehouseId)) { $LakehouseId = $env:FABRIC_LAKEHOUSE_ID }\nif ($SqlEndpointWaitTimeoutSeconds -eq 600 -and -not [string]::IsNullOrWhiteSpace($env:FABRIC_SQL_ENDPOINT_WAIT_TIMEOUT_SECONDS)) {\n    $SqlEndpointWaitTimeoutSeconds = [int]$env:FABRIC_SQL_ENDPOINT_WAIT_TIMEOUT_SECONDS\n}\nif ($SqlEndpointPollIntervalSeconds -eq 15 -and -not [string]::IsNullOrWhiteSpace($env:FABRIC_SQL_ENDPOINT_POLL_INTERVAL_SECONDS)) {\n    $SqlEndpointPollIntervalSeconds = [int]$env:FABRIC_SQL_ENDPOINT_POLL_INTERVAL_SECONDS\n}\n\n$SqlServer = ''\n$SqlDatabase = ''\n\nfunction Get-FabricAccessToken {\n    $resource = 'https://api.fabric.microsoft.com'\n\n    if (-not [string]::IsNullOrWhiteSpace($env:AZURE_CLIENT_ID)) {\n        try {\n            $uri = \"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=$resource&client_id=$($env:AZURE_CLIENT_ID)\"\n            $resp = Invoke-RestMethod -Uri $uri -Headers @{ Metadata = 'true' }\n            if (-not [string]::IsNullOrWhiteSpace($resp.access_token)) {\n                return $resp.access_token\n            }\n        }\n        catch {\n            Write-Verbose \"IMDS token request failed: $_\"\n        }\n    }\n\n    try {\n        return (Get-AzAccessToken -ResourceUrl $resource).Token\n    }\n    catch {}\n\n    $token = az account get-access-token --resource $resource --query accessToken -o tsv 2>$null\n    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($token)) {\n        return $token\n    }\n\n    throw \"Unable to acquire access token for '$resource' via IMDS, Az module, or az CLI.\"\n}\n\nfunction Invoke-FabricApi {\n    param(\n        [string]$Method,\n        [string]$RelativeUrl,\n        [object]$Body = $null\n    )\n\n    $uri = \"https://api.fabric.microsoft.com/v1/$RelativeUrl\"\n\n    $token = Get-FabricAccessToken\n    $headers = @{ Authorization = \"Bearer $token\" }\n\n    if ($null -eq $Body) {\n        return Invoke-RestMethod -Method $Method -Headers $headers -Uri $uri\n    }\n\n    $json = $Body | ConvertTo-Json -Depth 20\n    $headers['Content-Type'] = 'application/json'\n    return Invoke-RestMethod -Method $Method -Headers $headers -Uri $uri -Body $json\n}\n\nfunction Resolve-WorkspaceId {\n    param(\n        [string]$WorkspaceIdInput,\n        [string]$WorkspaceNameInput\n    )\n\n    if (-not [string]::IsNullOrWhiteSpace($WorkspaceIdInput)) {\n        $workspace = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$WorkspaceIdInput\"\n        if (-not $workspace -or [string]::IsNullOrWhiteSpace([string]$workspace.id)) {\n            throw \"WorkspaceId '$WorkspaceIdInput' was not found in Fabric.\"\n        }\n        return [ordered]@{\n            Id   = [string]$workspace.id\n            Name = [string]$workspace.displayName\n        }\n    }\n\n    if ([string]::IsNullOrWhiteSpace($WorkspaceNameInput)) {\n        throw 'WorkspaceName or WorkspaceId is required.'\n    }\n\n    $workspaces = $null\n    try {\n        $workspaces = Invoke-FabricApi -Method 'GET' -RelativeUrl 'workspaces'\n    }\n    catch {\n        $errorMessage = $_.Exception.Message\n        if ($errorMessage -match 'Unauthorized|401') {\n            throw @\"\nUnable to list Fabric workspaces (Unauthorized).\nHow to fix:\n1) Use the correct tenant/subscription in Azure CLI: az account show\n2) Ensure your identity has access to the target Fabric workspace (Member/Contributor/Admin)\n3) If listing workspaces is blocked in your tenant, run this script with -WorkspaceId instead of -WorkspaceName\n\nCurrent input:\n- WorkspaceName: '$WorkspaceNameInput'\n- WorkspaceId: '$WorkspaceIdInput'\n\"@\n        }\n\n        throw\n    }\n    $items = @()\n    if ($workspaces -and $workspaces.value) {\n        $items = @($workspaces.value)\n    }\n\n    $match = $items | Where-Object { $_.displayName -eq $WorkspaceNameInput } | Select-Object -First 1\n    if (-not $match) {\n        throw \"Workspace '$WorkspaceNameInput' was not found in Fabric.\"\n    }\n\n    return [ordered]@{\n        Id   = [string]$match.id\n        Name = [string]$match.displayName\n    }\n}\n\nfunction Get-LakehouseByName {\n    param(\n        [string]$ResolvedWorkspaceId,\n        [string]$TargetLakehouseName\n    )\n\n    $items = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/items\"\n    $all = @()\n    if ($items -and $items.value) {\n        $all = @($items.value)\n    }\n\n    return $all |\n        Where-Object { $_.type -eq 'Lakehouse' -and $_.displayName -eq $TargetLakehouseName } |\n        Select-Object -First 1\n}\n\nfunction Wait-LakehouseReady {\n    param(\n        [string]$ResolvedWorkspaceId,\n        [string]$ResolvedLakehouseId,\n        [int]$MaxAttempts = 20,\n        [int]$DelaySeconds = 5\n    )\n\n    for ($i = 1; $i -le $MaxAttempts; $i++) {\n        $item = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/items/$ResolvedLakehouseId\"\n        if ($item) {\n            return $item\n        }\n\n        Start-Sleep -Seconds $DelaySeconds\n    }\n\n    throw \"Lakehouse '$ResolvedLakehouseId' did not become queryable after $MaxAttempts attempts.\"\n}\n\nfunction Ensure-Lakehouse {\n    param(\n        [string]$ResolvedWorkspaceId,\n        [string]$TargetLakehouseId,\n        [string]$TargetLakehouseName\n    )\n\n    if (-not [string]::IsNullOrWhiteSpace($TargetLakehouseId)) {\n        $existing = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/items/$TargetLakehouseId\"\n        if (-not $existing) {\n            throw \"LakehouseId '$TargetLakehouseId' was not found in workspace '$ResolvedWorkspaceId'.\"\n        }\n\n        if ($existing.type -ne 'Lakehouse') {\n            throw \"Item '$TargetLakehouseId' is not a Lakehouse.\"\n        }\n\n        Write-Host \"Using existing lakehouse by id: $($existing.displayName) ($TargetLakehouseId)\"\n        return [ordered]@{\n            Id = [string]$existing.id\n            Name = [string]$existing.displayName\n        }\n    }\n\n    $byName = Get-LakehouseByName -ResolvedWorkspaceId $ResolvedWorkspaceId -TargetLakehouseName $TargetLakehouseName\n    if ($byName) {\n        Write-Host \"Lakehouse already exists: $($byName.displayName) ($($byName.id))\"\n        return [ordered]@{\n            Id = [string]$byName.id\n            Name = [string]$byName.displayName\n        }\n    }\n\n    Write-Host \"Creating lakehouse '$TargetLakehouseName' in workspace '$ResolvedWorkspaceId'...\"\n    $created = Invoke-FabricApi -Method 'POST' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/items\" -Body @{\n        displayName = $TargetLakehouseName\n        type = 'Lakehouse'\n    }\n\n    if (-not $created -or [string]::IsNullOrWhiteSpace([string]$created.id)) {\n        throw 'Fabric API did not return a lakehouse id after create request.'\n    }\n\n    $ready = Wait-LakehouseReady -ResolvedWorkspaceId $ResolvedWorkspaceId -ResolvedLakehouseId $created.id\n\n    return [ordered]@{\n        Id = [string]$ready.id\n        Name = [string]$ready.displayName\n    }\n}\n\nfunction Find-StringValueRecursive {\n    param(\n        [object]$Node,\n        [string[]]$Keys\n    )\n\n    if ($null -eq $Node) {\n        return $null\n    }\n\n    if ($Node -is [System.Collections.IDictionary]) {\n        foreach ($key in $Keys) {\n            if ($Node.Contains($key) -and -not [string]::IsNullOrWhiteSpace([string]$Node[$key])) {\n                return [string]$Node[$key]\n            }\n        }\n\n        foreach ($entryKey in $Node.Keys) {\n            $value = Find-StringValueRecursive -Node $Node[$entryKey] -Keys $Keys\n            if (-not [string]::IsNullOrWhiteSpace($value)) {\n                return $value\n            }\n        }\n    }\n\n    if ($Node -is [psobject]) {\n        foreach ($key in $Keys) {\n            $property = $Node.PSObject.Properties[$key]\n            if ($property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {\n                return [string]$property.Value\n            }\n        }\n\n        foreach ($property in $Node.PSObject.Properties) {\n            $value = Find-StringValueRecursive -Node $property.Value -Keys $Keys\n            if (-not [string]::IsNullOrWhiteSpace($value)) {\n                return $value\n            }\n        }\n    }\n\n    if ($Node -is [System.Collections.IEnumerable] -and -not ($Node -is [string])) {\n        foreach ($item in $Node) {\n            $value = Find-StringValueRecursive -Node $item -Keys $Keys\n            if (-not [string]::IsNullOrWhiteSpace($value)) {\n                return $value\n            }\n        }\n    }\n\n    return $null\n}\n\nfunction Resolve-SqlEndpointFromLakehouse {\n    param(\n        [string]$ResolvedWorkspaceId,\n        [string]$ResolvedLakehouseId\n    )\n\n    $item = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/lakehouses/$ResolvedLakehouseId\"\n\n    $connectionString = Find-StringValueRecursive -Node $item -Keys @('connectionString', 'sqlConnectionString', 'sqlEndpointConnectionString')\n    $server = Find-StringValueRecursive -Node $item -Keys @('sqlEndpoint', 'sqlEndpointHostName', 'server', 'host')\n    $database = Find-StringValueRecursive -Node $item -Keys @('database', 'databaseName', 'sqlEndpointDatabase')\n    $sqlEndpointId = Find-StringValueRecursive -Node $item -Keys @('sqlEndpointId')\n\n    if ([string]::IsNullOrWhiteSpace($server)) {\n        $server = $connectionString\n    }\n\n    if (-not [string]::IsNullOrWhiteSpace($sqlEndpointId) -and [string]::IsNullOrWhiteSpace($database)) {\n        try {\n            $itemsResponse = Invoke-FabricApi -Method 'GET' -RelativeUrl \"workspaces/$ResolvedWorkspaceId/items\"\n            $all = if ($itemsResponse -and $itemsResponse.value) { @($itemsResponse.value) } else { @() }\n            $sqlItem = $all | Where-Object { $_.type -eq 'SQLEndpoint' -and $_.id -eq $sqlEndpointId } | Select-Object -First 1\n            if ($sqlItem -and -not [string]::IsNullOrWhiteSpace($sqlItem.displayName)) {\n                $database = [string]$sqlItem.displayName\n            }\n        }\n        catch {\n        }\n    }\n\n    if ([string]::IsNullOrWhiteSpace($database)) {\n        $database = Find-StringValueRecursive -Node $item -Keys @('displayName')\n    }\n\n    if (-not [string]::IsNullOrWhiteSpace($connectionString)) {\n        $builder = New-Object System.Data.Common.DbConnectionStringBuilder\n        $builder.ConnectionString = $connectionString\n\n        if ([string]::IsNullOrWhiteSpace($server) -and $builder.ContainsKey('Data Source')) {\n            $server = [string]$builder['Data Source']\n        }\n        if ([string]::IsNullOrWhiteSpace($database) -and $builder.ContainsKey('Initial Catalog')) {\n            $database = [string]$builder['Initial Catalog']\n        }\n    }\n\n    return [ordered]@{\n        SqlServer = $server\n        SqlDatabase = $database\n    }\n}\n\nfunction Wait-SqlEndpointMetadata {\n    param(\n        [string]$ResolvedWorkspaceId,\n        [string]$ResolvedLakehouseId,\n        [int]$TimeoutSeconds = 600,\n        [int]$PollIntervalSeconds = 15\n    )\n\n    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)\n    $resolved = $null\n\n    Write-Host \"Waiting for SQL endpoint metadata (timeout: ${TimeoutSeconds}s)...\"\n    while ((Get-Date) -lt $deadline) {\n        try {\n            $resolved = Resolve-SqlEndpointFromLakehouse -ResolvedWorkspaceId $ResolvedWorkspaceId -ResolvedLakehouseId $ResolvedLakehouseId\n        }\n        catch {\n            Write-Host \"SQL endpoint metadata lookup failed: $($_.Exception.Message). Retrying...\"\n        }\n\n        if ($resolved -and -not [string]::IsNullOrWhiteSpace($resolved.SqlServer) -and -not [string]::IsNullOrWhiteSpace($resolved.SqlDatabase)) {\n            break\n        }\n\n        $remaining = [math]::Max(0, [int](($deadline - (Get-Date)).TotalSeconds))\n        Write-Host \"SQL endpoint metadata not available yet. Retrying in ${PollIntervalSeconds}s (${remaining}s remaining)...\"\n        Start-Sleep -Seconds $PollIntervalSeconds\n    }\n\n    if (-not $resolved -or [string]::IsNullOrWhiteSpace($resolved.SqlServer) -or [string]::IsNullOrWhiteSpace($resolved.SqlDatabase)) {\n        throw \"SQL endpoint metadata not available within ${TimeoutSeconds}s. The SQL endpoint may not be provisioned for this lakehouse. Consider using -SkipStructured.\"\n    }\n\n    return $resolved\n}\n\nWrite-Host '=== Provision Fabric Lakehouse ==='\nWrite-Host \"WorkspaceName: $WorkspaceName\"\nWrite-Host \"WorkspaceId (input): $WorkspaceId\"\nWrite-Host \"LakehouseName: $LakehouseName\"\nWrite-Host \"LakehouseId (input): $LakehouseId\"\n\n$resolvedWorkspace = Resolve-WorkspaceId -WorkspaceIdInput $WorkspaceId -WorkspaceNameInput $WorkspaceName\n$resolvedWorkspaceId = $resolvedWorkspace.Id\n$resolvedWorkspaceName = $resolvedWorkspace.Name\nWrite-Host \"Resolved WorkspaceId: $resolvedWorkspaceId\"\nWrite-Host \"Resolved WorkspaceName: $resolvedWorkspaceName\"\n\n$lakehouse = Ensure-Lakehouse -ResolvedWorkspaceId $resolvedWorkspaceId -TargetLakehouseId $LakehouseId -TargetLakehouseName $LakehouseName\n$resolvedLakehouseId = $lakehouse.Id\n\nWrite-Host \"Resolved Lakehouse: $($lakehouse.Name) ($resolvedLakehouseId)\"\n\nif ([string]::IsNullOrWhiteSpace($SqlServer) -or [string]::IsNullOrWhiteSpace($SqlDatabase)) {\n    $resolvedSql = Wait-SqlEndpointMetadata `\n        -ResolvedWorkspaceId $resolvedWorkspaceId `\n        -ResolvedLakehouseId $resolvedLakehouseId `\n        -TimeoutSeconds $SqlEndpointWaitTimeoutSeconds `\n        -PollIntervalSeconds $SqlEndpointPollIntervalSeconds\n\n    if ([string]::IsNullOrWhiteSpace($SqlServer)) {\n        $SqlServer = $resolvedSql.SqlServer\n    }\n    if ([string]::IsNullOrWhiteSpace($SqlDatabase)) {\n        $SqlDatabase = $resolvedSql.SqlDatabase\n    }\n\n    if (-not [string]::IsNullOrWhiteSpace($SqlServer) -and -not [string]::IsNullOrWhiteSpace($SqlDatabase)) {\n        Write-Host \"SqlServer: $SqlServer\"\n        Write-Host \"SqlDatabase: $SqlDatabase\"\n    }\n}\n\n$result = [ordered]@{\n    WorkspaceId   = $resolvedWorkspaceId\n    WorkspaceName = $resolvedWorkspaceName\n    LakehouseId   = $resolvedLakehouseId\n    LakehouseName = $lakehouse.Name\n    SqlServer     = $SqlServer\n    SqlDatabase   = $SqlDatabase\n}\n\n$resultFilePath = $env:PROVISION_RESULT_FILE\nif (-not [string]::IsNullOrWhiteSpace($resultFilePath)) {\n    $result | ConvertTo-Json -Depth 4 | Set-Content -Path $resultFilePath -Encoding UTF8\n    Write-Host \"Provision result written to $resultFilePath\"\n}\n\n$DeploymentScriptOutputs = @{}\n$DeploymentScriptOutputs['workspaceId']   = $resolvedWorkspaceId\n$DeploymentScriptOutputs['workspaceName'] = $resolvedWorkspaceName\n$DeploymentScriptOutputs['lakehouseId']   = $resolvedLakehouseId\n$DeploymentScriptOutputs['lakehouseName'] = $lakehouse.Name\n$DeploymentScriptOutputs['sqlServer']     = $SqlServer\n$DeploymentScriptOutputs['sqlDatabase']   = $SqlDatabase\n\nWrite-Host 'Provision completed successfully.'\nWrite-Host \"WorkspaceId: $resolvedWorkspaceId\"\nWrite-Host \"WorkspaceName: $resolvedWorkspaceName\"\nWrite-Host \"LakehouseId: $resolvedLakehouseId\"\nif (-not [string]::IsNullOrWhiteSpace($SqlServer)) {\n    Write-Host \"SqlServer: $SqlServer\"\n    Write-Host \"SqlDatabase: $SqlDatabase\"\n}\n\nreturn $result\n"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Resources/deploymentScripts",
-              "apiVersion": "2023-08-01",
-              "name": "[format('run-fabric-provision-{0}', parameters('deploymentSuffix'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('resourceTags')]",
-              "kind": "AzurePowerShell",
-              "identity": {
-                "type": "UserAssigned",
-                "userAssignedIdentities": {
-                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))))]": {}
-                }
-              },
-              "properties": {
-                "azPowerShellVersion": "11.0",
-                "retentionInterval": "P1D",
-                "timeout": "PT15M",
-                "cleanupPreference": "OnSuccess",
-                "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "[variables('$fxv#0')]",
-                "environmentVariables": [
-                  {
-                    "name": "AZURE_CLIENT_ID",
-                    "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
-                  },
-                  {
-                    "name": "FABRIC_WORKSPACE_NAME",
-                    "value": "[parameters('fabricWorkspaceName')]"
-                  },
-                  {
-                    "name": "FABRIC_LAKEHOUSE_NAME",
-                    "value": "[parameters('fabricLakehouseName')]"
-                  }
-                ]
-              }
-            }
-          ],
-          "outputs": {
-            "workspaceId": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.workspaceId]"
-            },
-            "workspaceName": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.workspaceName]"
-            },
-            "lakehouseId": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.lakehouseId]"
-            },
-            "lakehouseName": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.lakehouseName]"
-            },
-            "sqlServer": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.sqlServer]"
-            },
-            "sqlDatabase": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix'))), '2023-08-01').outputs.sqlDatabase]"
-            },
-            "provisionResourceId": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Resources/deploymentScripts', format('run-fabric-provision-{0}', parameters('deploymentSuffix')))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
         "naming"
       ]
     },
@@ -1556,6 +1486,12 @@
           "foundryProjectEndpoint": {
             "value": "[reference('foundry').outputs.foundryProjectEndpoint.value]"
           },
+          "blobServiceUri": {
+            "value": "[reference('dataServices').outputs.blobServiceUri.value]"
+          },
+          "documentsContainerName": {
+            "value": "[reference('dataServices').outputs.documentsContainerName.value]"
+          },
           "searchServiceEndpoint": {
             "value": "[reference('dataServices').outputs.searchServiceEndpoint.value]"
           },
@@ -1579,12 +1515,6 @@
           },
           "rerankEndpoint": {
             "value": "[reference('foundry').outputs.rerankEndpoint.value]"
-          },
-          "fabricWorkspaceName": {
-            "value": "[parameters('fabricWorkspaceName')]"
-          },
-          "fabricLakehouseName": {
-            "value": "[parameters('fabricLakehouseName')]"
           }
         },
         "template": {
@@ -1594,7 +1524,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "2417762088847040814"
+              "templateHash": "14143502988756186617"
             }
           },
           "parameters": {
@@ -1643,6 +1573,12 @@
             "foundryProjectEndpoint": {
               "type": "string"
             },
+            "blobServiceUri": {
+              "type": "string"
+            },
+            "documentsContainerName": {
+              "type": "string"
+            },
             "searchServiceEndpoint": {
               "type": "string"
             },
@@ -1666,18 +1602,6 @@
             },
             "rerankEndpoint": {
               "type": "string"
-            },
-            "fabricWorkspaceName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "fabricLakehouseName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "fabricLakehouseTimeoutSeconds": {
-              "type": "int",
-              "defaultValue": 60
             }
           },
           "variables": {
@@ -1723,7 +1647,7 @@
                 "value": "2"
               }
             ],
-            "mcpSharedContainerEnv": "[concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', parameters('searchServiceEndpoint')), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'DataSource__Mode', 'value', 'Fabric'), createObject('name', 'FabricLakehouse__WorkspaceName', 'value', parameters('fabricWorkspaceName')), createObject('name', 'FabricLakehouse__LakehouseName', 'value', parameters('fabricLakehouseName')), createObject('name', 'FabricLakehouse__TimeoutSeconds', 'value', string(parameters('fabricLakehouseTimeoutSeconds'))), createObject('name', 'AZURE_CLIENT_ID', 'value', parameters('mcpIdentityClientId'))), variables('mcpFoundryModelEnv'))]",
+            "mcpSharedContainerEnv": "[concat(createArray(createObject('name', 'AzureSearch__Endpoint', 'value', parameters('searchServiceEndpoint')), createObject('name', 'AzureSearch__EvidenceIndexName', 'value', 'loan-case-evidence'), createObject('name', 'AzureSearch__PolicyIndexName', 'value', 'loan-policy-knowledge'), createObject('name', 'AzureSearch__VectorDimensions', 'value', '1024'), createObject('name', 'Dataset__RootPath', 'value', '/app/dataset-seed'), createObject('name', 'Dataset__PolicyFilePath', 'value', '/app/dataset-seed/08_policy_rag/general_policy.txt'), createObject('name', 'AZURE_CLIENT_ID', 'value', parameters('mcpIdentityClientId'))), variables('mcpFoundryModelEnv'))]",
             "mcpContainerEnv": "[concat(createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', parameters('applicationInsightsConnectionString'))), variables('mcpSharedContainerEnv'))]"
           },
           "resources": [
@@ -1818,6 +1742,10 @@
                           "value": "[parameters('foundryProjectEndpoint')]"
                         },
                         {
+                          "name": "AZURE_STORAGE_BLOB_SERVICE_URI",
+                          "value": "[parameters('blobServiceUri')]"
+                        },
+                        {
                           "name": "AzureSearch__Endpoint",
                           "value": "[parameters('searchServiceEndpoint')]"
                         },
@@ -1834,12 +1762,8 @@
                           "value": "1024"
                         },
                         {
-                          "name": "Dataset__RootPath",
-                          "value": "/app/dataset-seed"
-                        },
-                        {
-                          "name": "Dataset__PolicyFilePath",
-                          "value": "/app/dataset-seed/08_policy_rag/general_policy.txt"
+                          "name": "AzureStorage__ContainerName",
+                          "value": "[parameters('documentsContainerName')]"
                         },
                         {
                           "name": "AzureFoundryModels__EmbedDeploymentName",
@@ -2016,7 +1940,6 @@
       },
       "dependsOn": [
         "dataServices",
-        "fabricProvision",
         "foundry",
         "naming",
         "platform",
@@ -2409,34 +2332,10 @@
             "value": "[reference('foundry').outputs.foundryProjectName.value]"
           },
           "policySeedJobName": {
-            "value": "[reference('naming').outputs.policySeedJobName.value]"
+            "value": "[reference('containerJobs').outputs.policySeedJobName.value]"
           },
           "provisioningJobName": {
-            "value": "[reference('naming').outputs.provisioningJobName.value]"
-          },
-          "enableFabricSeed": {
-            "value": "[parameters('enableFabricSeed')]"
-          },
-          "fabricUamiResourceId": {
-            "value": "[parameters('fabricUamiResourceId')]"
-          },
-          "fabricWorkspaceId": {
-            "value": "[reference('fabricProvision').outputs.workspaceId.value]"
-          },
-          "fabricWorkspaceName": {
-            "value": "[reference('fabricProvision').outputs.workspaceName.value]"
-          },
-          "fabricLakehouseId": {
-            "value": "[reference('fabricProvision').outputs.lakehouseId.value]"
-          },
-          "fabricLakehouseName": {
-            "value": "[reference('fabricProvision').outputs.lakehouseName.value]"
-          },
-          "fabricRepositoryArchiveUrl": {
-            "value": "[parameters('fabricRepositoryArchiveUrl')]"
-          },
-          "fabricGithubToken": {
-            "value": "[parameters('fabricGithubToken')]"
+            "value": "[reference('containerJobs').outputs.provisioningJobName.value]"
           }
         },
         "template": {
@@ -2446,7 +2345,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "6305895441451876585"
+              "templateHash": "11137116520693523634"
             }
           },
           "parameters": {
@@ -2476,34 +2375,7 @@
             },
             "provisioningJobName": {
               "type": "string"
-            },
-            "enableFabricSeed": {
-              "type": "bool"
-            },
-            "fabricUamiResourceId": {
-              "type": "string"
-            },
-            "fabricWorkspaceId": {
-              "type": "string"
-            },
-            "fabricWorkspaceName": {
-              "type": "string"
-            },
-            "fabricLakehouseId": {
-              "type": "string"
-            },
-            "fabricLakehouseName": {
-              "type": "string"
-            },
-            "fabricRepositoryArchiveUrl": {
-              "type": "string"
-            },
-            "fabricGithubToken": {
-              "type": "securestring"
             }
-          },
-          "variables": {
-            "$fxv#0": "$ErrorActionPreference = 'Stop'\n\n$envWorkspaceName = $env:FABRIC_WORKSPACE_NAME\n$envLakehouseName = $env:FABRIC_LAKEHOUSE_NAME\n$envResourceGroupName = $env:RESOURCE_GROUP_NAME\n$envRepositoryArchiveUrl = $env:REPOSITORY_ARCHIVE_URL\n$envGithubToken = $env:GITHUB_TOKEN\n$envSkipRaw = $env:SKIP_RAW\n$envSkipStructured = $env:SKIP_STRUCTURED\n$envSkipPolicy = $env:SKIP_POLICY\n\nif ([string]::IsNullOrWhiteSpace($envWorkspaceName)) {\n    throw 'FABRIC_WORKSPACE_NAME is required (set by Bicep runFabricSeed environment variables).'\n}\nif ([string]::IsNullOrWhiteSpace($envLakehouseName)) {\n    throw 'FABRIC_LAKEHOUSE_NAME is required (set by Bicep runFabricSeed environment variables).'\n}\nif ([string]::IsNullOrWhiteSpace($envResourceGroupName)) {\n    throw 'RESOURCE_GROUP_NAME is required.'\n}\nif ([string]::IsNullOrWhiteSpace($envRepositoryArchiveUrl)) {\n    $envRepositoryArchiveUrl = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'\n}\n\n$envWorkspaceId = ''\n$envLakehouseId = ''\n\nfunction Get-ScratchRoot {\n    foreach ($candidate in @($env:TEMP, $env:TMPDIR, '/tmp')) {\n        if (-not [string]::IsNullOrWhiteSpace($candidate)) {\n            return $candidate\n        }\n    }\n    return '/tmp'\n}\n\nfunction Expand-ArchiveCrossPlatform {\n    param(\n        [Parameter(Mandatory = $true)]\n        [string]$ArchivePath,\n        [Parameter(Mandatory = $true)]\n        [string]$DestinationPath\n    )\n\n    try {\n        Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force\n        return\n    }\n    catch {\n        Write-Host \"Expand-Archive failed, trying unzip: $($_.Exception.Message)\"\n    }\n\n    $unzip = Get-Command unzip -ErrorAction SilentlyContinue\n    if (-not $unzip) {\n        throw 'Could not extract repository archive: Expand-Archive failed and unzip is unavailable.'\n    }\n\n    & $unzip.Source -o $ArchivePath -d $DestinationPath\n    if ($LASTEXITCODE -ne 0) {\n        throw \"unzip failed with exit code $LASTEXITCODE\"\n    }\n}\n\nWrite-Host '=== Fabric Data Seed (deployment script) ==='\nWrite-Host \"WorkspaceName: $envWorkspaceName\"\nWrite-Host \"LakehouseName: $envLakehouseName\"\nWrite-Host \"ResourceGroupName: $envResourceGroupName\"\nWrite-Host \"RepositoryArchiveUrl: $envRepositoryArchiveUrl\"\nWrite-Host \"SkipRaw: $envSkipRaw\"\nWrite-Host \"SkipStructured: $envSkipStructured\"\nWrite-Host \"SkipPolicy: $envSkipPolicy\"\n\n$workDir = Join-Path (Get-ScratchRoot) 'fabric-seed'\nif (Test-Path -LiteralPath $workDir) {\n    Remove-Item -LiteralPath $workDir -Recurse -Force\n}\nNew-Item -ItemType Directory -Force -Path $workDir | Out-Null\n\n$archivePath = Join-Path $workDir 'repo.zip'\nWrite-Host \"Downloading repository archive: $envRepositoryArchiveUrl\"\n$downloadHeaders = @{}\nif (-not [string]::IsNullOrWhiteSpace($envGithubToken)) {\n    $downloadHeaders['Authorization'] = \"Bearer $envGithubToken\"\n}\nInvoke-WebRequest -Uri $envRepositoryArchiveUrl -Headers $downloadHeaders -OutFile $archivePath -UseBasicParsing\n\nWrite-Host 'Extracting repository archive...'\nExpand-ArchiveCrossPlatform -ArchivePath $archivePath -DestinationPath $workDir\n\n$repoRoot = Get-ChildItem $workDir -Directory | Where-Object {\n    (Test-Path (Join-Path $_.FullName 'infra/scripts') -PathType Container) -and\n    (Test-Path (Join-Path $_.FullName 'dataset-seed')   -PathType Container)\n} | Select-Object -First 1\n\nif (-not $repoRoot) {\n    if ((Test-Path (Join-Path $workDir 'infra/scripts') -PathType Container) -and\n        (Test-Path (Join-Path $workDir 'dataset-seed')   -PathType Container)) {\n        $repoRoot = Get-Item $workDir\n    }\n}\n\nif (-not $repoRoot) {\n    throw \"Could not locate extracted repository root. Expected either a wrapper directory containing both 'infra/scripts' and 'dataset-seed', or those two directories at the top level of the archive.\"\n}\n\n$scriptsDirectory = Join-Path $repoRoot.FullName 'infra/scripts'\n\nWrite-Host 'Pre-resolving Fabric lakehouse from workspace name...'\ntry {\n    $provisionResult = & (Join-Path $scriptsDirectory 'provision-fabric-lakehouse.ps1') `\n        -WorkspaceName $envWorkspaceName `\n        -LakehouseName $envLakehouseName\n}\ncatch {\n    throw \"provision-fabric-lakehouse.ps1 threw: $($_.Exception.Message)`n$($_.ScriptStackTrace)\"\n}\nif ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {\n    throw \"provision-fabric-lakehouse.ps1 failed with exit code $LASTEXITCODE\"\n}\n\n$envWorkspaceId = [string]$provisionResult.WorkspaceId\n$envLakehouseId = [string]$provisionResult.LakehouseId\n$envSqlServer = [string]$provisionResult.SqlServer\n$envSqlDatabase = [string]$provisionResult.SqlDatabase\n\nif ([string]::IsNullOrWhiteSpace($envWorkspaceId) -or [string]::IsNullOrWhiteSpace($envLakehouseId)) {\n    throw 'Pre-resolve did not return a valid workspaceId and lakehouseId.'\n}\n\nWrite-Host \"Resolved WorkspaceId: $envWorkspaceId\"\nWrite-Host \"Resolved LakehouseId: $envLakehouseId\"\nif (-not [string]::IsNullOrWhiteSpace($envSqlServer)) {\n    Write-Host \"Resolved SqlServer: $envSqlServer\"\n    Write-Host \"Resolved SqlDatabase: $envSqlDatabase\"\n}\n\n$seedParams = @{\n    ResourceGroupName = $envResourceGroupName\n    WorkspaceId = $envWorkspaceId\n    LakehouseId = $envLakehouseId\n    LakehouseName = $envLakehouseName\n    RequireFabricIds = $true\n}\n\nif ($envSkipRaw -eq 'true') {\n    $seedParams['SkipRaw'] = $true\n}\nif ($envSkipStructured -eq 'true') {\n    $seedParams['SkipStructured'] = $true\n}\nif ($envSkipPolicy -eq 'true') {\n    $seedParams['SkipPolicy'] = $true\n}\n\nWrite-Host 'Running seed-synthetic-data.ps1 with resolved Fabric context...'\n$seedScript = Join-Path $scriptsDirectory 'seed-synthetic-data.ps1'\n& $seedScript @seedParams\nif ($LASTEXITCODE -ne 0) {\n    throw \"seed-synthetic-data.ps1 failed with exit code $LASTEXITCODE\"\n}\n\n$DeploymentScriptOutputs = @{}\n$DeploymentScriptOutputs['workspaceId'] = $envWorkspaceId\n$DeploymentScriptOutputs['lakehouseId'] = $envLakehouseId\n$DeploymentScriptOutputs['lakehouseName'] = $envLakehouseName\n$DeploymentScriptOutputs['sqlServer'] = $envSqlServer\n$DeploymentScriptOutputs['sqlDatabase'] = $envSqlDatabase\n\nWrite-Host 'Fabric data seed completed successfully.'\nWrite-Host \"WorkspaceId: $envWorkspaceId\"\nWrite-Host \"LakehouseId: $envLakehouseId\"\nif (-not [string]::IsNullOrWhiteSpace($envSqlServer)) {\n    Write-Host \"SqlServer: $envSqlServer\"\n    Write-Host \"SqlDatabase: $envSqlDatabase\"\n}\n"
           },
           "resources": [
             {
@@ -2626,88 +2498,12 @@
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]",
                 "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', parameters('deploymentSuffix')))]"
               ]
-            },
-            {
-              "condition": "[parameters('enableFabricSeed')]",
-              "type": "Microsoft.Resources/deploymentScripts",
-              "apiVersion": "2023-08-01",
-              "name": "[format('run-fabric-seed-{0}', parameters('deploymentSuffix'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('resourceTags')]",
-              "kind": "AzurePowerShell",
-              "identity": {
-                "type": "UserAssigned",
-                "userAssignedIdentities": {
-                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))))]": {}
-                }
-              },
-              "properties": {
-                "azPowerShellVersion": "11.0",
-                "retentionInterval": "P1D",
-                "timeout": "PT60M",
-                "cleanupPreference": "OnSuccess",
-                "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "[variables('$fxv#0')]",
-                "environmentVariables": [
-                  {
-                    "name": "AZURE_CLIENT_ID",
-                    "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
-                  },
-                  {
-                    "name": "FABRIC_WORKSPACE_ID",
-                    "value": "[parameters('fabricWorkspaceId')]"
-                  },
-                  {
-                    "name": "FABRIC_WORKSPACE_NAME",
-                    "value": "[parameters('fabricWorkspaceName')]"
-                  },
-                  {
-                    "name": "FABRIC_LAKEHOUSE_ID",
-                    "value": "[parameters('fabricLakehouseId')]"
-                  },
-                  {
-                    "name": "FABRIC_LAKEHOUSE_NAME",
-                    "value": "[parameters('fabricLakehouseName')]"
-                  },
-                  {
-                    "name": "RESOURCE_GROUP_NAME",
-                    "value": "[resourceGroup().name]"
-                  },
-                  {
-                    "name": "REPOSITORY_ARCHIVE_URL",
-                    "value": "[parameters('fabricRepositoryArchiveUrl')]"
-                  },
-                  {
-                    "name": "GITHUB_TOKEN",
-                    "secureValue": "[parameters('fabricGithubToken')]"
-                  },
-                  {
-                    "name": "SKIP_RAW",
-                    "value": "false"
-                  },
-                  {
-                    "name": "SKIP_STRUCTURED",
-                    "value": "false"
-                  },
-                  {
-                    "name": "SKIP_POLICY",
-                    "value": "false"
-                  }
-                ]
-              }
             }
-          ],
-          "outputs": {
-            "fabricSeedDeploymentScriptName": {
-              "type": "string",
-              "value": "[if(parameters('enableFabricSeed'), format('run-fabric-seed-{0}', parameters('deploymentSuffix')), '')]"
-            }
-          }
+          ]
         }
       },
       "dependsOn": [
         "containerJobs",
-        "fabricProvision",
         "foundry",
         "foundryAppInsightsConnection",
         "naming"
@@ -2715,6 +2511,18 @@
     }
   },
   "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference('dataServices').outputs.storageAccountName.value]"
+    },
+    "blobServiceUri": {
+      "type": "string",
+      "value": "[reference('dataServices').outputs.blobServiceUri.value]"
+    },
+    "documentsContainerName": {
+      "type": "string",
+      "value": "[reference('dataServices').outputs.documentsContainerName.value]"
+    },
     "foundryAccountName": {
       "type": "string",
       "value": "[reference('foundry').outputs.foundryAccountName.value]"
@@ -2790,26 +2598,6 @@
     "provisioningJobName": {
       "type": "string",
       "value": "[reference('containerJobs').outputs.provisioningJobName.value]"
-    },
-    "fabricWorkspaceName": {
-      "type": "string",
-      "value": "[reference('fabricProvision').outputs.workspaceName.value]"
-    },
-    "fabricLakehouseName": {
-      "type": "string",
-      "value": "[reference('fabricProvision').outputs.lakehouseName.value]"
-    },
-    "fabricSqlServer": {
-      "type": "string",
-      "value": "[reference('fabricProvision').outputs.sqlServer.value]"
-    },
-    "fabricSqlDatabase": {
-      "type": "string",
-      "value": "[reference('fabricProvision').outputs.sqlDatabase.value]"
-    },
-    "fabricSeedDeploymentScriptName": {
-      "type": "string",
-      "value": "[reference('postDeployScripts').outputs.fabricSeedDeploymentScriptName.value]"
     },
     "applicationInsightsName": {
       "type": "string",
