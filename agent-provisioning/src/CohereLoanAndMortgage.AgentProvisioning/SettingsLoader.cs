@@ -31,10 +31,49 @@ public static class SettingsLoader
             ?? throw new InvalidOperationException(
                 $"Provisioning configuration at '{resolvedConfigPath}' could not be parsed.");
 
+        if (IsRunningInAzure())
+        {
+            ApplyAzureEnvironmentOverrides(settings);
+        }
+        else
+        {
+            ApplyLocalEnvironmentFallbacks(settings);
+        }
+
+        Validate(settings);
+        return settings;
+    }
+
+    private static void ApplyAzureEnvironmentOverrides(ProvisioningSettings settings)
+    {
+        // Azure Deploy injects these via Container Apps Job env vars. Env must win over the
+        // baked-in config file so modelDeploymentName from azuredeploy.json is honored.
+        settings.ProjectEndpoint = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("AZURE_FOUNDRY_PROJECT_ENDPOINT"),
+            Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT"),
+            Environment.GetEnvironmentVariable("ProjectEndpoint"),
+            settings.ProjectEndpoint)
+            ?? string.Empty;
+
+        settings.ModelDeploymentName = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("AZURE_AI_MODEL_DEPLOYMENT_NAME"),
+            Environment.GetEnvironmentVariable("ModelDeploymentName"),
+            settings.ModelDeploymentName)
+            ?? "cohere-command-a";
+
+        settings.McpBaseUrl = FirstNonEmpty(
+            Environment.GetEnvironmentVariable("MCP_BASE_URL"),
+            settings.McpBaseUrl)
+            ?? string.Empty;
+    }
+
+    private static void ApplyLocalEnvironmentFallbacks(ProvisioningSettings settings)
+    {
         settings.ProjectEndpoint = FirstNonEmpty(
             settings.ProjectEndpoint,
             Environment.GetEnvironmentVariable("AZURE_FOUNDRY_PROJECT_ENDPOINT"),
-            Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT"))
+            Environment.GetEnvironmentVariable("FOUNDRY_PROJECT_ENDPOINT"),
+            Environment.GetEnvironmentVariable("ProjectEndpoint"))
             ?? string.Empty;
 
         settings.ModelDeploymentName = FirstNonEmpty(
@@ -47,9 +86,12 @@ public static class SettingsLoader
             settings.McpBaseUrl,
             Environment.GetEnvironmentVariable("MCP_BASE_URL"))
             ?? string.Empty;
+    }
 
-        Validate(settings);
-        return settings;
+    private static bool IsRunningInAzure()
+    {
+        return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("IDENTITY_ENDPOINT"))
+            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MSI_ENDPOINT"));
     }
 
     public static string ResolveConfigPath(string? configPath)

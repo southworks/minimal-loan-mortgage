@@ -1,6 +1,5 @@
 using Azure;
 using Azure.AI.Projects.Agents;
-using Azure.Identity;
 using CohereLoanAndMortgage.AgentProvisioning.Models;
 using System.ClientModel;
 using System.ClientModel.Primitives;
@@ -19,7 +18,7 @@ public sealed class FoundryAgentProvisioner
     {
         AgentAdministrationClient agentClient = new(
             new Uri(settings.ProjectEndpoint),
-            new DefaultAzureCredential());
+            AzureCredentialFactory.Create());
 
         List<AgentProvisionResult> results = [];
         foreach (AgentAssetBundle bundle in bundles.OrderBy(item => item.Manifest.Name, StringComparer.OrdinalIgnoreCase))

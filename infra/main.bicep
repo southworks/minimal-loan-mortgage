@@ -680,6 +680,7 @@ resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
     }
   }
   dependsOn: [
+    modelDeployment
     provisioningFoundryRole
     provisioningFoundryDeveloperRole
   ]
@@ -825,6 +826,8 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
       az extension add --name containerapp --upgrade 2>/dev/null || true
       echo "Waiting briefly for role assignment propagation..."
       sleep 60
+      echo "Waiting for Foundry model deployment to finish propagating..."
+      sleep 90
       echo "Starting agent provisioning job..."
       EXECUTION=$(az containerapp job start --name "${PROVISIONING_JOB_NAME}" --resource-group "${RESOURCE_GROUP}" --query name -o tsv)
       echo "Job execution: ${EXECUTION}"
