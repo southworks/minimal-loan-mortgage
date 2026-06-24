@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "17915845556747838840"
+      "version": "0.44.1.10279",
+      "templateHash": "15167861155598470261"
     }
   },
   "parameters": {
@@ -219,8 +219,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16942008251544056276"
+              "version": "0.44.1.10279",
+              "templateHash": "3081898571076606751"
             }
           },
           "parameters": {
@@ -342,8 +342,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "3176799622543714234"
+              "version": "0.44.1.10279",
+              "templateHash": "7860076756919912959"
             }
           },
           "parameters": {
@@ -558,8 +558,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "1390155245084502893"
+              "version": "0.44.1.10279",
+              "templateHash": "18370265717907235294"
             }
           },
           "parameters": {
@@ -800,8 +800,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16113511165803003291"
+              "version": "0.44.1.10279",
+              "templateHash": "5666174999458719840"
             }
           },
           "parameters": {
@@ -918,8 +918,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "3142702326142445859"
+              "version": "0.44.1.10279",
+              "templateHash": "6800217610822785156"
             }
           },
           "parameters": {
@@ -1254,8 +1254,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "12135769459938612449"
+              "version": "0.44.1.10279",
+              "templateHash": "13011413730619709992"
             }
           },
           "parameters": {
@@ -1728,8 +1728,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "6508396202426710027"
+              "version": "0.44.1.10279",
+              "templateHash": "1835220388181386057"
             }
           },
           "parameters": {
@@ -1955,8 +1955,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "10133165155295396675"
+              "version": "0.44.1.10279",
+              "templateHash": "8792176048507723223"
             }
           },
           "parameters": {
@@ -2056,7 +2056,7 @@
                 "retentionInterval": "PT1H",
                 "cleanupPreference": "OnSuccess",
                 "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "      set -euo pipefail\n      az extension add --name containerapp --upgrade 2>/dev/null || true\n      echo \"Waiting for role assignments and Foundry deployments to settle...\"\n      sleep 180\n      echo \"Starting policy seed job...\"\n      EXECUTION=$(az containerapp job start --name \"${POLICY_SEED_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Policy seed job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${POLICY_SEED_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Policy seed job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Policy seeding completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Policy seed job failed. Fetching recent job logs...\"\n          az containerapp job logs show \\\n            --name \"${POLICY_SEED_JOB_NAME}\" \\\n            --resource-group \"${RESOURCE_GROUP}\" \\\n            --execution \"${EXECUTION}\" \\\n            --container policy-seed \\\n            --tail 50 || true\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for policy seed job.\"\n      exit 1\n    ",
+                "scriptContent": "      set -euo pipefail\r\n      az extension add --name containerapp --upgrade 2>/dev/null || true\r\n      echo \"Waiting for role assignments and Foundry deployments to settle...\"\r\n      sleep 180\r\n      echo \"Starting policy seed job...\"\r\n      EXECUTION=$(az containerapp job start --name \"${POLICY_SEED_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\r\n      echo \"Policy seed job execution: ${EXECUTION}\"\r\n\r\n      for i in $(seq 1 120); do\r\n        STATUS=$(az containerapp job execution show \\\r\n          --name \"${POLICY_SEED_JOB_NAME}\" \\\r\n          --resource-group \"${RESOURCE_GROUP}\" \\\r\n          --job-execution-name \"${EXECUTION}\" \\\r\n          --query properties.status -o tsv)\r\n\r\n        echo \"Policy seed job status: ${STATUS}\"\r\n\r\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\r\n          echo \"Policy seeding completed successfully.\"\r\n          exit 0\r\n        fi\r\n\r\n        if [ \"${STATUS}\" = \"Failed\" ]; then\r\n          echo \"Policy seed job failed. Fetching recent job logs...\"\r\n          az containerapp job logs show \\\r\n            --name \"${POLICY_SEED_JOB_NAME}\" \\\r\n            --resource-group \"${RESOURCE_GROUP}\" \\\r\n            --execution \"${EXECUTION}\" \\\r\n            --container policy-seed \\\r\n            --tail 50 || true\r\n          exit 1\r\n        fi\r\n\r\n        sleep 15\r\n      done\r\n\r\n      echo \"Timed out waiting for policy seed job.\"\r\n      exit 1\r\n    ",
                 "environmentVariables": [
                   {
                     "name": "RESOURCE_GROUP",
@@ -2092,7 +2092,7 @@
                 "retentionInterval": "PT1H",
                 "cleanupPreference": "OnSuccess",
                 "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "      set -euo pipefail\n      az extension add --name containerapp --upgrade 2>/dev/null || true\n      echo \"Waiting briefly for role assignment propagation...\"\n      sleep 60\n      echo \"Starting agent provisioning job...\"\n      EXECUTION=$(az containerapp job start --name \"${PROVISIONING_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${PROVISIONING_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Provisioning job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Agent provisioning completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Agent provisioning job failed.\"\n          az containerapp job logs show \\\n            --name \"${PROVISIONING_JOB_NAME}\" \\\n            --resource-group \"${RESOURCE_GROUP}\" \\\n            --execution \"${EXECUTION}\" \\\n            --container agent-provisioning \\\n            --tail 50 || true\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for agent provisioning job.\"\n      exit 1\n    ",
+                "scriptContent": "      set -euo pipefail\r\n      az extension add --name containerapp --upgrade 2>/dev/null || true\r\n      echo \"Waiting briefly for role assignment propagation...\"\r\n      sleep 60\r\n      echo \"Waiting for Foundry model deployment to finish propagating...\"\r\n      sleep 90\r\n      echo \"Starting agent provisioning job...\"\r\n      EXECUTION=$(az containerapp job start --name \"${PROVISIONING_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\r\n      echo \"Job execution: ${EXECUTION}\"\r\n\r\n      for i in $(seq 1 120); do\r\n        STATUS=$(az containerapp job execution show \\\r\n          --name \"${PROVISIONING_JOB_NAME}\" \\\r\n          --resource-group \"${RESOURCE_GROUP}\" \\\r\n          --job-execution-name \"${EXECUTION}\" \\\r\n          --query properties.status -o tsv)\r\n\r\n        echo \"Provisioning job status: ${STATUS}\"\r\n\r\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\r\n          echo \"Agent provisioning completed successfully.\"\r\n          exit 0\r\n        fi\r\n\r\n        if [ \"${STATUS}\" = \"Failed\" ]; then\r\n          echo \"Agent provisioning job failed.\"\r\n          az containerapp job logs show \\\r\n            --name \"${PROVISIONING_JOB_NAME}\" \\\r\n            --resource-group \"${RESOURCE_GROUP}\" \\\r\n            --execution \"${EXECUTION}\" \\\r\n            --container agent-provisioning \\\r\n            --tail 50 || true\r\n          exit 1\r\n        fi\r\n\r\n        sleep 15\r\n      done\r\n\r\n      echo \"Timed out waiting for agent provisioning job.\"\r\n      exit 1\r\n    ",
                 "environmentVariables": [
                   {
                     "name": "RESOURCE_GROUP",

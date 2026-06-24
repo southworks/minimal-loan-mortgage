@@ -58,11 +58,13 @@ config/
 }
 ```
 
-Environment variable overrides:
+Environment variables override `config/provisioning.json`. During Azure deployment, the Container Apps Job sets:
 
 - `AZURE_FOUNDRY_PROJECT_ENDPOINT` or `FOUNDRY_PROJECT_ENDPOINT`
-- `AZURE_AI_MODEL_DEPLOYMENT_NAME` or `ModelDeploymentName`
+- `AZURE_AI_MODEL_DEPLOYMENT_NAME` or `ModelDeploymentName` — must match the `modelDeploymentName` parameter from `azuredeploy.json`
 - `MCP_BASE_URL`
+
+The `model` field written into each agent always uses the resolved deployment name above, not the Cohere catalog model name (`cohere-command-a`).
 
 ## Optional Local Maintenance
 
@@ -78,6 +80,22 @@ Or:
 dotnet run --project agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning -- `
   --config agent-provisioning/config/provisioning.local.json `
   --agents agent-provisioning/agents
+```
+
+### Local authentication
+
+The provisioner uses `DefaultAzureCredential`. On developer machines with a disconnected Azure Arc / Connected Machine Agent, managed identity is skipped automatically so Azure CLI credentials are used instead.
+
+Before running locally:
+
+1. Sign in with `az login`.
+2. Ensure your account has **Cognitive Services Contributor** or **Azure AI Developer** on the Foundry account.
+
+If authentication still fails, force Azure CLI credentials for the session:
+
+```powershell
+$env:AZURE_TOKEN_CREDENTIALS = "AzureCliCredential"
+./agent-provisioning/scripts/provision-agents.ps1 -ConfigPath agent-provisioning/config/provisioning.local.json
 ```
 
 ## Idempotency and Fail-Fast Behavior
