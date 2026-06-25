@@ -1,6 +1,6 @@
 using System.Text.Json;
-using CohereLoanAndMortgage.Foundry.Governance;
-using CohereLoanAndMortgage.Foundry.Governance.Mcp;
+using LoanWorkflow.Governance;
+using LoanWorkflow.Governance.Mcp;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;

@@ -1,7 +1,7 @@
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace CohereLoanAndMortgage.Foundry.Governance;
+namespace LoanWorkflow.Governance;
 
 public sealed class RoguePolicyConfig
 {

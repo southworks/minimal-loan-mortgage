@@ -1,4 +1,4 @@
-namespace CohereLoanAndMortgage.Foundry.Governance;
+namespace LoanWorkflow.Governance;
 
 public enum AgentRole
 {

@@ -1,7 +1,7 @@
 using AgentGovernance;
 using AgentGovernance.Policy;
 
-namespace CohereLoanAndMortgage.Foundry.Governance;
+namespace LoanWorkflow.Governance;
 
 public sealed class FoundryAgentGovernanceBootstrap
 {

@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CohereLoanAndMortgage.Foundry.Governance\CohereLoanAndMortgage.Foundry.Governance.csproj" />
+    <ProjectReference Include="..\LoanWorkflow.Governance\LoanWorkflow.Governance.csproj" />
   </ItemGroup>
 
 </Project>

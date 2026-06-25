@@ -32,7 +32,7 @@ agent-provisioning/agents/
     ...
 ```
 
-At runtime, `CohereLoanAndMortgage.Foundry.Governance` copies these files to `policies/{agent-name}/` in the MCP server output directory.
+At runtime, `LoanWorkflow.Governance` copies these files to `policies/{agent-name}/` in the MCP server output directory.
 
 ## MCP-layer governance
 

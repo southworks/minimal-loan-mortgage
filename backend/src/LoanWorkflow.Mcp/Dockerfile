@@ -5,11 +5,11 @@ ENV ASPNETCORE_URLS=http://+:8080
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
-COPY ["backend/src/CohereLoanAndMortgage.Foundry.Governance/CohereLoanAndMortgage.Foundry.Governance.csproj", "backend/src/CohereLoanAndMortgage.Foundry.Governance/"]
+COPY ["backend/src/LoanWorkflow.Governance/LoanWorkflow.Governance.csproj", "backend/src/LoanWorkflow.Governance/"]
 COPY ["backend/src/LoanWorkflow.Mcp/LoanWorkflow.Mcp.csproj", "backend/src/LoanWorkflow.Mcp/"]
 COPY ["agent-provisioning/agents/", "agent-provisioning/agents/"]
 RUN dotnet restore "backend/src/LoanWorkflow.Mcp/LoanWorkflow.Mcp.csproj"
-COPY backend/src/CohereLoanAndMortgage.Foundry.Governance/ backend/src/CohereLoanAndMortgage.Foundry.Governance/
+COPY backend/src/LoanWorkflow.Governance/ backend/src/LoanWorkflow.Governance/
 COPY backend/src/LoanWorkflow.Mcp/ backend/src/LoanWorkflow.Mcp/
 COPY dataset-seed/ dataset-seed/
 WORKDIR /src/backend/src/LoanWorkflow.Mcp

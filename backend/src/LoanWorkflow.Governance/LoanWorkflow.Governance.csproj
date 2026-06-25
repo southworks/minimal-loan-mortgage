@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>CohereLoanAndMortgage.Foundry.Governance</RootNamespace>
+    <RootNamespace>LoanWorkflow.Governance</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

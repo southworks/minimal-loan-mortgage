@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AgentGovernance.Audit;
 
-namespace CohereLoanAndMortgage.Foundry.Governance.Audit;
+namespace LoanWorkflow.Governance.Audit;
 
 public sealed class FileAgentGovernanceAuditStore : IAgentGovernanceAuditStore
 {

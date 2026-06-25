@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Azure.Search.Documents;
-using CohereLoanAndMortgage.Foundry.Governance;
-using CohereLoanAndMortgage.Foundry.Governance.Mcp;
+using LoanWorkflow.Governance;
+using LoanWorkflow.Governance.Mcp;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Builders;
 using LoanWorkflow.Mcp.Governance;

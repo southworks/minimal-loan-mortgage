@@ -1,5 +1,5 @@
 using System.Text.Json;
-using CohereLoanAndMortgage.Foundry.Governance;
+using LoanWorkflow.Governance;
 using Microsoft.Extensions.Options;
 
 namespace LoanWorkflow.Mcp.Governance;

@@ -1,4 +1,4 @@
-namespace CohereLoanAndMortgage.Foundry.Governance.Audit;
+namespace LoanWorkflow.Governance.Audit;
 
 public interface IAgentGovernanceAuditStore
 {

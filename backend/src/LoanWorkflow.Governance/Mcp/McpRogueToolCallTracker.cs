@@ -1,4 +1,4 @@
-namespace CohereLoanAndMortgage.Foundry.Governance.Mcp;
+namespace LoanWorkflow.Governance.Mcp;
 
 internal sealed class McpRogueToolCallTracker
 {

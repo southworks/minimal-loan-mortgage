@@ -1,11 +1,11 @@
 using System.Text.Json;
 using AgentGovernance;
 using AgentGovernance.Integration;
-using CohereLoanAndMortgage.Foundry.Governance.Audit;
+using LoanWorkflow.Governance.Audit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace CohereLoanAndMortgage.Foundry.Governance.Mcp;
+namespace LoanWorkflow.Governance.Mcp;
 
 public sealed class McpToolGovernanceDecision
 {

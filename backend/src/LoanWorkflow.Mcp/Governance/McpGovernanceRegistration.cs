@@ -1,6 +1,6 @@
-using CohereLoanAndMortgage.Foundry.Governance;
-using CohereLoanAndMortgage.Foundry.Governance.Audit;
-using CohereLoanAndMortgage.Foundry.Governance.Mcp;
+using LoanWorkflow.Governance;
+using LoanWorkflow.Governance.Audit;
+using LoanWorkflow.Governance.Mcp;
 using Microsoft.Extensions.Options;
 
 namespace LoanWorkflow.Mcp.Governance;
