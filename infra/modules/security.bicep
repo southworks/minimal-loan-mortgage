@@ -9,7 +9,6 @@ param foundryProjectName string
 param searchServiceName string
 param documentIntelligenceAccountName string
 param fabricUamiResourceId string
-param fabricUamiClientId string
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
@@ -173,6 +172,6 @@ resource provisioningFoundryDeveloperRole 'Microsoft.Authorization/roleAssignmen
 output apiIdentityId string = apiIdentity.id
 output apiIdentityClientId string = apiIdentity.properties.clientId
 output mcpIdentityId string = fabricUami.id
-output mcpIdentityClientId string = fabricUamiClientId
+output mcpIdentityClientId string = fabricUami.properties.clientId
 output provisioningIdentityId string = provisioningIdentity.id
 output provisioningIdentityClientId string = provisioningIdentity.properties.clientId

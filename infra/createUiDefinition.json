@@ -35,7 +35,7 @@
             "type": "Microsoft.Common.InfoBox",
             "options": {
               "icon": "Info",
-              "text": "Before deploying, run infra/scripts/setup-fabric-provision-identity.ps1 in a PowerShell 7 terminal to create the UAMI, assign it a role on your Fabric workspace, and print the resourceId / clientId values required below. The script creates the resource group if it does not already exist."
+              "text": "Before deploying, run infra/scripts/setup-fabric-provision-identity.ps1 in a PowerShell 7 terminal to create the UAMI, assign it a role on your Fabric workspace, and print the resourceId value required below. The client ID is auto-derived by the deployment."
             }
           },
           {
@@ -68,18 +68,6 @@
               "regex": "^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/.+/providers/Microsoft\\.ManagedIdentity/userAssignedIdentities/.+$",
               "validationMessage": "Must be the full Azure resource ID of a Microsoft.ManagedIdentity/userAssignedIdentities resource."
             }
-          },
-          {
-            "name": "fabricUamiClientId",
-            "type": "Microsoft.Common.TextBox",
-            "label": "UAMI client ID",
-            "defaultValue": "",
-            "toolTip": "Paste the managedIdentityClientId printed by setup-fabric-provision-identity.ps1 (GUID).",
-            "constraints": {
-              "required": true,
-              "regex": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-              "validationMessage": "Must be a GUID."
-            }
           }
         ]
       }
@@ -90,8 +78,7 @@
       "nameSuffix": "[basics('nameSuffix')]",
       "fabricWorkspaceName": "[steps('fabricPrerequisites').fabricWorkspaceName]",
       "fabricLakehouseName": "[steps('fabricPrerequisites').fabricLakehouseName]",
-      "fabricUamiResourceId": "[steps('fabricPrerequisites').fabricUamiResourceId]",
-      "fabricUamiClientId": "[steps('fabricPrerequisites').fabricUamiClientId]"
+      "fabricUamiResourceId": "[steps('fabricPrerequisites').fabricUamiResourceId]"
     }
   }
 }

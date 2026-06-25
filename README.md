@@ -31,9 +31,9 @@ The MCP container app reads case data from a Microsoft Fabric Lakehouse, so a Fa
      -FabricRole Contributor
    ```
 
-   The script creates the resource group if it does not already exist, creates a user-assigned managed identity inside it, assigns the workspace role, and prints two values: `managedIdentityResourceId` and `managedIdentityClientId`.
+   The script creates the user-assigned managed identity, assigns the workspace role, and prints the `managedIdentityResourceId`. The client ID is auto-derived by the deployment.
 
-3. In the Deploy-to-Azure form, on the **Fabric prerequisites** step, paste those values along with the workspace and lakehouse names. The lakehouse is created at deploy time if it does not exist.
+3. In the Deploy-to-Azure form, on the **Fabric prerequisites** step, paste that value along with the workspace and lakehouse names. The lakehouse is created at deploy time if it does not exist.
 
 Without those values the deployment will fail at the Fabric seed step (the last step) and the MCP will not be able to read case data.
 

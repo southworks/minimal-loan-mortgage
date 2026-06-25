@@ -2,7 +2,6 @@ param location string
 param resourceTags object
 param deploymentSuffix string
 param fabricUamiResourceId string
-param fabricUamiClientId string
 param fabricWorkspaceName string
 param fabricLakehouseName string
 
@@ -29,7 +28,7 @@ resource runFabricProvision 'Microsoft.Resources/deploymentScripts@2023-08-01' =
     forceUpdateTag: deploymentSuffix
     scriptContent: loadTextContent('../scripts/provision-fabric-lakehouse.ps1')
     environmentVariables: [
-      { name: 'AZURE_CLIENT_ID',       value: fabricUamiClientId }
+      { name: 'AZURE_CLIENT_ID',       value: fabricUami.properties.clientId }
       { name: 'FABRIC_WORKSPACE_NAME', value: fabricWorkspaceName }
       { name: 'FABRIC_LAKEHOUSE_NAME', value: fabricLakehouseName }
     ]

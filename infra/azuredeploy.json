@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "11073541187125622117"
+      "templateHash": "8126719390637771917"
     }
   },
   "parameters": {
@@ -196,20 +196,14 @@
     "fabricUamiResourceId": {
       "type": "string",
       "metadata": {
-        "description": "UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity."
-      }
-    },
-    "fabricUamiClientId": {
-      "type": "string",
-      "metadata": {
-        "description": "UAMI client ID (matches fabricUamiResourceId)."
+        "description": "UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment."
       }
     },
     "enableFabricSeed": {
       "type": "bool",
       "defaultValue": true,
       "metadata": {
-        "description": "Escape hatch: skip the Fabric seed deployment script. Use only for partial-failure recovery; the MCP will not have case data while this is off."
+        "description": "When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime."
       }
     },
     "fabricRepositoryArchiveUrl": {
@@ -224,34 +218,6 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional GitHub PAT for private repos or higher rate limits."
-      }
-    },
-    "fabricSkipRaw": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Skip the raw OneLake upload phase."
-      }
-    },
-    "fabricSkipStructured": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Skip the structured table loading phase."
-      }
-    },
-    "fabricSkipPolicy": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Skip the policy document upload phase."
-      }
-    },
-    "fabricSeedTimeout": {
-      "type": "string",
-      "defaultValue": "PT60M",
-      "metadata": {
-        "description": "Timeout (ISO 8601) for the Fabric seed deployment script."
       }
     }
   },
@@ -984,9 +950,6 @@
           },
           "fabricUamiResourceId": {
             "value": "[parameters('fabricUamiResourceId')]"
-          },
-          "fabricUamiClientId": {
-            "value": "[parameters('fabricUamiClientId')]"
           }
         },
         "template": {
@@ -996,7 +959,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "17298181304557318884"
+              "templateHash": "5746523547768291258"
             }
           },
           "parameters": {
@@ -1031,9 +994,6 @@
               "type": "string"
             },
             "fabricUamiResourceId": {
-              "type": "string"
-            },
-            "fabricUamiClientId": {
               "type": "string"
             }
           },
@@ -1210,7 +1170,7 @@
             },
             "mcpIdentityClientId": {
               "type": "string",
-              "value": "[parameters('fabricUamiClientId')]"
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
             },
             "provisioningIdentityId": {
               "type": "string",
@@ -1251,9 +1211,6 @@
           "fabricUamiResourceId": {
             "value": "[parameters('fabricUamiResourceId')]"
           },
-          "fabricUamiClientId": {
-            "value": "[parameters('fabricUamiClientId')]"
-          },
           "fabricWorkspaceName": {
             "value": "[parameters('fabricWorkspaceName')]"
           },
@@ -1268,7 +1225,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "5126513622105373199"
+              "templateHash": "111898327010590826"
             }
           },
           "parameters": {
@@ -1282,9 +1239,6 @@
               "type": "string"
             },
             "fabricUamiResourceId": {
-              "type": "string"
-            },
-            "fabricUamiClientId": {
               "type": "string"
             },
             "fabricWorkspaceName": {
@@ -1321,7 +1275,7 @@
                 "environmentVariables": [
                   {
                     "name": "AZURE_CLIENT_ID",
-                    "value": "[parameters('fabricUamiClientId')]"
+                    "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
                   },
                   {
                     "name": "FABRIC_WORKSPACE_NAME",
@@ -2176,14 +2130,8 @@
           "enableFabricSeed": {
             "value": "[parameters('enableFabricSeed')]"
           },
-          "fabricSeedTimeout": {
-            "value": "[parameters('fabricSeedTimeout')]"
-          },
           "fabricUamiResourceId": {
             "value": "[parameters('fabricUamiResourceId')]"
-          },
-          "fabricUamiClientId": {
-            "value": "[parameters('fabricUamiClientId')]"
           },
           "fabricWorkspaceId": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.workspaceId.value]"
@@ -2202,15 +2150,6 @@
           },
           "fabricGithubToken": {
             "value": "[parameters('fabricGithubToken')]"
-          },
-          "fabricSkipRaw": {
-            "value": "[parameters('fabricSkipRaw')]"
-          },
-          "fabricSkipStructured": {
-            "value": "[parameters('fabricSkipStructured')]"
-          },
-          "fabricSkipPolicy": {
-            "value": "[parameters('fabricSkipPolicy')]"
           }
         },
         "template": {
@@ -2220,7 +2159,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "16156777397638972125"
+              "templateHash": "6305895441451876585"
             }
           },
           "parameters": {
@@ -2254,13 +2193,7 @@
             "enableFabricSeed": {
               "type": "bool"
             },
-            "fabricSeedTimeout": {
-              "type": "string"
-            },
             "fabricUamiResourceId": {
-              "type": "string"
-            },
-            "fabricUamiClientId": {
               "type": "string"
             },
             "fabricWorkspaceId": {
@@ -2280,15 +2213,6 @@
             },
             "fabricGithubToken": {
               "type": "securestring"
-            },
-            "fabricSkipRaw": {
-              "type": "bool"
-            },
-            "fabricSkipStructured": {
-              "type": "bool"
-            },
-            "fabricSkipPolicy": {
-              "type": "bool"
             }
           },
           "variables": {
@@ -2433,14 +2357,14 @@
               "properties": {
                 "azPowerShellVersion": "11.0",
                 "retentionInterval": "P1D",
-                "timeout": "[parameters('fabricSeedTimeout')]",
+                "timeout": "PT60M",
                 "cleanupPreference": "OnSuccess",
                 "forceUpdateTag": "[parameters('deploymentSuffix')]",
                 "scriptContent": "[variables('$fxv#0')]",
                 "environmentVariables": [
                   {
                     "name": "AZURE_CLIENT_ID",
-                    "value": "[parameters('fabricUamiClientId')]"
+                    "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
                   },
                   {
                     "name": "FABRIC_WORKSPACE_ID",
@@ -2472,15 +2396,15 @@
                   },
                   {
                     "name": "SKIP_RAW",
-                    "value": "[string(parameters('fabricSkipRaw'))]"
+                    "value": "false"
                   },
                   {
                     "name": "SKIP_STRUCTURED",
-                    "value": "[string(parameters('fabricSkipStructured'))]"
+                    "value": "false"
                   },
                   {
                     "name": "SKIP_POLICY",
-                    "value": "[string(parameters('fabricSkipPolicy'))]"
+                    "value": "false"
                   }
                 ]
               }

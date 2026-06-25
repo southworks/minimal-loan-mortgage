@@ -79,13 +79,10 @@ param fabricWorkspaceName string
 @description('Fabric lakehouse name. Created at deploy time if missing.')
 param fabricLakehouseName string = 'LoanProcessingLakehouse'
 
-@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity.')
+@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
 param fabricUamiResourceId string
 
-@description('UAMI client ID (matches fabricUamiResourceId).')
-param fabricUamiClientId string
-
-@description('Escape hatch: skip the Fabric seed deployment script. Use only for partial-failure recovery; the MCP will not have case data while this is off.')
+@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime.')
 param enableFabricSeed bool = true
 
 @description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
@@ -94,18 +91,6 @@ param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal
 @description('Optional GitHub PAT for private repos or higher rate limits.')
 @secure()
 param fabricGithubToken string = ''
-
-@description('Skip the raw OneLake upload phase.')
-param fabricSkipRaw bool = false
-
-@description('Skip the structured table loading phase.')
-param fabricSkipStructured bool = false
-
-@description('Skip the policy document upload phase.')
-param fabricSkipPolicy bool = false
-
-@description('Timeout (ISO 8601) for the Fabric seed deployment script.')
-param fabricSeedTimeout string = 'PT60M'
 
 var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
@@ -188,7 +173,6 @@ module security 'modules/security.bicep' = {
     searchServiceName: dataServices.outputs.searchServiceName
     documentIntelligenceAccountName: dataServices.outputs.documentIntelligenceAccountName
     fabricUamiResourceId: fabricUamiResourceId
-    fabricUamiClientId: fabricUamiClientId
   }
 }
 
@@ -199,7 +183,6 @@ module fabricProvision 'modules/fabric-provision.bicep' = {
     resourceTags: resourceTags
     deploymentSuffix: naming.outputs.deploymentSuffix
     fabricUamiResourceId: fabricUamiResourceId
-    fabricUamiClientId: fabricUamiClientId
     fabricWorkspaceName: fabricWorkspaceName
     fabricLakehouseName: fabricLakehouseName
   }
@@ -273,18 +256,13 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     policySeedJobName: naming.outputs.policySeedJobName
     provisioningJobName: naming.outputs.provisioningJobName
     enableFabricSeed: enableFabricSeed
-    fabricSeedTimeout: fabricSeedTimeout
     fabricUamiResourceId: fabricUamiResourceId
-    fabricUamiClientId: fabricUamiClientId
     fabricWorkspaceId: fabricProvision.outputs.workspaceId
     fabricWorkspaceName: fabricProvision.outputs.workspaceName
     fabricLakehouseId: fabricProvision.outputs.lakehouseId
     fabricLakehouseName: fabricProvision.outputs.lakehouseName
     fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
     fabricGithubToken: fabricGithubToken
-    fabricSkipRaw: fabricSkipRaw
-    fabricSkipStructured: fabricSkipStructured
-    fabricSkipPolicy: fabricSkipPolicy
   }
   dependsOn: [
     containerJobs
