@@ -8,11 +8,11 @@ namespace LoanWorkflow.Mcp.Tools;
 
 public sealed class DocumentRetrievalTools
 {
-    private readonly LocalCaseDataAdapter _caseDataAdapter;
+    private readonly CaseDataAdapter _caseDataAdapter;
     private readonly EvidenceIndexAdapter _evidenceIndexAdapter;
 
     public DocumentRetrievalTools(
-        LocalCaseDataAdapter caseDataAdapter,
+        CaseDataAdapter caseDataAdapter,
         EvidenceIndexAdapter evidenceIndexAdapter)
     {
         _caseDataAdapter = caseDataAdapter;

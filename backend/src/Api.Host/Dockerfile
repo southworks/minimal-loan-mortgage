@@ -10,10 +10,14 @@ COPY ["backend/src/LoanWorkflow.Mcp/LoanWorkflow.Mcp.csproj", "backend/src/LoanW
 RUN dotnet restore "backend/src/Api.Host/CohereLoanAndMortgage.Api.Host.csproj"
 COPY backend/src/Api.Host/ backend/src/Api.Host/
 COPY backend/src/LoanWorkflow.Mcp/ backend/src/LoanWorkflow.Mcp/
+COPY dataset-seed/ dataset-seed/
 WORKDIR /src/backend/src/Api.Host
 RUN dotnet publish "CohereLoanAndMortgage.Api.Host.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY --from=build /src/dataset-seed /app/dataset-seed
+ENV Dataset__RootPath=/app/dataset-seed
+ENV Dataset__PolicyFilePath=/app/dataset-seed/08_policy_rag/general_policy.txt
 ENTRYPOINT ["dotnet", "CohereLoanAndMortgage.Api.Host.dll"]

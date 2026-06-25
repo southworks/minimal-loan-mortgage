@@ -12,8 +12,6 @@ param apiIdentityClientId string
 param mcpIdentityId string
 param mcpIdentityClientId string
 param foundryProjectEndpoint string
-param blobServiceUri string
-param documentsContainerName string
 param searchServiceEndpoint string
 param documentIntelligenceEndpoint string
 param embedDeploymentName string
@@ -22,6 +20,9 @@ param rerankDeploymentName string
 param rerankModelName string
 param embedEndpoint string
 param rerankEndpoint string
+param fabricWorkspaceName string = ''
+param fabricLakehouseName string = ''
+param fabricLakehouseTimeoutSeconds int = 60
 
 var mcpFoundryModelEnv = [
   { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
@@ -43,6 +44,10 @@ var mcpContainerEnv = concat([
   { name: 'AzureSearch__VectorDimensions', value: '1024' }
   { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
   { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
+  { name: 'DataSource__Mode', value: 'Fabric' }
+  { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
+  { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
+  { name: 'FabricLakehouse__TimeoutSeconds', value: string(fabricLakehouseTimeoutSeconds) }
   { name: 'AZURE_CLIENT_ID', value: mcpIdentityClientId }
 ], mcpFoundryModelEnv)
 
@@ -129,12 +134,12 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: [
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
-            { name: 'AZURE_STORAGE_BLOB_SERVICE_URI', value: blobServiceUri }
             { name: 'AzureSearch__Endpoint', value: searchServiceEndpoint }
             { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
             { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
             { name: 'AzureSearch__VectorDimensions', value: '1024' }
-            { name: 'AzureStorage__ContainerName', value: documentsContainerName }
+            { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
+            { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
             { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
             { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
             { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }

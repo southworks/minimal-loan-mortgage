@@ -76,12 +76,12 @@ public sealed class CaseEvidenceIndexingService
             DocumentId = Path.GetFileNameWithoutExtension(document.FileName),
             DocumentType = document.ContentType,
             Category = EvidenceIndexAdapter.WorkflowPayloadSourceType,
-            SourcePath = document.BlobName,
+            SourcePath = document.SourcePath,
             Content = JsonSerializer.SerializeToElement(new
             {
                 document.FileName,
                 document.ContentType,
-                document.BlobName,
+                document.SourcePath,
                 document.Reference,
                 document.LastModifiedUtc,
                 document.ExtractionMode,
@@ -91,7 +91,7 @@ public sealed class CaseEvidenceIndexingService
             SummaryText = string.Join(Environment.NewLine, [
                 $"FileName: {document.FileName}",
                 $"ContentType: {document.ContentType}",
-                $"BlobName: {document.BlobName}",
+                $"SourcePath: {document.SourcePath}",
                 $"Reference: {document.Reference}",
                 $"LastModifiedUtc: {document.LastModifiedUtc:O}",
                 $"ExtractionMode: {document.ExtractionMode}",

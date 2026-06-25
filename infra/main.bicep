@@ -49,9 +49,6 @@ param rerankModelVersion string = '1'
 @description('Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures.')
 param rerankDeploymentCapacity int = 5
 
-@description('Blob container for uploaded loan documents.')
-param documentsContainerName string = 'loan-documents'
-
 @description('Agent memory store name.')
 param memoryStoreName string = 'loan-mortgage-agent-memory'
 
@@ -72,6 +69,25 @@ param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisi
 
 @description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
 param nameSuffix string = ''
+
+@description('Fabric workspace name. Required. Must be capacity-backed and accessible to the operator.')
+param fabricWorkspaceName string
+
+@description('Fabric lakehouse name. Created at deploy time if missing.')
+param fabricLakehouseName string = 'LoanProcessingLakehouse'
+
+@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
+param fabricUamiResourceId string
+
+@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime.')
+param enableFabricSeed bool = true
+
+@description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
+param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
+
+@description('Optional GitHub PAT for private repos or higher rate limits.')
+@secure()
+param fabricGithubToken string = ''
 
 var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
@@ -99,8 +115,6 @@ module dataServices 'modules/data-services.bicep' = {
   params: {
     location: location
     resourceTags: resourceTags
-    storageAccountName: naming.outputs.storageAccountName
-    documentsContainerName: documentsContainerName
     searchServiceName: naming.outputs.searchServiceName
     searchSku: searchSku
     documentIntelligenceAccountName: naming.outputs.documentIntelligenceAccountName
@@ -147,13 +161,24 @@ module security 'modules/security.bicep' = {
     resourceTags: resourceTags
     nameSuffix: nameSuffix
     apiIdentityName: naming.outputs.apiIdentityName
-    mcpIdentityName: naming.outputs.mcpIdentityName
     provisioningIdentityName: naming.outputs.provisioningIdentityName
-    storageAccountName: dataServices.outputs.storageAccountName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
     searchServiceName: dataServices.outputs.searchServiceName
     documentIntelligenceAccountName: dataServices.outputs.documentIntelligenceAccountName
+    fabricUamiResourceId: fabricUamiResourceId
+  }
+}
+
+module fabricProvision 'modules/fabric-provision.bicep' = {
+  name: 'fabric-provision'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    deploymentSuffix: naming.outputs.deploymentSuffix
+    fabricUamiResourceId: fabricUamiResourceId
+    fabricWorkspaceName: fabricWorkspaceName
+    fabricLakehouseName: fabricLakehouseName
   }
 }
 
@@ -174,8 +199,6 @@ module containerApps 'modules/container-apps.bicep' = {
     mcpIdentityId: security.outputs.mcpIdentityId
     mcpIdentityClientId: security.outputs.mcpIdentityClientId
     foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
-    blobServiceUri: dataServices.outputs.blobServiceUri
-    documentsContainerName: dataServices.outputs.documentsContainerName
     searchServiceEndpoint: dataServices.outputs.searchServiceEndpoint
     documentIntelligenceEndpoint: dataServices.outputs.documentIntelligenceEndpoint
     embedDeploymentName: foundry.outputs.embedDeploymentName
@@ -184,7 +207,12 @@ module containerApps 'modules/container-apps.bicep' = {
     rerankModelName: foundry.outputs.rerankModelName
     embedEndpoint: foundry.outputs.embedEndpoint
     rerankEndpoint: foundry.outputs.rerankEndpoint
+    fabricWorkspaceName: fabricWorkspaceName
+    fabricLakehouseName: fabricLakehouseName
   }
+  dependsOn: [
+    fabricProvision
+  ]
 }
 
 module containerJobs 'modules/container-jobs.bicep' = {
@@ -217,14 +245,22 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     deploymentScriptIdentityName: naming.outputs.deploymentScriptIdentityName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
-    policySeedJobName: containerJobs.outputs.policySeedJobName
-    provisioningJobName: containerJobs.outputs.provisioningJobName
+    policySeedJobName: naming.outputs.policySeedJobName
+    provisioningJobName: naming.outputs.provisioningJobName
+    enableFabricSeed: enableFabricSeed
+    fabricUamiResourceId: fabricUamiResourceId
+    fabricWorkspaceId: fabricProvision.outputs.workspaceId
+    fabricWorkspaceName: fabricProvision.outputs.workspaceName
+    fabricLakehouseId: fabricProvision.outputs.lakehouseId
+    fabricLakehouseName: fabricProvision.outputs.lakehouseName
+    fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
+    fabricGithubToken: fabricGithubToken
   }
+  dependsOn: [
+    containerJobs
+  ]
 }
 
-output storageAccountName string = dataServices.outputs.storageAccountName
-output blobServiceUri string = dataServices.outputs.blobServiceUri
-output documentsContainerName string = dataServices.outputs.documentsContainerName
 output foundryAccountName string = foundry.outputs.foundryAccountName
 output foundryProjectName string = foundry.outputs.foundryProjectName
 output foundryProjectEndpoint string = foundry.outputs.foundryProjectEndpoint
@@ -244,3 +280,8 @@ output frontendUrl string = containerApps.outputs.frontendUrl
 output mcpUrl string = containerApps.outputs.mcpUrl
 output policySeedJobName string = containerJobs.outputs.policySeedJobName
 output provisioningJobName string = containerJobs.outputs.provisioningJobName
+output fabricWorkspaceName string = fabricProvision.outputs.workspaceName
+output fabricLakehouseName string = fabricProvision.outputs.lakehouseName
+output fabricSqlServer string = fabricProvision.outputs.sqlServer
+output fabricSqlDatabase string = fabricProvision.outputs.sqlDatabase
+output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName
