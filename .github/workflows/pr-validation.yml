@@ -1,0 +1,86 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'agent-provisioning/**'
+      - 'frontend/**'
+      - 'hosted-agents/**'
+      - 'global.json'
+      - 'CohereLoanAndMortgage.sln'
+      - 'infra/**'
+      - '.github/workflows/pr-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      dotnet: ${{ steps.filter.outputs.dotnet }}
+      bicep: ${{ steps.filter.outputs.bicep }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dotnet:
+              - 'backend/**'
+              - 'agent-provisioning/**'
+              - 'frontend/**'
+              - 'hosted-agents/**'
+              - 'global.json'
+              - 'CohereLoanAndMortgage.sln'
+              - '.github/workflows/pr-validation.yml'
+            bicep:
+              - 'infra/**'
+              - '.github/workflows/pr-validation.yml'
+
+  dotnet-validation:
+    needs: changes
+    if: needs.changes.outputs.dotnet == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build solution
+        run: dotnet build CohereLoanAndMortgage.sln -c Release -m:1
+
+      - name: Build WebApp
+        run: dotnet build frontend/src/WebApp/Cohere.LoanProcessing.WebApp.csproj -c Release
+
+      - name: Build WebApp tests
+        run: dotnet build frontend/tests/WebApp.Tests/Cohere.LoanProcessing.WebApp.Tests.csproj -c Release
+
+      - name: Build HostedAgents
+        run: dotnet build hosted-agents/src/CohereLoanAndMortgage.HostedAgents/CohereLoanAndMortgage.HostedAgents.csproj -c Release
+
+  bicep-validation:
+    needs: changes
+    if: needs.changes.outputs.bicep == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bicep CLI
+        run: az bicep install
+
+      - name: Build Bicep and verify azuredeploy.json sync
+        run: |
+          az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
+          git diff --exit-code -- infra/azuredeploy.json
