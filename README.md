@@ -156,6 +156,21 @@ Local development is optional and separate from the Azure deployment path.
 
 ### Run locally
 
+#### VS Code / Cursor (recommended)
+
+1. Install the [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) extension (recommended when opening the repo).
+2. Copy `backend/src/Api.Host/.env.local.example` to `backend/src/Api.Host/.env.local` and fill in your Azure values.
+3. Sign in with Azure CLI (`az login`) or another credential available to `DefaultAzureCredential`.
+4. Open **Run and Debug** and start **API + MCP** (or **Full stack (API + MCP + Web)** to include the Blazor UI).
+
+Default URLs when debugging:
+
+- API: `http://localhost:5038`
+- MCP: `http://localhost:5040`
+- Web UI: `http://localhost:5147`
+
+#### Command line
+
 ```powershell
 cd backend/src/Api.Host
 dotnet run

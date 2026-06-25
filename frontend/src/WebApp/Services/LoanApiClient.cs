@@ -90,7 +90,7 @@ public sealed class LoanApiClient(
         return await GetWorkflowRunAsync(caseId, session.ExecutionId, cancellationToken);
     }
 
-    public Task<CaseDetailResponse?> SubmitDecisionAsync(
+    public async Task<CaseDetailResponse?> SubmitDecisionAsync(
         string caseId,
         bool approved,
         string? notes,
@@ -108,13 +108,14 @@ public sealed class LoanApiClient(
             ReviewerComment = notes
         };
 
-        DisposeFireAndForgetResponse(httpClient.PostAsJsonAsync(
+        using var response = await httpClient.PostAsJsonAsync(
             $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(caseId)}/workflow/basic/executions/{Uri.EscapeDataString(session.ExecutionId)}/resume",
             request,
-            cancellationToken));
+            cancellationToken);
+        await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
         sessions.ApplyHumanDecision(session, approved, notes);
 
-        return Task.FromResult<CaseDetailResponse?>(BackendWorkflowMapper.ToDetail(session));
+        return BackendWorkflowMapper.ToDetail(session);
     }
 
     public async Task<CaseDetailResponse?> ContinueAccountSetupAsync(string caseId, CancellationToken cancellationToken = default)
@@ -262,24 +263,6 @@ public sealed class LoanApiClient(
 
         await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<BasicWorkflowStatusResponse>(cancellationToken);
-    }
-
-    private static void DisposeFireAndForgetResponse(Task<HttpResponseMessage> responseTask)
-    {
-        _ = responseTask.ContinueWith(
-            static task =>
-            {
-                if (task.IsCompletedSuccessfully)
-                {
-                    task.Result.Dispose();
-                    return;
-                }
-
-                _ = task.Exception;
-            },
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
     }
 
     private static string MapQueuedStatus(string backendStatus) =>

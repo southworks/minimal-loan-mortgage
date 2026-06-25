@@ -7,8 +7,6 @@ param baseName string = 'cohereloan'
 @description('Foundry project name. Leave empty to default to {baseName}-project. Must be a plain string, not an ARM expression.')
 param foundryProjectName string = ''
 
-var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
-
 @description('Foundry model deployment name used by all agents.')
 param modelDeploymentName string = 'cohere-command-a'
 
@@ -66,6 +64,9 @@ param apiContainerImage string = 'ghcr.io/southworks/cohereloan-api:demo'
 @description('Full container image URI for the MCP host.')
 param mcpContainerImage string = 'ghcr.io/southworks/cohereloan-mcp:demo'
 
+@description('Full container image URI for the frontend host.')
+param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-web:demo'
+
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
@@ -106,25 +107,11 @@ param fabricSkipPolicy bool = false
 @description('Timeout (ISO 8601) for the Fabric seed deployment script.')
 param fabricSeedTimeout string = 'PT60M'
 
+var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
+
 var resourceTags = {
   project: 'inesite'
 }
-
-var deploymentSuffix = empty(nameSuffix) ? uniqueString(resourceGroup().id) : uniqueString(resourceGroup().id, nameSuffix)
-var storageAccountName = toLower(take(replace('${baseName}st${deploymentSuffix}', '-', ''), 24))
-var foundryAccountName = toLower(take(replace('${baseName}foundry${deploymentSuffix}', '-', ''), 24))
-var searchServiceName = toLower(take(replace('${baseName}search${deploymentSuffix}', '-', ''), 60))
-var documentIntelligenceAccountName = toLower(take(replace('${baseName}docintel${deploymentSuffix}', '-', ''), 24))
-var logAnalyticsName = take('${baseName}-logs-${deploymentSuffix}', 63)
-var containerAppsEnvironmentName = take('${baseName}-cae-${deploymentSuffix}', 63)
-var apiAppName = take('${baseName}-api-${deploymentSuffix}', 32)
-var mcpAppName = take('${baseName}-mcp-${deploymentSuffix}', 32)
-var policySeedJobName = take('${baseName}-policyseed-${deploymentSuffix}', 32)
-var provisioningJobName = take('${baseName}-provision-${deploymentSuffix}', 32)
-var foundryEndpointBase = 'https://${foundryAccount.properties.customSubDomainName}.services.ai.azure.com'
-var embedEndpoint = '${foundryEndpointBase}/openai/deployments/${embedDeploymentName}'
-var rerankEndpoint = foundryEndpointBase
-var foundryProjectEndpoint = '${foundryEndpointBase}/api/projects/${foundryProject.name}'
 
 resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
   name: 'default'
@@ -133,849 +120,201 @@ resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
   }
 }
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: storageAccountName
-  location: location
-  tags: resourceTags
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    minimumTlsVersion: 'TLS1_2'
-    allowBlobPublicAccess: false
-    supportsHttpsTrafficOnly: true
+module naming 'modules/naming.bicep' = {
+  name: 'naming'
+  params: {
+    baseName: baseName
+    nameSuffix: nameSuffix
   }
 }
 
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
-  parent: storageAccount
-  name: 'default'
-}
-
-resource documentsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: blobService
-  name: documentsContainerName
-  properties: {
-    publicAccess: 'None'
+module dataServices 'modules/data-services.bicep' = {
+  name: 'data-services'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    storageAccountName: naming.outputs.storageAccountName
+    documentsContainerName: documentsContainerName
+    searchServiceName: naming.outputs.searchServiceName
+    searchSku: searchSku
+    documentIntelligenceAccountName: naming.outputs.documentIntelligenceAccountName
   }
 }
 
-resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
-  name: foundryAccountName
-  location: location
-  tags: resourceTags
-  kind: 'AIServices'
-  sku: {
-    name: 'S0'
-  }
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    allowProjectManagement: true
-    customSubDomainName: foundryAccountName
-    publicNetworkAccess: 'Enabled'
+module foundry 'modules/foundry.bicep' = {
+  name: 'foundry'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    foundryAccountName: naming.outputs.foundryAccountName
+    resolvedFoundryProjectName: resolvedFoundryProjectName
+    modelDeploymentName: modelDeploymentName
+    modelDeploymentSkuName: modelDeploymentSkuName
+    modelDeploymentCapacity: modelDeploymentCapacity
+    cohereModelName: cohereModelName
+    cohereModelVersion: cohereModelVersion
+    embedDeploymentName: embedDeploymentName
+    embedModelName: embedModelName
+    embedModelVersion: embedModelVersion
+    embedDeploymentCapacity: embedDeploymentCapacity
+    rerankDeploymentName: rerankDeploymentName
+    rerankModelName: rerankModelName
+    rerankModelVersion: rerankModelVersion
+    rerankDeploymentCapacity: rerankDeploymentCapacity
   }
 }
 
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
-  parent: foundryAccount
-  name: resolvedFoundryProjectName
-  location: location
-  identity: {
-    type: 'SystemAssigned'
+module platform 'modules/platform.bicep' = {
+  name: 'platform'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    logAnalyticsName: naming.outputs.logAnalyticsName
+    containerAppsEnvironmentName: naming.outputs.containerAppsEnvironmentName
   }
-  properties: {}
 }
 
-resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
-  parent: foundryAccount
-  name: modelDeploymentName
-  sku: {
-    name: modelDeploymentSkuName
-    capacity: modelDeploymentCapacity
+module security 'modules/security.bicep' = {
+  name: 'security'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    nameSuffix: nameSuffix
+    apiIdentityName: naming.outputs.apiIdentityName
+    provisioningIdentityName: naming.outputs.provisioningIdentityName
+    storageAccountName: dataServices.outputs.storageAccountName
+    foundryAccountName: foundry.outputs.foundryAccountName
+    foundryProjectName: foundry.outputs.foundryProjectName
+    searchServiceName: dataServices.outputs.searchServiceName
+    documentIntelligenceAccountName: dataServices.outputs.documentIntelligenceAccountName
+    fabricUamiResourceId: fabricUamiResourceId
+    fabricUamiClientId: fabricUamiClientId
   }
-  properties: {
-    model: {
-      format: 'Cohere'
-      name: cohereModelName
-      version: cohereModelVersion
-    }
+}
+
+module fabricProvision 'modules/fabric-provision.bicep' = {
+  name: 'fabric-provision'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    deploymentSuffix: naming.outputs.deploymentSuffix
+    fabricUamiResourceId: fabricUamiResourceId
+    fabricUamiClientId: fabricUamiClientId
+    fabricWorkspaceName: fabricWorkspaceName
+    fabricLakehouseName: fabricLakehouseName
+  }
+}
+
+module containerApps 'modules/container-apps.bicep' = {
+  name: 'container-apps'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    containerAppsEnvironmentId: platform.outputs.containerAppsEnvironmentId
+    apiAppName: naming.outputs.apiAppName
+    mcpAppName: naming.outputs.mcpAppName
+    frontendAppName: naming.outputs.frontendAppName
+    apiContainerImage: apiContainerImage
+    mcpContainerImage: mcpContainerImage
+    frontendContainerImage: frontendContainerImage
+    apiIdentityId: security.outputs.apiIdentityId
+    apiIdentityClientId: security.outputs.apiIdentityClientId
+    mcpIdentityId: security.outputs.mcpIdentityId
+    mcpIdentityClientId: security.outputs.mcpIdentityClientId
+    foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
+    blobServiceUri: dataServices.outputs.blobServiceUri
+    documentsContainerName: dataServices.outputs.documentsContainerName
+    searchServiceEndpoint: dataServices.outputs.searchServiceEndpoint
+    documentIntelligenceEndpoint: dataServices.outputs.documentIntelligenceEndpoint
+    embedDeploymentName: foundry.outputs.embedDeploymentName
+    embedModelName: foundry.outputs.embedModelName
+    rerankDeploymentName: foundry.outputs.rerankDeploymentName
+    rerankModelName: foundry.outputs.rerankModelName
+    embedEndpoint: foundry.outputs.embedEndpoint
+    rerankEndpoint: foundry.outputs.rerankEndpoint
+    fabricWorkspaceName: fabricWorkspaceName
+    fabricLakehouseName: fabricLakehouseName
   }
   dependsOn: [
-    foundryProject
+    fabricProvision
   ]
 }
 
-resource embedModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
-  parent: foundryAccount
-  name: embedDeploymentName
-  sku: {
-    name: 'GlobalStandard'
-    capacity: embedDeploymentCapacity
+module containerJobs 'modules/container-jobs.bicep' = {
+  name: 'container-jobs'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    containerAppsEnvironmentId: platform.outputs.containerAppsEnvironmentId
+    policySeedJobName: naming.outputs.policySeedJobName
+    provisioningJobName: naming.outputs.provisioningJobName
+    mcpContainerImage: mcpContainerImage
+    provisioningContainerImage: provisioningContainerImage
+    mcpIdentityId: security.outputs.mcpIdentityId
+    provisioningIdentityId: security.outputs.provisioningIdentityId
+    provisioningIdentityClientId: security.outputs.provisioningIdentityClientId
+    mcpUrl: containerApps.outputs.mcpUrl
+    mcpContainerEnv: containerApps.outputs.mcpContainerEnv
+    foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
+    modelDeploymentName: foundry.outputs.modelDeploymentName
   }
-  properties: {
-    model: {
-      format: 'Cohere'
-      name: embedModelName
-      version: embedModelVersion
-    }
+}
+
+module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
+  name: 'post-deploy-scripts'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    deploymentSuffix: naming.outputs.deploymentSuffix
+    nameSuffix: nameSuffix
+    deploymentScriptIdentityName: naming.outputs.deploymentScriptIdentityName
+    foundryAccountName: foundry.outputs.foundryAccountName
+    foundryProjectName: foundry.outputs.foundryProjectName
+    policySeedJobName: naming.outputs.policySeedJobName
+    provisioningJobName: naming.outputs.provisioningJobName
+    enableFabricSeed: enableFabricSeed
+    fabricSeedTimeout: fabricSeedTimeout
+    fabricUamiResourceId: fabricUamiResourceId
+    fabricUamiClientId: fabricUamiClientId
+    fabricWorkspaceId: fabricProvision.outputs.workspaceId
+    fabricWorkspaceName: fabricProvision.outputs.workspaceName
+    fabricLakehouseId: fabricProvision.outputs.lakehouseId
+    fabricLakehouseName: fabricProvision.outputs.lakehouseName
+    fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
+    fabricGithubToken: fabricGithubToken
+    fabricSkipRaw: fabricSkipRaw
+    fabricSkipStructured: fabricSkipStructured
+    fabricSkipPolicy: fabricSkipPolicy
   }
   dependsOn: [
-    foundryProject
-    modelDeployment
+    containerJobs
   ]
 }
 
-resource rerankModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
-  parent: foundryAccount
-  name: rerankDeploymentName
-  sku: {
-    name: 'GlobalStandard'
-    capacity: rerankDeploymentCapacity
-  }
-  properties: {
-    model: {
-      format: 'Cohere'
-      name: rerankModelName
-      version: rerankModelVersion
-    }
-  }
-  dependsOn: [
-    foundryProject
-    embedModelDeployment
-  ]
-}
-
-resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
-  name: searchServiceName
-  location: location
-  tags: resourceTags
-  sku: {
-    name: searchSku
-  }
-  properties: {
-    replicaCount: 1
-    partitionCount: 1
-    hostingMode: 'default'
-    publicNetworkAccess: 'enabled'
-    authOptions: {
-      aadOrApiKey: {
-        aadAuthFailureMode: 'http401WithBearerChallenge'
-      }
-    }
-  }
-}
-
-resource documentIntelligenceAccount 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: documentIntelligenceAccountName
-  location: location
-  tags: resourceTags
-  kind: 'FormRecognizer'
-  sku: {
-    name: 'S0'
-  }
-  properties: {
-    customSubDomainName: documentIntelligenceAccountName
-    publicNetworkAccess: 'Enabled'
-  }
-}
-
-var documentIntelligenceEndpoint = documentIntelligenceAccount.properties.endpoint
-
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: logAnalyticsName
-  location: location
-  tags: resourceTags
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: 30
-  }
-}
-
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: containerAppsEnvironmentName
-  location: location
-  tags: resourceTags
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
-      }
-    }
-  }
-}
-
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-api-identity-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-}
-
-resource mcpIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: last(split(fabricUamiResourceId, '/'))
-}
-
-resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-provision-identity-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-}
-
-resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor', nameSuffix)
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-  ]
-}
-
-resource projectFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, foundryProject.id, 'FoundryUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
-    principalId: foundryProject.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    modelDeployment
-  ]
-}
-
-resource apiSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, apiIdentity.id, 'SearchServiceContributor', nameSuffix)
-  scope: searchService
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource apiSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, apiIdentity.id, 'SearchIndexDataContributor', nameSuffix)
-  scope: searchService
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource apiDocumentIntelligenceRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(documentIntelligenceAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
-  scope: documentIntelligenceAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, mcpIdentity.id, 'SearchServiceContributor', nameSuffix)
-  scope: searchService
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
-    principalId: mcpIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, mcpIdentity.id, 'SearchIndexDataContributor', nameSuffix)
-  scope: searchService
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
-    principalId: mcpIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, mcpIdentity.id, 'CognitiveServicesUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
-    principalId: mcpIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-  ]
-}
-
-resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
-    principalId: provisioningIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
-  ]
-}
-
-resource provisioningFoundryDeveloperRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'FoundryUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
-    principalId: provisioningIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
-  ]
-}
-
-var mcpFoundryModelEnv = [
-  { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
-  { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
-  { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
-  { name: 'AzureFoundryModels__RerankModelName', value: rerankModelName }
-  { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
-  { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
-  { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
-  { name: 'AzureFoundryModels__EmbeddingBatchSize', value: '16' }
-  { name: 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', value: '1' }
-  { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
-]
-
-var mcpContainerEnv = concat([
-  { name: 'AzureSearch__Endpoint', value: 'https://${searchService.name}.search.windows.net' }
-  { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
-  { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
-  { name: 'AzureSearch__VectorDimensions', value: '1024' }
-  { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
-  { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
-  { name: 'DataSource__Mode', value: 'Fabric' }
-  { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
-  { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
-  { name: 'FabricLakehouse__TimeoutSeconds', value: '60' }
-  { name: 'AZURE_CLIENT_ID', value: mcpIdentity.properties.clientId }
-], mcpFoundryModelEnv)
-
-var policySeedContainerEnv = concat(mcpContainerEnv, [
-  { name: 'AzureFoundryModels__MaxRetryAttempts', value: '10' }
-  { name: 'AzureFoundryModels__MaxDelaySeconds', value: '60' }
-])
-
-resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: mcpAppName
-  location: location
-  tags: resourceTags
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${mcpIdentity.id}': {}
-    }
-  }
-  properties: {
-    managedEnvironmentId: containerAppsEnvironment.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 8080
-        transport: 'auto'
-      }
-    }
-    template: {
-      containers: [
-        {
-          name: 'mcp'
-          image: mcpContainerImage
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: concat(mcpContainerEnv, [
-            { name: 'McpStartup__EnsureSearchIndexesOnStartup', value: 'true' }
-            { name: 'McpStartup__SeedPoliciesOnStartup', value: 'false' }
-          ])
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 15
-              periodSeconds: 30
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 1
-        maxReplicas: 1
-      }
-    }
-  }
-}
-
-resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: apiAppName
-  location: location
-  tags: resourceTags
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${apiIdentity.id}': {}
-    }
-  }
-  properties: {
-    managedEnvironmentId: containerAppsEnvironment.id
-    configuration: {
-      ingress: {
-        external: true
-        targetPort: 8080
-        transport: 'auto'
-      }
-    }
-    template: {
-      containers: [
-        {
-          name: 'api'
-          image: apiContainerImage
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: [
-            { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
-            { name: 'AZURE_STORAGE_BLOB_SERVICE_URI', value: storageAccount.properties.primaryEndpoints.blob }
-            { name: 'AzureSearch__Endpoint', value: 'https://${searchService.name}.search.windows.net' }
-            { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
-            { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
-            { name: 'AzureSearch__VectorDimensions', value: '1024' }
-            { name: 'AzureStorage__ContainerName', value: documentsContainerName }
-            { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
-            { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
-            { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
-            { name: 'AzureFoundryModels__RerankModelName', value: rerankModelName }
-            { name: 'AzureFoundryModels__EmbedEndpoint', value: embedEndpoint }
-            { name: 'AzureFoundryModels__RerankEndpoint', value: rerankEndpoint }
-            { name: 'AzureFoundryModels__EmbeddingDimensions', value: '1024' }
-            { name: 'AzureFoundryModels__EmbeddingBatchSize', value: '16' }
-            { name: 'AzureFoundryModels__MaxConcurrentEmbeddingRequests', value: '1' }
-            { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
-            { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
-            { name: 'AZURE_CLIENT_ID', value: apiIdentity.properties.clientId }
-            { name: 'DocumentExtraction__Endpoint', value: documentIntelligenceEndpoint }
-          ]
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 30
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 15
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 1
-        maxReplicas: 1
-      }
-    }
-  }
-  dependsOn: [
-    apiDocumentIntelligenceRole
-  ]
-}
-
-var mcpBaseUrl = 'https://${mcpApp.properties.configuration.ingress.fqdn}'
-
-resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
-  name: policySeedJobName
-  location: location
-  tags: resourceTags
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${mcpIdentity.id}': {}
-    }
-  }
-  properties: {
-    environmentId: containerAppsEnvironment.id
-    configuration: {
-      triggerType: 'Manual'
-      replicaTimeout: 1800
-      replicaRetryLimit: 0
-      manualTriggerConfig: {
-        replicaCompletionCount: 1
-        parallelism: 1
-      }
-    }
-    template: {
-      containers: [
-        {
-          name: 'policy-seed'
-          image: mcpContainerImage
-          command: [
-            'dotnet'
-            'LoanWorkflow.Mcp.dll'
-            '--seed-policies'
-          ]
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: policySeedContainerEnv
-        }
-      ]
-    }
-  }
-  dependsOn: [
-    mcpSearchContributorRole
-    mcpSearchDataRole
-    mcpFoundryRole
-  ]
-}
-
-resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
-  name: provisioningJobName
-  location: location
-  tags: resourceTags
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${provisioningIdentity.id}': {}
-    }
-  }
-  properties: {
-    environmentId: containerAppsEnvironment.id
-    configuration: {
-      triggerType: 'Manual'
-      replicaTimeout: 1800
-      replicaRetryLimit: 0
-      manualTriggerConfig: {
-        replicaCompletionCount: 1
-        parallelism: 1
-      }
-    }
-    template: {
-      containers: [
-        {
-          name: 'agent-provisioning'
-          image: provisioningContainerImage
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: [
-            { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
-            { name: 'FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
-            { name: 'ProjectEndpoint', value: foundryProjectEndpoint }
-            { name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME', value: modelDeploymentName }
-            { name: 'ModelDeploymentName', value: modelDeploymentName }
-            { name: 'MCP_BASE_URL', value: mcpBaseUrl }
-            { name: 'AZURE_CLIENT_ID', value: provisioningIdentity.properties.clientId }
-          ]
-        }
-      ]
-    }
-  }
-  dependsOn: [
-    provisioningFoundryRole
-    provisioningFoundryDeveloperRole
-  ]
-}
-
-resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: '${baseName}-deployscript-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-}
-
-resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor', nameSuffix)
-  scope: resourceGroup()
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
-    principalId: deploymentScriptIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource deploymentScriptFoundryContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'CognitiveServicesContributor', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
-    principalId: deploymentScriptIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
-  ]
-}
-
-resource deploymentScriptFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'FoundryUser', nameSuffix)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
-    principalId: deploymentScriptIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-  dependsOn: [
-    foundryProject
-    rerankModelDeployment
-  ]
-}
-
-resource runPolicySeedScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'run-policy-seed-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-  kind: 'AzureCLI'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${deploymentScriptIdentity.id}': {}
-    }
-  }
-  properties: {
-    azCliVersion: '2.62.0'
-    timeout: 'PT45M'
-    retentionInterval: 'PT1H'
-    cleanupPreference: 'OnSuccess'
-    forceUpdateTag: deploymentSuffix
-    scriptContent: '''
-      set -euo pipefail
-      az extension add --name containerapp --upgrade 2>/dev/null || true
-      echo "Waiting for role assignments and Foundry deployments to settle..."
-      sleep 180
-      echo "Starting policy seed job..."
-      EXECUTION=$(az containerapp job start --name "${POLICY_SEED_JOB_NAME}" --resource-group "${RESOURCE_GROUP}" --query name -o tsv)
-      echo "Policy seed job execution: ${EXECUTION}"
-
-      for i in $(seq 1 120); do
-        STATUS=$(az containerapp job execution show \
-          --name "${POLICY_SEED_JOB_NAME}" \
-          --resource-group "${RESOURCE_GROUP}" \
-          --job-execution-name "${EXECUTION}" \
-          --query properties.status -o tsv)
-
-        echo "Policy seed job status: ${STATUS}"
-
-        if [ "${STATUS}" = "Succeeded" ]; then
-          echo "Policy seeding completed successfully."
-          exit 0
-        fi
-
-        if [ "${STATUS}" = "Failed" ]; then
-          echo "Policy seed job failed. Fetching recent job logs..."
-          az containerapp job logs show \
-            --name "${POLICY_SEED_JOB_NAME}" \
-            --resource-group "${RESOURCE_GROUP}" \
-            --execution "${EXECUTION}" \
-            --container policy-seed \
-            --tail 50 || true
-          exit 1
-        fi
-
-        sleep 15
-      done
-
-      echo "Timed out waiting for policy seed job."
-      exit 1
-    '''
-    environmentVariables: [
-      {
-        name: 'RESOURCE_GROUP'
-        value: resourceGroup().name
-      }
-      {
-        name: 'POLICY_SEED_JOB_NAME'
-        value: policySeedJobName
-      }
-    ]
-  }
-  dependsOn: [
-    policySeedJob
-    deploymentScriptContributorRole
-  ]
-}
-
-resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'run-agent-provisioning-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-  kind: 'AzureCLI'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${deploymentScriptIdentity.id}': {}
-    }
-  }
-  properties: {
-    azCliVersion: '2.62.0'
-    timeout: 'PT45M'
-    retentionInterval: 'PT1H'
-    cleanupPreference: 'OnSuccess'
-    forceUpdateTag: deploymentSuffix
-    scriptContent: '''
-      set -euo pipefail
-      az extension add --name containerapp --upgrade 2>/dev/null || true
-      echo "Waiting briefly for role assignment propagation..."
-      sleep 60
-      echo "Starting agent provisioning job..."
-      EXECUTION=$(az containerapp job start --name "${PROVISIONING_JOB_NAME}" --resource-group "${RESOURCE_GROUP}" --query name -o tsv)
-      echo "Job execution: ${EXECUTION}"
-
-      for i in $(seq 1 120); do
-        STATUS=$(az containerapp job execution show \
-          --name "${PROVISIONING_JOB_NAME}" \
-          --resource-group "${RESOURCE_GROUP}" \
-          --job-execution-name "${EXECUTION}" \
-          --query properties.status -o tsv)
-
-        echo "Provisioning job status: ${STATUS}"
-
-        if [ "${STATUS}" = "Succeeded" ]; then
-          echo "Agent provisioning completed successfully."
-          exit 0
-        fi
-
-        if [ "${STATUS}" = "Failed" ]; then
-          echo "Agent provisioning job failed."
-          az containerapp job logs show \
-            --name "${PROVISIONING_JOB_NAME}" \
-            --resource-group "${RESOURCE_GROUP}" \
-            --execution "${EXECUTION}" \
-            --container agent-provisioning \
-            --tail 50 || true
-          exit 1
-        fi
-
-        sleep 15
-      done
-
-      echo "Timed out waiting for agent provisioning job."
-      exit 1
-    '''
-    environmentVariables: [
-      {
-        name: 'RESOURCE_GROUP'
-        value: resourceGroup().name
-      }
-      {
-        name: 'PROVISIONING_JOB_NAME'
-        value: provisioningJobName
-      }
-    ]
-  }
-  dependsOn: [
-    provisioningJob
-    deploymentScriptContributorRole
-    apiApp
-    mcpApp
-    runPolicySeedScript
-  ]
-}
-
-resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabricSeed) {
-  name: 'run-fabric-seed-${deploymentSuffix}'
-  location: location
-  tags: resourceTags
-  kind: 'AzurePowerShell'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${mcpIdentity.id}': {}
-    }
-  }
-  properties: {
-    azPowerShellVersion: '11.0'
-    retentionInterval: 'P1D'
-    timeout: fabricSeedTimeout
-    cleanupPreference: 'OnSuccess'
-    forceUpdateTag: deploymentSuffix
-    scriptContent: loadTextContent('scripts/seed-fabric-data.ps1')
-    environmentVariables: [
-      { name: 'AZURE_CLIENT_ID',         value: fabricUamiClientId }
-      { name: 'FABRIC_WORKSPACE_NAME',   value: fabricWorkspaceName }
-      { name: 'FABRIC_LAKEHOUSE_NAME',   value: fabricLakehouseName }
-      { name: 'RESOURCE_GROUP_NAME',     value: resourceGroup().name }
-      { name: 'REPOSITORY_ARCHIVE_URL',  value: fabricRepositoryArchiveUrl }
-      { name: 'GITHUB_TOKEN',            secureValue: fabricGithubToken }
-      { name: 'SKIP_RAW',                value: string(fabricSkipRaw) }
-      { name: 'SKIP_STRUCTURED',         value: string(fabricSkipStructured) }
-      { name: 'SKIP_POLICY',             value: string(fabricSkipPolicy) }
-    ]
-  }
-  dependsOn: [
-    runPolicySeedScript
-    runProvisioningScript
-    mcpApp
-  ]
-}
-
-output storageAccountName string = storageAccount.name
-output blobServiceUri string = storageAccount.properties.primaryEndpoints.blob
-output documentsContainerName string = documentsContainerName
-output foundryAccountName string = foundryAccount.name
-output foundryProjectName string = foundryProject.name
-output foundryProjectEndpoint string = foundryProjectEndpoint
-output foundryProjectResourceId string = foundryProject.id
-output modelDeploymentName string = modelDeploymentName
-output embedDeploymentName string = embedDeploymentName
-output embedModelName string = embedModelName
-output rerankDeploymentName string = rerankDeploymentName
-output rerankModelName string = rerankModelName
+output storageAccountName string = dataServices.outputs.storageAccountName
+output blobServiceUri string = dataServices.outputs.blobServiceUri
+output documentsContainerName string = dataServices.outputs.documentsContainerName
+output foundryAccountName string = foundry.outputs.foundryAccountName
+output foundryProjectName string = foundry.outputs.foundryProjectName
+output foundryProjectEndpoint string = foundry.outputs.foundryProjectEndpoint
+output foundryProjectResourceId string = foundry.outputs.foundryProjectResourceId
+output modelDeploymentName string = foundry.outputs.modelDeploymentName
+output embedDeploymentName string = foundry.outputs.embedDeploymentName
+output embedModelName string = foundry.outputs.embedModelName
+output rerankDeploymentName string = foundry.outputs.rerankDeploymentName
+output rerankModelName string = foundry.outputs.rerankModelName
 output memoryStoreName string = memoryStoreName
-output searchServiceName string = searchService.name
-output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
-output documentIntelligenceAccountName string = documentIntelligenceAccount.name
-output documentIntelligenceEndpoint string = documentIntelligenceEndpoint
-output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
-output mcpUrl string = mcpBaseUrl
-output policySeedJobName string = policySeedJob.name
-output provisioningJobName string = provisioningJob.name
-output fabricWorkspaceName string = fabricWorkspaceName
-output fabricLakehouseName string = fabricLakehouseName
-output fabricSqlServer string = enableFabricSeed ? runFabricSeed.properties.outputs.sqlServer : ''
-output fabricSqlDatabase string = enableFabricSeed ? runFabricSeed.properties.outputs.sqlDatabase : ''
-output fabricSeedDeploymentScriptName string = enableFabricSeed ? runFabricSeed.name : ''
+output searchServiceName string = dataServices.outputs.searchServiceName
+output searchServiceEndpoint string = dataServices.outputs.searchServiceEndpoint
+output documentIntelligenceAccountName string = dataServices.outputs.documentIntelligenceAccountName
+output documentIntelligenceEndpoint string = dataServices.outputs.documentIntelligenceEndpoint
+output apiUrl string = containerApps.outputs.apiUrl
+output frontendUrl string = containerApps.outputs.frontendUrl
+output mcpUrl string = containerApps.outputs.mcpUrl
+output policySeedJobName string = containerJobs.outputs.policySeedJobName
+output provisioningJobName string = containerJobs.outputs.provisioningJobName
+output fabricWorkspaceName string = fabricProvision.outputs.workspaceName
+output fabricLakehouseName string = fabricProvision.outputs.lakehouseName
+output fabricSqlServer string = fabricProvision.outputs.sqlServer
+output fabricSqlDatabase string = fabricProvision.outputs.sqlDatabase
+output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName

@@ -80,7 +80,14 @@ function Resolve-WorkspaceId {
     )
 
     if (-not [string]::IsNullOrWhiteSpace($WorkspaceIdInput)) {
-        return $WorkspaceIdInput
+        $workspace = Invoke-FabricApi -Method 'GET' -RelativeUrl "workspaces/$WorkspaceIdInput"
+        if (-not $workspace -or [string]::IsNullOrWhiteSpace([string]$workspace.id)) {
+            throw "WorkspaceId '$WorkspaceIdInput' was not found in Fabric."
+        }
+        return [ordered]@{
+            Id   = [string]$workspace.id
+            Name = [string]$workspace.displayName
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($WorkspaceNameInput)) {
@@ -119,7 +126,10 @@ Current input:
         throw "Workspace '$WorkspaceNameInput' was not found in Fabric."
     }
 
-    return [string]$match.id
+    return [ordered]@{
+        Id   = [string]$match.id
+        Name = [string]$match.displayName
+    }
 }
 
 function Get-LakehouseByName {
@@ -357,8 +367,11 @@ Write-Host "WorkspaceId (input): $WorkspaceId"
 Write-Host "LakehouseName: $LakehouseName"
 Write-Host "LakehouseId (input): $LakehouseId"
 
-$resolvedWorkspaceId = Resolve-WorkspaceId -WorkspaceIdInput $WorkspaceId -WorkspaceNameInput $WorkspaceName
+$resolvedWorkspace = Resolve-WorkspaceId -WorkspaceIdInput $WorkspaceId -WorkspaceNameInput $WorkspaceName
+$resolvedWorkspaceId = $resolvedWorkspace.Id
+$resolvedWorkspaceName = $resolvedWorkspace.Name
 Write-Host "Resolved WorkspaceId: $resolvedWorkspaceId"
+Write-Host "Resolved WorkspaceName: $resolvedWorkspaceName"
 
 $lakehouse = Ensure-Lakehouse -ResolvedWorkspaceId $resolvedWorkspaceId -TargetLakehouseId $LakehouseId -TargetLakehouseName $LakehouseName
 $resolvedLakehouseId = $lakehouse.Id
@@ -387,6 +400,7 @@ if ([string]::IsNullOrWhiteSpace($SqlServer) -or [string]::IsNullOrWhiteSpace($S
 
 $result = [ordered]@{
     WorkspaceId   = $resolvedWorkspaceId
+    WorkspaceName = $resolvedWorkspaceName
     LakehouseId   = $resolvedLakehouseId
     LakehouseName = $lakehouse.Name
     SqlServer     = $SqlServer
@@ -400,14 +414,16 @@ if (-not [string]::IsNullOrWhiteSpace($resultFilePath)) {
 }
 
 $DeploymentScriptOutputs = @{}
-$DeploymentScriptOutputs['workspaceId'] = $resolvedWorkspaceId
-$DeploymentScriptOutputs['lakehouseId'] = $resolvedLakehouseId
+$DeploymentScriptOutputs['workspaceId']   = $resolvedWorkspaceId
+$DeploymentScriptOutputs['workspaceName'] = $resolvedWorkspaceName
+$DeploymentScriptOutputs['lakehouseId']   = $resolvedLakehouseId
 $DeploymentScriptOutputs['lakehouseName'] = $lakehouse.Name
-$DeploymentScriptOutputs['sqlServer'] = $SqlServer
-$DeploymentScriptOutputs['sqlDatabase'] = $SqlDatabase
+$DeploymentScriptOutputs['sqlServer']     = $SqlServer
+$DeploymentScriptOutputs['sqlDatabase']   = $SqlDatabase
 
 Write-Host 'Provision completed successfully.'
 Write-Host "WorkspaceId: $resolvedWorkspaceId"
+Write-Host "WorkspaceName: $resolvedWorkspaceName"
 Write-Host "LakehouseId: $resolvedLakehouseId"
 if (-not [string]::IsNullOrWhiteSpace($SqlServer)) {
     Write-Host "SqlServer: $SqlServer"
