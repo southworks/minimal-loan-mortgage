@@ -58,7 +58,7 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Build solution
-        run: dotnet build CohereLoanAndMortgage.sln -c Release
+        run: dotnet build CohereLoanAndMortgage.sln -c Release -m:1
 
       - name: Build WebApp
         run: dotnet build frontend/src/WebApp/Cohere.LoanProcessing.WebApp.csproj -c Release
@@ -77,8 +77,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Azure CLI
-        uses: azure/setup-az-cli@v1
+      - name: Install Bicep CLI
+        run: az bicep install
 
       - name: Build Bicep and verify azuredeploy.json sync
         run: |
