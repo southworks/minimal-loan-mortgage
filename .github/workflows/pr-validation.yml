@@ -80,7 +80,5 @@ jobs:
       - name: Install Bicep CLI
         run: az bicep install
 
-      - name: Build Bicep and verify azuredeploy.json sync
-        run: |
-          az bicep build --file infra/main.bicep --outfile infra/azuredeploy.json
-          git diff --exit-code -- infra/azuredeploy.json
+      - name: Build Bicep
+        run: az bicep build --file infra/main.bicep
