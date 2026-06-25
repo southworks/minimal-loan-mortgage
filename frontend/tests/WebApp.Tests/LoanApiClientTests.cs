@@ -39,7 +39,7 @@ public sealed class LoanApiClientTests
                             {
                                 FileName = "loan_application.txt",
                                 ContentType = "text/plain",
-                                BlobName = "cases/APP-001/loan_application.txt",
+                                SourcePath = "APP-001/loan_application.txt",
                                 Reference = "https://example.test/loan_application.txt",
                                 LastModifiedUtc = DateTimeOffset.UtcNow
                             }
@@ -185,7 +185,7 @@ public sealed class LoanApiClientTests
                 {
                     FileName = "loan_application.txt",
                     ContentType = "text/plain",
-                    BlobName = $"cases/{caseId}/loan_application.txt",
+                    SourcePath = $"{caseId}/loan_application.txt",
                     Reference = $"https://example.test/{caseId}/loan_application.txt",
                     LastModifiedUtc = DateTimeOffset.UtcNow
                 }

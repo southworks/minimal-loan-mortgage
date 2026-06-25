@@ -18,7 +18,7 @@ The primary deployment path is a single end-to-end Azure deployment from the REA
 
 When you deploy:
 
-1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
+1. Azure provisions Foundry, model deployments, Search, and Container Apps.
 2. The API and MCP hosts start as Azure Container Apps.
 3. A Container Apps Job seeds the policy index.
 4. A deployment script starts the agent provisioning Container Apps Job.
@@ -36,7 +36,7 @@ Make the GHCR packages public after the first workflow run so Azure Container Ap
 
 ### After deployment
 
-Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in Blob Storage under `cases/{caseId}/`.
+Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in the bundled `dataset-seed/00_raw/txt/{caseId}/` assets.
 
 ## Architecture
 
@@ -44,7 +44,7 @@ Open the `apiUrl` output from the deployment and use the API endpoints below. Se
 
 The API orchestrates the workflow. Foundry prompt agents execute each step and call the public MCP endpoints exposed by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md).
 
-Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During agent execution, each prompt agent connects directly to its dedicated MCP endpoint. Policy knowledge is still indexed by the deploy-time seed job.
+Evidence indexing is split by source. Case documents from the bundled dataset assets are indexed by the API before the agent workflow starts. During agent execution, each prompt agent connects directly to its dedicated MCP endpoint. Policy knowledge is still indexed by the deploy-time seed job.
 
 ## Demo limitations
 
@@ -53,12 +53,12 @@ This is intentionally a simple demo:
 - Workflow executions are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
 - MCP auth is open for the demo host. The API uses the same MCP services internally to prepare case evidence.
-- Case documents must already exist in Azure Blob Storage under `cases/{caseId}/` in the configured container. The API does not expose create-case or document-upload endpoints.
+- Case documents are read from the bundled `dataset-seed/00_raw/txt/{caseId}/` assets inside the API container. The API does not expose create-case or document-upload endpoints.
 
 ## API Endpoints
 
 - `GET /health` — health probe
-- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start` — start the basic Agent Framework workflow for a case whose documents are already in Blob Storage
+- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start` — start the basic Agent Framework workflow for a seeded demo case
 - `GET /api/loan-mortgage/executions/{executionId}/basic/status` — poll workflow status and agent outputs
 - `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/executions/{executionId}/resume` — submit a human approval decision and resume the workflow
 
@@ -86,7 +86,7 @@ Possible `status` values: `Pending`, `Running`, `AwaitingHumanApproval`, `Comple
 
 ## UI Integration Pattern
 
-1. Ensure the case documents are available in Blob Storage at `cases/{caseId}/`.
+1. Pick a seeded demo case such as `APP-001`, `APP-017`, or `APP-015`.
 2. Start the workflow with `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start`.
 3. Save the returned `executionId`.
 4. Poll `GET /api/loan-mortgage/executions/{executionId}/basic/status`.
@@ -126,7 +126,7 @@ Local development is optional and separate from the Azure deployment path.
 - .NET 9 SDK
 - Azure CLI login or another credential available to `DefaultAzureCredential`
 - An Azure AI Foundry project with the four demo prompt agents already deployed
-- Azure Storage account with a blob container for document uploads
+- Local `dataset-seed` assets for case documents (included in the repo and API container image)
 
 ### Run locally
 
@@ -176,7 +176,6 @@ The legacy hosted-agent sample under [hosted-agents](hosted-agents) is kept for 
 
 ```powershell
 dotnet add package Azure.Identity
-dotnet add package Azure.Storage.Blobs
 dotnet add package Microsoft.Agents.AI.AzureAI --prerelease
 dotnet add package Microsoft.Agents.AI.Workflows --prerelease
 ```

@@ -27,14 +27,14 @@ public static class CaseWorkflowPayloadBuilder
                 {
                     documentId = Path.GetFileNameWithoutExtension(document.FileName),
                     fileName = document.FileName,
-                    sourcePath = document.BlobName,
+                    sourcePath = document.SourcePath,
                     documentType = document.ContentType
                 }
                 : new
                 {
                     documentId = Path.GetFileNameWithoutExtension(document.FileName),
                     fileName = document.FileName,
-                    sourcePath = document.BlobName,
+                    sourcePath = document.SourcePath,
                     documentType = document.ContentType,
                     extractedText = document.ExtractedText,
                     extractionMode = document.ExtractionMode,

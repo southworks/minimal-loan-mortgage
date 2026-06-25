@@ -9,12 +9,12 @@ namespace CohereLoanAndMortgage.Api.Host.Controllers;
 public sealed class LoanMortgageController : ControllerBase
 {
     private readonly BasicLoanWorkflowService _basicWorkflowService;
-    private readonly BlobDocumentStorageService _documentStorageService;
+    private readonly LocalCaseDocumentService _documentStorageService;
     private readonly ILogger<LoanMortgageController> _logger;
 
     public LoanMortgageController(
         BasicLoanWorkflowService basicWorkflowService,
-        BlobDocumentStorageService documentStorageService,
+        LocalCaseDocumentService documentStorageService,
         ILogger<LoanMortgageController> logger)
     {
         _basicWorkflowService = basicWorkflowService;
@@ -90,7 +90,7 @@ public sealed class LoanMortgageController : ControllerBase
                 return NotFound(new ProblemDetailsResponse
                 {
                     Title = "Loan case not found.",
-                    Detail = $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'."
+                    Detail = $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'."
                 });
             }
 
@@ -102,7 +102,7 @@ public sealed class LoanMortgageController : ControllerBase
                     {
                         FileName = document.FileName,
                         ContentType = document.ContentType,
-                        BlobName = document.BlobName,
+                        SourcePath = document.SourcePath,
                         Reference = document.Reference,
                         LastModifiedUtc = document.LastModifiedUtc
                     })
@@ -126,14 +126,14 @@ public sealed class LoanMortgageController : ControllerBase
     [HttpGet("applications/{caseId}/documents/content")]
     public async Task<IActionResult> GetCaseDocumentContentAsync(
         string caseId,
-        [FromQuery] string blobName,
+        [FromQuery] string sourcePath,
         CancellationToken cancellationToken)
     {
         try
         {
             LoadedCaseDocument document = await _documentStorageService.GetCaseDocumentAsync(
                 caseId,
-                blobName,
+                sourcePath,
                 cancellationToken);
 
             return File(
@@ -161,8 +161,8 @@ public sealed class LoanMortgageController : ControllerBase
         {
             _logger.LogError(
                 ex,
-                "Failed to load document {BlobName} for case {CaseId}.",
-                blobName,
+                "Failed to load document {SourcePath} for case {CaseId}.",
+                sourcePath,
                 caseId);
 
             return Problem(

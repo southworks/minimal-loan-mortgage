@@ -21,7 +21,7 @@ public sealed class BasicLoanWorkflowService
     private readonly FoundryAgentProvider _agentProvider;
     private readonly LoanMortgageBasicWorkflowFactory _workflowFactory;
     private readonly InMemoryBasicWorkflowStore _store;
-    private readonly BlobDocumentStorageService _documentStorage;
+    private readonly LocalCaseDocumentService _documentStorage;
     private readonly DocumentTextExtractionService _documentTextExtractionService;
     private readonly CaseEvidenceIndexingService _caseEvidenceIndexingService;
     private readonly CaseWorkflowOptions _caseWorkflowOptions;
@@ -32,7 +32,7 @@ public sealed class BasicLoanWorkflowService
         FoundryAgentProvider agentProvider,
         LoanMortgageBasicWorkflowFactory workflowFactory,
         InMemoryBasicWorkflowStore store,
-        BlobDocumentStorageService documentStorage,
+        LocalCaseDocumentService documentStorage,
         DocumentTextExtractionService documentTextExtractionService,
         CaseEvidenceIndexingService caseEvidenceIndexingService,
         Microsoft.Extensions.Options.IOptions<CaseWorkflowOptions> caseWorkflowOptions,
@@ -71,7 +71,7 @@ public sealed class BasicLoanWorkflowService
         if (documents.Count == 0)
         {
             throw new KeyNotFoundException(
-                $"Case '{caseId}' was not found in Blob Storage or has no documents under prefix '{BlobDocumentStorageService.GetCasePrefix(caseId)}'.");
+                $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
         }
 
         IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService

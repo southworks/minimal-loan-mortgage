@@ -4,15 +4,10 @@ param nameSuffix string
 param apiIdentityName string
 param mcpIdentityName string
 param provisioningIdentityName string
-param storageAccountName string
 param foundryAccountName string
 param foundryProjectName string
 param searchServiceName string
 param documentIntelligenceAccountName string
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: storageAccountName
-}
 
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
   name: foundryAccountName
@@ -47,16 +42,6 @@ resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@
   name: provisioningIdentityName
   location: location
   tags: resourceTags
-}
-
-resource apiStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, apiIdentity.id, 'StorageBlobDataContributor', nameSuffix)
-  scope: storageAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
 }
 
 resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

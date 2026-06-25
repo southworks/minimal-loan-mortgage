@@ -46,7 +46,7 @@ public sealed class CaseDocumentResponse
 
     public required string ContentType { get; init; }
 
-    public required string BlobName { get; init; }
+    public required string SourcePath { get; init; }
 
     public required string Reference { get; init; }
 

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.43.8.12551",
-      "templateHash": "17915845556747838840"
+      "version": "0.44.1.10279",
+      "templateHash": "9495837411159386978"
     }
   },
   "parameters": {
@@ -124,13 +124,6 @@
         "description": "Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures."
       }
     },
-    "documentsContainerName": {
-      "type": "string",
-      "defaultValue": "loan-documents",
-      "metadata": {
-        "description": "Blob container for uploaded loan documents."
-      }
-    },
     "memoryStoreName": {
       "type": "string",
       "defaultValue": "loan-mortgage-agent-memory",
@@ -219,8 +212,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16942008251544056276"
+              "version": "0.44.1.10279",
+              "templateHash": "10968013431081480686"
             }
           },
           "parameters": {
@@ -239,10 +232,6 @@
             "deploymentSuffix": {
               "type": "string",
               "value": "[variables('deploymentSuffix')]"
-            },
-            "storageAccountName": {
-              "type": "string",
-              "value": "[toLower(take(replace(format('{0}st{1}', parameters('baseName'), variables('deploymentSuffix')), '-', ''), 24))]"
             },
             "foundryAccountName": {
               "type": "string",
@@ -320,12 +309,6 @@
           "resourceTags": {
             "value": "[variables('resourceTags')]"
           },
-          "storageAccountName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'naming'), '2025-04-01').outputs.storageAccountName.value]"
-          },
-          "documentsContainerName": {
-            "value": "[parameters('documentsContainerName')]"
-          },
           "searchServiceName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'naming'), '2025-04-01').outputs.searchServiceName.value]"
           },
@@ -342,8 +325,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "3176799622543714234"
+              "version": "0.44.1.10279",
+              "templateHash": "10031045735430986618"
             }
           },
           "parameters": {
@@ -352,12 +335,6 @@
             },
             "resourceTags": {
               "type": "object"
-            },
-            "storageAccountName": {
-              "type": "string"
-            },
-            "documentsContainerName": {
-              "type": "string"
             },
             "searchServiceName": {
               "type": "string"
@@ -370,41 +347,6 @@
             }
           },
           "resources": [
-            {
-              "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2023-05-01",
-              "name": "[parameters('storageAccountName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('resourceTags')]",
-              "sku": {
-                "name": "Standard_LRS"
-              },
-              "kind": "StorageV2",
-              "properties": {
-                "minimumTlsVersion": "TLS1_2",
-                "allowBlobPublicAccess": false,
-                "supportsHttpsTrafficOnly": true
-              }
-            },
-            {
-              "type": "Microsoft.Storage/storageAccounts/blobServices",
-              "apiVersion": "2023-05-01",
-              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
-              "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
-              ]
-            },
-            {
-              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2023-05-01",
-              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('documentsContainerName'))]",
-              "properties": {
-                "publicAccess": "None"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
-              ]
-            },
             {
               "type": "Microsoft.Search/searchServices",
               "apiVersion": "2023-11-01",
@@ -443,22 +385,6 @@
             }
           ],
           "outputs": {
-            "storageAccountName": {
-              "type": "string",
-              "value": "[parameters('storageAccountName')]"
-            },
-            "storageAccountId": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
-            },
-            "blobServiceUri": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
-            },
-            "documentsContainerName": {
-              "type": "string",
-              "value": "[parameters('documentsContainerName')]"
-            },
             "searchServiceName": {
               "type": "string",
               "value": "[parameters('searchServiceName')]"
@@ -558,8 +484,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "1390155245084502893"
+              "version": "0.44.1.10279",
+              "templateHash": "18370265717907235294"
             }
           },
           "parameters": {
@@ -800,8 +726,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "16113511165803003291"
+              "version": "0.44.1.10279",
+              "templateHash": "5666174999458719840"
             }
           },
           "parameters": {
@@ -896,9 +822,6 @@
           "provisioningIdentityName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'naming'), '2025-04-01').outputs.provisioningIdentityName.value]"
           },
-          "storageAccountName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.storageAccountName.value]"
-          },
           "foundryAccountName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.foundryAccountName.value]"
           },
@@ -918,8 +841,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "3142702326142445859"
+              "version": "0.44.1.10279",
+              "templateHash": "15001141438005798478"
             }
           },
           "parameters": {
@@ -939,9 +862,6 @@
               "type": "string"
             },
             "provisioningIdentityName": {
-              "type": "string"
-            },
-            "storageAccountName": {
               "type": "string"
             },
             "foundryAccountName": {
@@ -978,20 +898,6 @@
               "name": "[parameters('provisioningIdentityName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('resourceTags')]"
-            },
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'StorageBlobDataContributor', parameters('nameSuffix'))]",
-              "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
-                "principalType": "ServicePrincipal"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName'))]"
-              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
@@ -1217,12 +1123,6 @@
           "foundryProjectEndpoint": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.foundryProjectEndpoint.value]"
           },
-          "blobServiceUri": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.blobServiceUri.value]"
-          },
-          "documentsContainerName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.documentsContainerName.value]"
-          },
           "searchServiceEndpoint": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.searchServiceEndpoint.value]"
           },
@@ -1254,8 +1154,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "12135769459938612449"
+              "version": "0.44.1.10279",
+              "templateHash": "8255871781013514801"
             }
           },
           "parameters": {
@@ -1299,12 +1199,6 @@
               "type": "string"
             },
             "foundryProjectEndpoint": {
-              "type": "string"
-            },
-            "blobServiceUri": {
-              "type": "string"
-            },
-            "documentsContainerName": {
               "type": "string"
             },
             "searchServiceEndpoint": {
@@ -1465,10 +1359,6 @@
                           "value": "[parameters('foundryProjectEndpoint')]"
                         },
                         {
-                          "name": "AZURE_STORAGE_BLOB_SERVICE_URI",
-                          "value": "[parameters('blobServiceUri')]"
-                        },
-                        {
                           "name": "AzureSearch__Endpoint",
                           "value": "[parameters('searchServiceEndpoint')]"
                         },
@@ -1485,8 +1375,12 @@
                           "value": "1024"
                         },
                         {
-                          "name": "AzureStorage__ContainerName",
-                          "value": "[parameters('documentsContainerName')]"
+                          "name": "Dataset__RootPath",
+                          "value": "/app/dataset-seed"
+                        },
+                        {
+                          "name": "Dataset__PolicyFilePath",
+                          "value": "/app/dataset-seed/08_policy_rag/general_policy.txt"
                         },
                         {
                           "name": "AzureFoundryModels__EmbedDeploymentName",
@@ -1728,8 +1622,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "6508396202426710027"
+              "version": "0.44.1.10279",
+              "templateHash": "1835220388181386057"
             }
           },
           "parameters": {
@@ -1955,8 +1849,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "10133165155295396675"
+              "version": "0.44.1.10279",
+              "templateHash": "17964613069023083578"
             }
           },
           "parameters": {
@@ -2056,7 +1950,7 @@
                 "retentionInterval": "PT1H",
                 "cleanupPreference": "OnSuccess",
                 "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "      set -euo pipefail\n      az extension add --name containerapp --upgrade 2>/dev/null || true\n      echo \"Waiting for role assignments and Foundry deployments to settle...\"\n      sleep 180\n      echo \"Starting policy seed job...\"\n      EXECUTION=$(az containerapp job start --name \"${POLICY_SEED_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Policy seed job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${POLICY_SEED_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Policy seed job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Policy seeding completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Policy seed job failed. Fetching recent job logs...\"\n          az containerapp job logs show \\\n            --name \"${POLICY_SEED_JOB_NAME}\" \\\n            --resource-group \"${RESOURCE_GROUP}\" \\\n            --execution \"${EXECUTION}\" \\\n            --container policy-seed \\\n            --tail 50 || true\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for policy seed job.\"\n      exit 1\n    ",
+                "scriptContent": "      set -euo pipefail\r\n      az extension add --name containerapp --upgrade 2>/dev/null || true\r\n      echo \"Waiting for role assignments and Foundry deployments to settle...\"\r\n      sleep 180\r\n      echo \"Starting policy seed job...\"\r\n      EXECUTION=$(az containerapp job start --name \"${POLICY_SEED_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\r\n      echo \"Policy seed job execution: ${EXECUTION}\"\r\n\r\n      for i in $(seq 1 120); do\r\n        STATUS=$(az containerapp job execution show \\\r\n          --name \"${POLICY_SEED_JOB_NAME}\" \\\r\n          --resource-group \"${RESOURCE_GROUP}\" \\\r\n          --job-execution-name \"${EXECUTION}\" \\\r\n          --query properties.status -o tsv)\r\n\r\n        echo \"Policy seed job status: ${STATUS}\"\r\n\r\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\r\n          echo \"Policy seeding completed successfully.\"\r\n          exit 0\r\n        fi\r\n\r\n        if [ \"${STATUS}\" = \"Failed\" ]; then\r\n          echo \"Policy seed job failed. Fetching recent job logs...\"\r\n          az containerapp job logs show \\\r\n            --name \"${POLICY_SEED_JOB_NAME}\" \\\r\n            --resource-group \"${RESOURCE_GROUP}\" \\\r\n            --execution \"${EXECUTION}\" \\\r\n            --container policy-seed \\\r\n            --tail 50 || true\r\n          exit 1\r\n        fi\r\n\r\n        sleep 15\r\n      done\r\n\r\n      echo \"Timed out waiting for policy seed job.\"\r\n      exit 1\r\n    ",
                 "environmentVariables": [
                   {
                     "name": "RESOURCE_GROUP",
@@ -2092,7 +1986,7 @@
                 "retentionInterval": "PT1H",
                 "cleanupPreference": "OnSuccess",
                 "forceUpdateTag": "[parameters('deploymentSuffix')]",
-                "scriptContent": "      set -euo pipefail\n      az extension add --name containerapp --upgrade 2>/dev/null || true\n      echo \"Waiting briefly for role assignment propagation...\"\n      sleep 60\n      echo \"Starting agent provisioning job...\"\n      EXECUTION=$(az containerapp job start --name \"${PROVISIONING_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\n      echo \"Job execution: ${EXECUTION}\"\n\n      for i in $(seq 1 120); do\n        STATUS=$(az containerapp job execution show \\\n          --name \"${PROVISIONING_JOB_NAME}\" \\\n          --resource-group \"${RESOURCE_GROUP}\" \\\n          --job-execution-name \"${EXECUTION}\" \\\n          --query properties.status -o tsv)\n\n        echo \"Provisioning job status: ${STATUS}\"\n\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\n          echo \"Agent provisioning completed successfully.\"\n          exit 0\n        fi\n\n        if [ \"${STATUS}\" = \"Failed\" ]; then\n          echo \"Agent provisioning job failed.\"\n          az containerapp job logs show \\\n            --name \"${PROVISIONING_JOB_NAME}\" \\\n            --resource-group \"${RESOURCE_GROUP}\" \\\n            --execution \"${EXECUTION}\" \\\n            --container agent-provisioning \\\n            --tail 50 || true\n          exit 1\n        fi\n\n        sleep 15\n      done\n\n      echo \"Timed out waiting for agent provisioning job.\"\n      exit 1\n    ",
+                "scriptContent": "      set -euo pipefail\r\n      az extension add --name containerapp --upgrade 2>/dev/null || true\r\n      echo \"Waiting briefly for role assignment propagation...\"\r\n      sleep 60\r\n      echo \"Starting agent provisioning job...\"\r\n      EXECUTION=$(az containerapp job start --name \"${PROVISIONING_JOB_NAME}\" --resource-group \"${RESOURCE_GROUP}\" --query name -o tsv)\r\n      echo \"Job execution: ${EXECUTION}\"\r\n\r\n      for i in $(seq 1 120); do\r\n        STATUS=$(az containerapp job execution show \\\r\n          --name \"${PROVISIONING_JOB_NAME}\" \\\r\n          --resource-group \"${RESOURCE_GROUP}\" \\\r\n          --job-execution-name \"${EXECUTION}\" \\\r\n          --query properties.status -o tsv)\r\n\r\n        echo \"Provisioning job status: ${STATUS}\"\r\n\r\n        if [ \"${STATUS}\" = \"Succeeded\" ]; then\r\n          echo \"Agent provisioning completed successfully.\"\r\n          exit 0\r\n        fi\r\n\r\n        if [ \"${STATUS}\" = \"Failed\" ]; then\r\n          echo \"Agent provisioning job failed.\"\r\n          az containerapp job logs show \\\r\n            --name \"${PROVISIONING_JOB_NAME}\" \\\r\n            --resource-group \"${RESOURCE_GROUP}\" \\\r\n            --execution \"${EXECUTION}\" \\\r\n            --container agent-provisioning \\\r\n            --tail 50 || true\r\n          exit 1\r\n        fi\r\n\r\n        sleep 15\r\n      done\r\n\r\n      echo \"Timed out waiting for agent provisioning job.\"\r\n      exit 1\r\n    ",
                 "environmentVariables": [
                   {
                     "name": "RESOURCE_GROUP",
@@ -2121,18 +2015,6 @@
     }
   ],
   "outputs": {
-    "storageAccountName": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.storageAccountName.value]"
-    },
-    "blobServiceUri": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.blobServiceUri.value]"
-    },
-    "documentsContainerName": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'data-services'), '2025-04-01').outputs.documentsContainerName.value]"
-    },
     "foundryAccountName": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.foundryAccountName.value]"
