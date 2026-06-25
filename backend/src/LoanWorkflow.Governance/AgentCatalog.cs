@@ -50,21 +50,36 @@ public static class AgentCatalog
         AgentRole.LoanSetup
     ];
 
-    public static bool TryResolveRole(string? agentName, out AgentRole role)
+    public static bool TryResolveRoleFromMcpPath(string? path, out AgentRole role)
     {
         role = default;
-        if (string.IsNullOrWhiteSpace(agentName))
+        if (string.IsNullOrWhiteSpace(path))
         {
             return false;
         }
 
-        foreach (AgentRole candidate in AllRoles)
+        if (path.Contains("/document-retrieval/", StringComparison.OrdinalIgnoreCase))
         {
-            if (string.Equals(agentName, ToFolderName(candidate), StringComparison.OrdinalIgnoreCase))
-            {
-                role = candidate;
-                return true;
-            }
+            role = AgentRole.DocumentProcessing;
+            return true;
+        }
+
+        if (path.Contains("/underwriting-rules/", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.Underwriting;
+            return true;
+        }
+
+        if (path.Contains("/policy-knowledge/", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.ResponsibleAi;
+            return true;
+        }
+
+        if (path.Contains("/loan-setup/", StringComparison.OrdinalIgnoreCase))
+        {
+            role = AgentRole.LoanSetup;
+            return true;
         }
 
         return false;

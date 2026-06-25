@@ -19,21 +19,18 @@ public sealed class McpAgentRoleMiddleware
             .GetRequiredService<IOptions<GovernanceSettings>>()
             .Value;
 
-        if (!settings.EnableMcpToolGovernance
-            || !settings.RequireMcpAgentRoleHeader
-            || !IsMcpRequest(context.Request.Path))
+        if (!settings.EnableMcpToolGovernance || !IsMcpRequest(context.Request.Path))
         {
             await _next(context).ConfigureAwait(false);
             return;
         }
 
-        string? agentRoleHeader = context.Request.Headers["X-Agent-Role"].FirstOrDefault();
-        if (!AgentCatalog.TryResolveRole(agentRoleHeader, out _))
+        if (!AgentCatalog.TryResolveRoleFromMcpPath(context.Request.Path.Value, out _))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(
-                    JsonSerializer.Serialize(new { error = "A valid X-Agent-Role header is required for MCP access." }),
+                    JsonSerializer.Serialize(new { error = "Unable to resolve agent role from MCP route." }),
                     context.RequestAborted)
                 .ConfigureAwait(false);
             return;

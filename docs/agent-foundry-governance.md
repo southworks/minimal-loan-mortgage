@@ -36,7 +36,7 @@ At runtime, `LoanWorkflow.Governance` copies these files to `policies/{agent-nam
 
 ## MCP-layer governance
 
-1. **`McpAgentRoleMiddleware`** — requires `X-Agent-Role` header (e.g. `document-processing-agent`) on MCP routes when `Governance:RequireMcpAgentRoleHeader` is `true`.
+1. **`McpAgentRoleMiddleware`** — resolves the caller agent from the MCP route (`/document-retrieval/mcp` → `document-processing-agent`, etc.). Each Foundry agent connects to a dedicated MCP endpoint.
 2. **`GovernedMcpServerTool`** — wraps each MCP tool; delegates to `McpToolGovernanceCoordinator`.
 3. **`McpToolGovernanceCoordinator`** — evaluates `governance.yaml`, applies rogue detection (keyed by role + `caseId` + `executionId` from tool args), writes audit records, and logs blocked or rogue-detected calls at warning level.
 
@@ -79,12 +79,11 @@ Defaults: `windowSize: 10`, `triggerCount: 5`.
 ```json
 "Governance": {
   "EnableMcpToolGovernance": true,
-  "RequireMcpAgentRoleHeader": true,
   "AgentAuditStoreDirectory": "data/agent-governance-audit"
 }
 ```
 
-Set `EnableMcpToolGovernance: false` or `RequireMcpAgentRoleHeader: false` for local MCP testing without agent headers.
+Set `EnableMcpToolGovernance: false` to disable policy enforcement on the MCP server.
 
 Mount a persistent volume for `AgentAuditStoreDirectory` in production.
 

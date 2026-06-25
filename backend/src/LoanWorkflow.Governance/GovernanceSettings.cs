@@ -6,7 +6,5 @@ public sealed class GovernanceSettings
 
     public bool EnableMcpToolGovernance { get; set; } = true;
 
-    public bool RequireMcpAgentRoleHeader { get; set; } = true;
-
     public string AgentAuditStoreDirectory { get; set; } = "data/agent-governance-audit";
 }

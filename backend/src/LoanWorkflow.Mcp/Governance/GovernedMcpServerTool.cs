@@ -35,10 +35,10 @@ public sealed class GovernedMcpServerTool : DelegatingMcpServerTool
             return await base.InvokeAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
-        string? agentRoleHeader = _httpContextAccessor.HttpContext?.Request.Headers["X-Agent-Role"].FirstOrDefault();
-        if (!AgentCatalog.TryResolveRole(agentRoleHeader, out AgentRole role))
+        string? mcpPath = _httpContextAccessor.HttpContext?.Request.Path.Value;
+        if (!AgentCatalog.TryResolveRoleFromMcpPath(mcpPath, out AgentRole role))
         {
-            return CreateBlockedResult("A valid X-Agent-Role header is required for MCP access.");
+            return CreateBlockedResult("Unable to resolve agent role from MCP route.");
         }
 
         string toolName = request.Params?.Name ?? ProtocolTool.Name;
