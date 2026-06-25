@@ -20,27 +20,6 @@ builder.Services.Configure<AzureFoundryOptions>(options =>
     }
 });
 
-builder.Services.Configure<AzureBlobStorageOptions>(options =>
-{
-    builder.Configuration.GetSection(AzureBlobStorageOptions.SectionName).Bind(options);
-
-    string? connectionString = builder.Configuration["AZURE_STORAGE_CONNECTION_STRING"]
-        ?? Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
-
-    if (!string.IsNullOrWhiteSpace(connectionString))
-    {
-        options.ConnectionString = connectionString;
-    }
-
-    string? blobServiceUri = builder.Configuration["AZURE_STORAGE_BLOB_SERVICE_URI"]
-        ?? Environment.GetEnvironmentVariable("AZURE_STORAGE_BLOB_SERVICE_URI");
-
-    if (!string.IsNullOrWhiteSpace(blobServiceUri))
-    {
-        options.BlobServiceUri = blobServiceUri;
-    }
-});
-
 builder.Services.Configure<DocumentExtractionOptions>(
     builder.Configuration.GetSection(DocumentExtractionOptions.SectionName));
 builder.Services.Configure<CaseWorkflowOptions>(
@@ -50,7 +29,7 @@ StartupConfigurationValidator.Validate(builder.Configuration);
 
 builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageBasicWorkflowFactory>();
-builder.Services.AddSingleton<BlobDocumentStorageService>();
+builder.Services.AddSingleton<LocalCaseDocumentService>();
 builder.Services.AddSingleton<DocumentTextExtractionService>();
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
 builder.Services.AddSingleton<CaseEvidenceIndexingService>();

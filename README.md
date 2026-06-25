@@ -39,7 +39,7 @@ Without those values the deployment will fail at the Fabric seed step (the last 
 
 When you deploy:
 
-1. Azure provisions Foundry, model deployments, Storage, Search, and Container Apps.
+1. Azure provisions Foundry, model deployments, Search, and Container Apps.
 2. The API and MCP hosts start as Azure Container Apps. The MCP runs as the UAMI created by the prerequisite step.
 3. A Container Apps Job seeds the policy index into AI Search.
 4. A deployment script starts the agent provisioning Container Apps Job.
@@ -59,9 +59,9 @@ Make the GHCR packages public after the first workflow run so Azure Container Ap
 
 ### After deployment
 
-Open the `apiUrl` output from the deployment and use the API endpoints below.
+Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in the bundled `dataset-seed/00_raw/txt/{caseId}/` assets inside the API container.
 
-Case data is read from the Fabric Lakehouse created during deployment. The deployment outputs `fabricWorkspaceName` and `fabricLakehouseName`. The MCP container app reads through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in that lakehouse. Use the Fabric portal to inspect or upload additional cases.
+The MCP reads supporting case data from the Fabric Lakehouse created during deployment. The deployment outputs `fabricWorkspaceName` and `fabricLakehouseName`. The MCP container app reads through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in that lakehouse. Use the Fabric portal to inspect or upload additional cases.
 
 To skip the data upload (e.g., while you repair the workspace or the UAMI role assignment), redeploy `infra/main.bicep` with `enableFabricSeed=false`. The lakehouse is still provisioned (empty but functional). The MCP adapter handles an empty lakehouse at runtime.
 
@@ -71,7 +71,7 @@ To skip the data upload (e.g., while you repair the workspace or the UAMI role a
 
 The API orchestrates the workflow. Foundry prompt agents execute each step and call the public MCP endpoints exposed by [backend/src/LoanWorkflow.Mcp](backend/src/LoanWorkflow.Mcp/README.md).
 
-Evidence indexing is split by source. Uploaded Blob documents are indexed by the API before the agent workflow starts. During agent execution, each prompt agent connects directly to its dedicated MCP endpoint. Policy knowledge is still indexed by the deploy-time seed job.
+Evidence indexing is split by source. Case documents from the bundled dataset assets are indexed by the API before the agent workflow starts. During agent execution, each prompt agent connects directly to its dedicated MCP endpoint. Policy knowledge is still indexed by the deploy-time seed job.
 
 ## Demo limitations
 
@@ -80,12 +80,12 @@ This is intentionally a simple demo:
 - Workflow executions are kept in memory only and are lost if the API restarts.
 - The API runs as a single Container App replica.
 - MCP auth is open for the demo host. The API uses the same MCP services internally to prepare case evidence.
-- Case documents live in a Microsoft Fabric Lakehouse populated at deploy time. The MCP serves them through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in the lakehouse named by the `fabricLakehouseName` deployment output. The API does not expose create-case or document-upload endpoints.
+- Case documents for the API workflow are read from the bundled `dataset-seed/00_raw/txt/{caseId}/` assets inside the API container. Supporting case context for MCP tools lives in a Microsoft Fabric Lakehouse populated at deploy time through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in the lakehouse named by the `fabricLakehouseName` deployment output. The API does not expose create-case or document-upload endpoints.
 
 ## API Endpoints
 
 - `GET /health` — health probe
-- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start` — start the basic Agent Framework workflow for a case whose documents are already in Blob Storage
+- `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start` — start the basic Agent Framework workflow for a seeded demo case
 - `GET /api/loan-mortgage/executions/{executionId}/basic/status` — poll workflow status and agent outputs
 - `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/executions/{executionId}/resume` — submit a human approval decision and resume the workflow
 
@@ -113,7 +113,7 @@ Possible `status` values: `Pending`, `Running`, `AwaitingHumanApproval`, `Comple
 
 ## UI Integration Pattern
 
-1. Ensure the case documents are available in Blob Storage at `cases/{caseId}/`.
+1. Pick a seeded demo case such as `APP-001`, `APP-017`, or `APP-015`.
 2. Start the workflow with `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start`.
 3. Save the returned `executionId`.
 4. Poll `GET /api/loan-mortgage/executions/{executionId}/basic/status`.
@@ -153,7 +153,7 @@ Local development is optional and separate from the Azure deployment path.
 - .NET 9 SDK
 - Azure CLI login or another credential available to `DefaultAzureCredential`
 - An Azure AI Foundry project with the four demo prompt agents already deployed
-- Azure Storage account with a blob container for document uploads
+- Local `dataset-seed` assets for case documents (included in the repo and API container image)
 
 ### Run locally
 
@@ -203,7 +203,6 @@ The legacy hosted-agent sample under [hosted-agents](hosted-agents) is kept for 
 
 ```powershell
 dotnet add package Azure.Identity
-dotnet add package Azure.Storage.Blobs
 dotnet add package Microsoft.Agents.AI.AzureAI --prerelease
 dotnet add package Microsoft.Agents.AI.Workflows --prerelease
 ```

@@ -49,9 +49,6 @@ param rerankModelVersion string = '1'
 @description('Capacity units for the Cohere rerank deployment. Increase this for faster retrieval reranking and fewer throttling failures.')
 param rerankDeploymentCapacity int = 5
 
-@description('Blob container for uploaded loan documents.')
-param documentsContainerName string = 'loan-documents'
-
 @description('Agent memory store name.')
 param memoryStoreName string = 'loan-mortgage-agent-memory'
 
@@ -118,8 +115,6 @@ module dataServices 'modules/data-services.bicep' = {
   params: {
     location: location
     resourceTags: resourceTags
-    storageAccountName: naming.outputs.storageAccountName
-    documentsContainerName: documentsContainerName
     searchServiceName: naming.outputs.searchServiceName
     searchSku: searchSku
     documentIntelligenceAccountName: naming.outputs.documentIntelligenceAccountName
@@ -167,7 +162,6 @@ module security 'modules/security.bicep' = {
     nameSuffix: nameSuffix
     apiIdentityName: naming.outputs.apiIdentityName
     provisioningIdentityName: naming.outputs.provisioningIdentityName
-    storageAccountName: dataServices.outputs.storageAccountName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
     searchServiceName: dataServices.outputs.searchServiceName
@@ -205,8 +199,6 @@ module containerApps 'modules/container-apps.bicep' = {
     mcpIdentityId: security.outputs.mcpIdentityId
     mcpIdentityClientId: security.outputs.mcpIdentityClientId
     foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
-    blobServiceUri: dataServices.outputs.blobServiceUri
-    documentsContainerName: dataServices.outputs.documentsContainerName
     searchServiceEndpoint: dataServices.outputs.searchServiceEndpoint
     documentIntelligenceEndpoint: dataServices.outputs.documentIntelligenceEndpoint
     embedDeploymentName: foundry.outputs.embedDeploymentName
@@ -269,9 +261,6 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
   ]
 }
 
-output storageAccountName string = dataServices.outputs.storageAccountName
-output blobServiceUri string = dataServices.outputs.blobServiceUri
-output documentsContainerName string = dataServices.outputs.documentsContainerName
 output foundryAccountName string = foundry.outputs.foundryAccountName
 output foundryProjectName string = foundry.outputs.foundryProjectName
 output foundryProjectEndpoint string = foundry.outputs.foundryProjectEndpoint
