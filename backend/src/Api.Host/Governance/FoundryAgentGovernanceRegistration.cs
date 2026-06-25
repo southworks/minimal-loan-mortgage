@@ -24,7 +24,6 @@ public static class FoundryAgentGovernanceRegistration
             GovernanceSettings options = sp.GetRequiredService<IOptions<GovernanceSettings>>().Value;
             IAgentGovernanceAuditStore auditStore = sp.GetRequiredService<IAgentGovernanceAuditStore>();
             var bootstrap = new FoundryAgentGovernanceBootstrap(
-                enableFunctionInvocationLogging: options.LogFunctionInvocations,
                 loggerFactory: sp.GetRequiredService<ILoggerFactory>());
 
             foreach (AgentRole role in AgentCatalog.AllRoles)

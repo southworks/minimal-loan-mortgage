@@ -24,7 +24,6 @@ public static class McpGovernanceRegistration
         {
             GovernanceSettings options = sp.GetRequiredService<IOptions<GovernanceSettings>>().Value;
             return new FoundryAgentGovernanceBootstrap(
-                enableFunctionInvocationLogging: options.LogFunctionInvocations,
                 loggerFactory: sp.GetRequiredService<ILoggerFactory>());
         });
 

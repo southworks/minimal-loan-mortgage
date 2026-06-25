@@ -49,16 +49,6 @@ public sealed class McpToolGovernanceCoordinator
         string? executionId = TryGetStringArgument(arguments, "executionId");
         Dictionary<string, object> evaluationArgs = ConvertArguments(arguments);
 
-        if (_options.LogFunctionInvocations)
-        {
-            _logger?.LogInformation(
-                "MCP governance tool invocation for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}",
-                role,
-                toolName,
-                caseId,
-                executionId);
-        }
-
         GovernanceKernel kernel = _bootstrap.GetKernel(role);
         ToolCallResult policyResult = kernel.EvaluateToolCall(agentId, toolName, evaluationArgs);
         if (!policyResult.Allowed)

@@ -15,7 +15,7 @@ This document describes how the loan and mortgage demo applies the [Agent Govern
 | **MCP server (primary)** | Remote Foundry→MCP tool calls | `GovernedMcpServerTool` + `McpToolGovernanceCoordinator` in `LoanWorkflow.Mcp` |
 | **API agent wrap (secondary)** | Local MAF function invocations on wrapped `AIAgent` | `FoundryAgentGovernanceBootstrap.WrapAgent` in `Api.Host` |
 
-Phase 0 confirmed hosted MCP calls bypass the API wrap. **MCP-layer governance is the effective enforcement point** for Azure Foundry prompt agents with remote MCP tools.
+Validation confirmed remote Foundry→MCP tool calls bypass the API wrap. **MCP-layer governance is the effective enforcement point** for Azure Foundry prompt agents with remote MCP tools.
 
 ## Co-located policy layout
 
@@ -45,11 +45,7 @@ Remote Foundry agents call MCP over HTTP. The MCP server enforces governance **b
 
 1. **`McpAgentRoleMiddleware`** — requires `X-Agent-Role` header (e.g. `document-processing-agent`) on MCP routes when `Governance:RequireMcpAgentRoleHeader` is `true`.
 2. **`GovernedMcpServerTool`** — wraps each MCP tool; delegates to `McpToolGovernanceCoordinator`.
-3. **`McpToolGovernanceCoordinator`** — evaluates `governance.yaml`, applies rogue detection (keyed by role + `caseId` + `executionId` from tool args), writes audit records, and logs:
-
-```text
-MCP governance tool invocation for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}
-```
+3. **`McpToolGovernanceCoordinator`** — evaluates `governance.yaml`, applies rogue detection (keyed by role + `caseId` + `executionId` from tool args), writes audit records, and logs blocked or rogue-detected calls at warning level.
 
 Blocked calls return an MCP error result; denied tools never reach the handler.
 
@@ -63,22 +59,9 @@ Blocked calls return an MCP error result; denied tools never reach the handler.
 
 This avoids double-wrapping and keeps audit correlation scoped to each execution.
 
-## Phase 0 spike — remote MCP interception
+## Remote MCP vs API wrap
 
-**Question:** Do remote Foundry→MCP tool calls flow through MAF `InvokeFunctionAsync` on a wrapped `AIAgent`?
-
-When `Governance:LogFunctionInvocations` is `true` (default), the API logs:
-
-```text
-Phase0 governance function middleware invoked for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}
-```
-
-Run one workflow stage against dev Foundry and confirm whether `search_case_evidence`, `enrich_customer_context`, or other MCP tools appear in these logs.
-
-| Spike result | Path forward |
-|--------------|--------------|
-| Middleware intercepts remote MCP tools | Tool-only YAML enforcement is effective |
-| Middleware does **not** intercept | Document the gap; YAML governs only visible hooks; consider MCP-layer governance or local tool registration |
+Remote Foundry→MCP tool calls do **not** flow through MAF `InvokeFunctionAsync` on the wrapped `AIAgent`. The API wrap still governs local MAF function invocations during workflow orchestration.
 
 ## Tool deny matrix
 
@@ -97,7 +80,7 @@ Run one workflow stage against dev Foundry and confirm whether `search_case_evid
 
 **D** = explicit deny rule in `governance.yaml`; **A** = allowed via `default_action: allow`.
 
-`AgentToolBoundaries` in `CohereLoanAndMortgage.Foundry.Governance` is the single source of truth for denied tools in code and tests.
+Per-agent deny rules live in `agent-provisioning/agents/*/governance.yaml`.
 
 ## Rogue risky tools
 
@@ -119,10 +102,7 @@ Defaults: `windowSize: 10`, `triggerCount: 5`.
   "EnableFoundryAgentGovernance": true,
   "EnableMcpToolGovernance": true,
   "RequireMcpAgentRoleHeader": true,
-  "AgentAuditStoreDirectory": "data/agent-governance-audit",
-  "RogueDetectionWindowSize": 10,
-  "RogueDetectionTriggerCount": 5,
-  "LogFunctionInvocations": true
+  "AgentAuditStoreDirectory": "data/agent-governance-audit"
 }
 ```
 
@@ -134,7 +114,6 @@ Mount a persistent volume for `AgentAuditStoreDirectory` in production.
 
 1. Run a workflow execution.
 2. Inspect `data/agent-governance-audit/agent-governance-audit.jsonl`.
-3. From code or tests, call `IAgentGovernanceAuditStore.VerifyIntegrity()` — returns `false` if any entry was tampered with.
 
 ## Provisioning traceability
 

@@ -10,18 +10,15 @@ namespace CohereLoanAndMortgage.Foundry.Governance;
 public sealed class FoundryAgentGovernanceBootstrap
 {
     private readonly string? _policiesBaseDirectory;
-    private readonly bool _enableFunctionInvocationLogging;
     private readonly ILoggerFactory? _loggerFactory;
     private readonly Dictionary<AgentRole, GovernanceKernel> _kernels = new();
     private readonly Dictionary<AgentRole, AgentFrameworkGovernanceAdapter> _adapters = new();
     private readonly Dictionary<AgentRole, RoguePolicyConfig> _rogueConfigs = new();
 
     public FoundryAgentGovernanceBootstrap(
-        bool enableFunctionInvocationLogging = true,
         string? policiesBaseDirectory = null,
         ILoggerFactory? loggerFactory = null)
     {
-        _enableFunctionInvocationLogging = enableFunctionInvocationLogging;
         _policiesBaseDirectory = policiesBaseDirectory;
         _loggerFactory = loggerFactory;
     }
@@ -87,7 +84,6 @@ public sealed class FoundryAgentGovernanceBootstrap
         RoguePolicyConfig rogueConfig = GetRogueConfig(role);
         ILogger<RogueToolCallMiddleware>? rogueLogger =
             _loggerFactory?.CreateLogger<RogueToolCallMiddleware>();
-        ILogger? invocationLogger = _loggerFactory?.CreateLogger(typeof(FoundryAgentGovernanceFactory));
 
         var rogueMiddleware = new RogueToolCallMiddleware(rogueConfig, rogueLogger);
 
@@ -95,19 +91,7 @@ public sealed class FoundryAgentGovernanceBootstrap
             .AsBuilder()
             .WithGovernance(adapter)
             .Use((innerAgent, context, next, cancellationToken) =>
-            {
-                if (_enableFunctionInvocationLogging)
-                {
-                    invocationLogger?.LogInformation(
-                        "Governance function middleware invoked for {AgentRole}: tool_name={ToolName} caseId={CaseId} executionId={ExecutionId}",
-                        role,
-                        context.Function.Name,
-                        GovernanceRunContext.CurrentValue?.CaseId,
-                        GovernanceRunContext.CurrentValue?.ExecutionId);
-                }
-
-                return rogueMiddleware.InvokeAsync(innerAgent, context, next, cancellationToken);
-            })
+                rogueMiddleware.InvokeAsync(innerAgent, context, next, cancellationToken))
             .Build();
     }
 }
