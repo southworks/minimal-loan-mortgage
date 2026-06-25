@@ -43,8 +43,9 @@ When you deploy:
 2. The API and MCP hosts start as Azure Container Apps. The MCP runs as the UAMI created by the prerequisite step.
 3. A Container Apps Job seeds the policy index into AI Search.
 4. A deployment script starts the agent provisioning Container Apps Job.
-5. A final deployment script creates a Fabric Lakehouse in the supplied workspace and uploads the bundled `dataset-seed/` to OneLake: raw documents go to `Files/raw/`, structured JSONs go to `Files/bronze/`, and policy RAG goes to `Files/policy_rag/`. No structured tables are created — the MCP reads directly from the uploaded files.
-6. The deployment outputs the live API URL plus the Fabric workspace and lakehouse names.
+5. A deployment script provisions the Fabric Lakehouse in the supplied workspace (always runs). The deployment waits for this step before starting the MCP container.
+6. A deployment script seeds the lakehouse with case data from `dataset-seed/` (runs only when `enableFabricSeed=true`). Raw documents go to `Files/raw/`, structured JSONs to `Files/bronze/`, and policy RAG to `Files/policy_rag/`. This step runs as a postscript — it does not block the MCP or other infrastructure.
+7. The deployment outputs the live API and frontend URLs, Fabric workspace and lakehouse names, and SQL endpoint.
 
 You do **not** need to run a separate agent CLI after deployment.
 
@@ -62,7 +63,7 @@ Open the `apiUrl` output from the deployment and use the API endpoints below.
 
 Case data is read from the Fabric Lakehouse created during deployment. The deployment outputs `fabricWorkspaceName` and `fabricLakehouseName`. The MCP container app reads through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policy_rag/` in that lakehouse. Use the Fabric portal to inspect or upload additional cases.
 
-To temporarily bypass the Fabric step (e.g. while you repair the workspace or the UAMI role assignment), redeploy `infra/main.bicep` with `enableFabricSeed=false`. The MCP will not be able to read case data while the step is off.
+To skip the data upload (e.g., while you repair the workspace or the UAMI role assignment), redeploy `infra/main.bicep` with `enableFabricSeed=false`. The lakehouse is still provisioned (empty but functional). The MCP adapter handles an empty lakehouse at runtime.
 
 ## Architecture
 
