@@ -6,7 +6,7 @@
       "value": "cohereloan"
     },
     "modelDeploymentName": {
-      "value": "cohere-command-a"
+      "value": "cohere-command-a-plus"
     },
     "modelDeploymentSkuName": {
       "value": "GlobalStandard"
@@ -15,7 +15,7 @@
       "value": 10
     },
     "cohereModelName": {
-      "value": "cohere-command-a"
+      "value": "Cohere-command-a-plus-05-2026"
     },
     "cohereModelVersion": {
       "value": "1"
