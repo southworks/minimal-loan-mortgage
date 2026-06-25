@@ -56,9 +56,6 @@
     "fabricUamiResourceId": {
       "value": ""
     },
-    "fabricUamiClientId": {
-      "value": ""
-    },
     "fabricRepositoryArchiveUrl": {
       "value": "https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip"
     }
