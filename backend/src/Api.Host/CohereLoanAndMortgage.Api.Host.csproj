@@ -17,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CohereLoanAndMortgage.Foundry.Governance\CohereLoanAndMortgage.Foundry.Governance.csproj" />
     <ProjectReference Include="..\LoanWorkflow.Mcp\LoanWorkflow.Mcp.csproj" AdditionalProperties="LoanWorkflowMcpCopyAppSettingsToPublish=Never" />
   </ItemGroup>
 

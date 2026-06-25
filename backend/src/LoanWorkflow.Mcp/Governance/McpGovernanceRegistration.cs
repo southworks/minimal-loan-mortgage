@@ -20,12 +20,7 @@ public static class McpGovernanceRegistration
             return new FileAgentGovernanceAuditStore(options.AgentAuditStoreDirectory);
         });
 
-        services.AddSingleton<FoundryAgentGovernanceBootstrap>(sp =>
-        {
-            GovernanceSettings options = sp.GetRequiredService<IOptions<GovernanceSettings>>().Value;
-            return new FoundryAgentGovernanceBootstrap(
-                loggerFactory: sp.GetRequiredService<ILoggerFactory>());
-        });
+        services.AddSingleton<FoundryAgentGovernanceBootstrap>(_ => new FoundryAgentGovernanceBootstrap());
 
         services.AddSingleton<McpToolGovernanceCoordinator>();
 

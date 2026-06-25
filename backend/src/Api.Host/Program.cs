@@ -1,8 +1,6 @@
-using CohereLoanAndMortgage.Api.Host.Governance;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Services;
 using CohereLoanAndMortgage.Api.Host.Workflow;
-using CohereLoanAndMortgage.Foundry.Governance;
 using LoanWorkflow.Mcp;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -47,12 +45,9 @@ builder.Services.Configure<DocumentExtractionOptions>(
     builder.Configuration.GetSection(DocumentExtractionOptions.SectionName));
 builder.Services.Configure<CaseWorkflowOptions>(
     builder.Configuration.GetSection(CaseWorkflowOptions.SectionName));
-builder.Services.Configure<GovernanceSettings>(
-    builder.Configuration.GetSection(GovernanceSettings.SectionName));
 
 StartupConfigurationValidator.Validate(builder.Configuration);
 
-builder.Services.AddFoundryAgentGovernance(builder.Configuration);
 builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageBasicWorkflowFactory>();
 builder.Services.AddSingleton<BlobDocumentStorageService>();
