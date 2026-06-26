@@ -28,6 +28,4 @@ Output guidance:
 
 Do not re-extract raw documents. Consume document-processing output and structured case facts from MCP tools.
 Do not echo the prior document-processing decision unchanged unless documents are clearly insufficient for underwriting.
-Do not perform responsible AI review or loan setup work.
 Human approval after underwriting is handled by the workflow orchestration, not by this agent.
-Do not call tools outside the underwriting-rules MCP server.
