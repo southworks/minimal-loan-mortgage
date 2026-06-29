@@ -58,8 +58,7 @@ internal static class HostedAgentOpenTelemetryExtensions
             {
                 metrics
                     .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddMeter(HostedAgentTelemetry.MeterName);
+                    .AddHttpClientInstrumentation();
 
                 if (hasAzureMonitorExporter)
                 {

@@ -79,11 +79,8 @@ public sealed class BasicLoanWorkflowService
                 throw new InvalidOperationException("ExecutionId is required.");
             }
 
-            var loadDocumentsStopwatch = Stopwatch.StartNew();
             IReadOnlyList<LoadedCaseDocument> documents =
                 await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
-            loadDocumentsStopwatch.Stop();
-            RecordWorkflowStageDuration(executionId, caseId, "documents.load", loadDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
             if (documents.Count == 0)
             {
@@ -91,21 +88,15 @@ public sealed class BasicLoanWorkflowService
                     $"Case '{caseId}' was not found in local dataset assets or has no documents under directory '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
             }
 
-            var extractDocumentsStopwatch = Stopwatch.StartNew();
             IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
                 .ExtractAsync(documents, cancellationToken)
                 .ConfigureAwait(false);
-            extractDocumentsStopwatch.Stop();
-            RecordWorkflowStageDuration(executionId, caseId, "documents.extract", extractDocumentsStopwatch.Elapsed.TotalMilliseconds);
 
             if (_caseWorkflowOptions.PreIndexCaseDocuments)
             {
-                var preIndexStopwatch = Stopwatch.StartNew();
                 await _caseEvidenceIndexingService
                     .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
                     .ConfigureAwait(false);
-                preIndexStopwatch.Stop();
-                RecordWorkflowStageDuration(executionId, caseId, "documents.pre_index", preIndexStopwatch.Elapsed.TotalMilliseconds);
             }
 
             var execution = new BasicWorkflowExecution
@@ -117,13 +108,6 @@ public sealed class BasicLoanWorkflowService
                 WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
             };
             _store.Save(execution);
-
-            LoanWorkflowTelemetry.WorkflowStartedCounter.Add(
-                1,
-                LoanWorkflowTelemetry.BuildWorkflowTags(
-                    executionId,
-                    execution.CaseId,
-                    executionMode: InProcessExecutionMode));
 
             List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
                 caseId,
@@ -137,7 +121,7 @@ public sealed class BasicLoanWorkflowService
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            activity?.RecordException(ex);
+            activity?.AddException(ex);
             throw;
         }
     }
@@ -183,11 +167,6 @@ public sealed class BasicLoanWorkflowService
 
         if (execution.AwaitingHumanApprovalAtUtc is { } awaitingAt)
         {
-            RecordWorkflowStageDuration(
-                execution.ExecutionId,
-                execution.CaseId,
-                "human_review.wait",
-                (DateTimeOffset.UtcNow - awaitingAt).TotalMilliseconds);
             execution.AwaitingHumanApprovalAtUtc = null;
         }
 
@@ -205,7 +184,6 @@ public sealed class BasicLoanWorkflowService
         _ = Task.Run(async () =>
         {
             BasicWorkflowExecution execution = _store.GetRequired(executionId);
-            var workflowRunStopwatch = Stopwatch.StartNew();
             using Activity? activity = LoanWorkflowTelemetry.StartWorkflowActivity(
                 name: "workflow.run",
                 runId: execution.ExecutionId,
@@ -240,15 +218,6 @@ public sealed class BasicLoanWorkflowService
                 activity?.AddException(ex);
                 _logger.LogError(ex, "Basic workflow failed for execution {ExecutionId}.", executionId);
                 MarkFailed(execution, ex.Message);
-            }
-            finally
-            {
-                workflowRunStopwatch.Stop();
-                RecordWorkflowStageDuration(
-                    execution.ExecutionId,
-                    execution.CaseId,
-                    "workflow.run",
-                    workflowRunStopwatch.Elapsed.TotalMilliseconds);
             }
         }, CancellationToken.None);
     }
@@ -508,13 +477,6 @@ public sealed class BasicLoanWorkflowService
                 execution.CurrentAgent = null;
                 execution.PendingApprovalRequest = requestInfoEvent.Request;
                 execution.AwaitingHumanApprovalAtUtc = DateTimeOffset.UtcNow;
-                LoanWorkflowTelemetry.WorkflowAwaitingHumanReviewCounter.Add(
-                    1,
-                    LoanWorkflowTelemetry.BuildWorkflowTags(
-                        execution.ExecutionId,
-                        execution.CaseId,
-                        stage: "human_review",
-                        executionMode: InProcessExecutionMode));
                 Touch(execution);
                 break;
 
@@ -569,11 +531,6 @@ public sealed class BasicLoanWorkflowService
         AgentExecutionState state = GetOrCreateAgentState(execution, agentKey);
         state.Status = BasicWorkflowStatus.Completed;
         state.CompletedAtUtc = DateTimeOffset.UtcNow;
-
-        if (state.StartedAtUtc is { } startedAtUtc)
-        {
-            RecordAgentDuration(execution, agentKey, (state.CompletedAtUtc.Value - startedAtUtc).TotalMilliseconds);
-        }
 
         if (execution.AgentActivities.TryGetValue(agentKey, out Activity? agentActivity))
         {
@@ -739,22 +696,6 @@ public sealed class BasicLoanWorkflowService
 
         execution.AgentActivities.Clear();
 
-        LoanWorkflowTelemetry.WorkflowFailedCounter.Add(
-            1,
-            LoanWorkflowTelemetry.BuildWorkflowTags(
-                execution.ExecutionId,
-                execution.CaseId,
-                executionMode: InProcessExecutionMode));
-
-        if (execution.StartedAtUtc is { } startedAt)
-        {
-            RecordWorkflowStageDuration(
-                execution.ExecutionId,
-                execution.CaseId,
-                "workflow.total",
-                (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds);
-        }
-
         Touch(execution);
     }
 
@@ -772,22 +713,6 @@ public sealed class BasicLoanWorkflowService
         }
 
         execution.AgentActivities.Clear();
-
-        LoanWorkflowTelemetry.WorkflowCompletedCounter.Add(
-            1,
-            LoanWorkflowTelemetry.BuildWorkflowTags(
-                execution.ExecutionId,
-                execution.CaseId,
-                executionMode: InProcessExecutionMode));
-
-        if (execution.StartedAtUtc is { } startedAt)
-        {
-            RecordWorkflowStageDuration(
-                execution.ExecutionId,
-                execution.CaseId,
-                "workflow.total",
-                (DateTimeOffset.UtcNow - startedAt).TotalMilliseconds);
-        }
 
         Touch(execution);
     }
@@ -835,34 +760,6 @@ public sealed class BasicLoanWorkflowService
             LoanSetupKey => "loan-setup-agent",
             _ => "unknown-agent"
         };
-    }
-
-    private static void RecordWorkflowStageDuration(
-        string executionId,
-        string caseId,
-        string stage,
-        double durationMs)
-    {
-        LoanWorkflowTelemetry.WorkflowStageDurationMs.Record(
-            durationMs,
-            LoanWorkflowTelemetry.BuildWorkflowTags(
-                executionId,
-                caseId,
-                stage: stage,
-                executionMode: InProcessExecutionMode));
-    }
-
-    private static void RecordAgentDuration(BasicWorkflowExecution execution, string agentKey, double durationMs)
-    {
-        LoanWorkflowTelemetry.AgentDurationMs.Record(
-            durationMs,
-            LoanWorkflowTelemetry.BuildWorkflowTags(
-                execution.ExecutionId,
-                execution.CaseId,
-                stage: "agent.execute",
-                executionMode: HostedExecutionMode,
-                agentRole: ToAgentRole(agentKey),
-                agentName: ToAgentName(agentKey)));
     }
 
     private static void Touch(BasicWorkflowExecution execution)

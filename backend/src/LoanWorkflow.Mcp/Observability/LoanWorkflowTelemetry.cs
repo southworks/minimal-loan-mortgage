@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 
 namespace LoanWorkflow.Mcp.Observability;
 
@@ -24,29 +23,6 @@ public static class LoanWorkflowTelemetry
     public static readonly ActivitySource WorkflowActivitySource = new(WorkflowActivitySourceName);
     public static readonly ActivitySource AgentActivitySource = new(AgentActivitySourceName);
     public static readonly ActivitySource McpActivitySource = new(McpActivitySourceName);
-
-    private static readonly Meter Meter = new(MeterName, "1.0.0");
-
-    public static readonly Counter<long> WorkflowStartedCounter =
-        Meter.CreateCounter<long>("loan.workflow.started");
-
-    public static readonly Counter<long> WorkflowCompletedCounter =
-        Meter.CreateCounter<long>("loan.workflow.completed");
-
-    public static readonly Counter<long> WorkflowFailedCounter =
-        Meter.CreateCounter<long>("loan.workflow.failed");
-
-    public static readonly Counter<long> WorkflowAwaitingHumanReviewCounter =
-        Meter.CreateCounter<long>("loan.workflow.awaiting_human_review");
-
-    public static readonly Histogram<double> WorkflowStageDurationMs =
-        Meter.CreateHistogram<double>("loan.workflow.stage.duration.ms", unit: "ms");
-
-    public static readonly Histogram<double> AgentDurationMs =
-        Meter.CreateHistogram<double>("loan.workflow.agent.duration.ms", unit: "ms");
-
-    public static readonly Histogram<double> McpToolDurationMs =
-        Meter.CreateHistogram<double>("loan.mcp.tool.duration.ms", unit: "ms");
 
     public static Activity? StartWorkflowActivity(
         string name,
@@ -129,42 +105,4 @@ public static class LoanWorkflowTelemetry
         return activity;
     }
 
-    public static KeyValuePair<string, object?>[] BuildWorkflowTags(
-        string runId,
-        string caseId,
-        string? stage = null,
-        string? executionMode = null,
-        string? agentRole = null,
-        string? agentName = null)
-    {
-        var tags = new List<KeyValuePair<string, object?>>(8)
-        {
-            new("workflow.run_id", runId),
-            new("foundry.run_id", runId),
-            new("foundry.thread_id", runId),
-            new("case.id", caseId)
-        };
-
-        if (!string.IsNullOrWhiteSpace(stage))
-        {
-            tags.Add(new("workflow.stage", stage));
-        }
-
-        if (!string.IsNullOrWhiteSpace(executionMode))
-        {
-            tags.Add(new("execution_mode", executionMode));
-        }
-
-        if (!string.IsNullOrWhiteSpace(agentRole))
-        {
-            tags.Add(new("agent.role", agentRole));
-        }
-
-        if (!string.IsNullOrWhiteSpace(agentName))
-        {
-            tags.Add(new("agent.name", agentName));
-        }
-
-        return tags.ToArray();
-    }
 }

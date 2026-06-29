@@ -60,8 +60,7 @@ public static class OpenTelemetryServiceCollectionExtensions
                 metrics
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation()
-                    .AddMeter(LoanWorkflowTelemetry.MeterName);
+                    .AddRuntimeInstrumentation();
 
                 if (hasAzureMonitorExporter)
                 {

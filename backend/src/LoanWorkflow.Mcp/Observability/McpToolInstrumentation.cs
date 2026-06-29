@@ -12,7 +12,6 @@ public static class McpToolInstrumentation
         string agentName,
         Func<Task<T>> action)
     {
-        var stopwatch = Stopwatch.StartNew();
         using Activity? activity = LoanWorkflowTelemetry.StartMcpToolActivity(
             operationName,
             caseId,
@@ -31,18 +30,6 @@ public static class McpToolInstrumentation
             activity?.AddException(ex);
             throw;
         }
-        finally
-        {
-            stopwatch.Stop();
-            LoanWorkflowTelemetry.McpToolDurationMs.Record(
-                stopwatch.Elapsed.TotalMilliseconds,
-                LoanWorkflowTelemetry.BuildWorkflowTags(
-                    executionId,
-                    caseId,
-                    executionMode: "hosted",
-                    agentRole: agentRole,
-                    agentName: agentName));
-        }
     }
 
     public static T Execute<T>(
@@ -53,7 +40,6 @@ public static class McpToolInstrumentation
         string agentName,
         Func<T> action)
     {
-        var stopwatch = Stopwatch.StartNew();
         using Activity? activity = LoanWorkflowTelemetry.StartMcpToolActivity(
             operationName,
             caseId,
@@ -70,18 +56,6 @@ public static class McpToolInstrumentation
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             activity?.AddException(ex);
             throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            LoanWorkflowTelemetry.McpToolDurationMs.Record(
-                stopwatch.Elapsed.TotalMilliseconds,
-                LoanWorkflowTelemetry.BuildWorkflowTags(
-                    executionId,
-                    caseId,
-                    executionMode: "hosted",
-                    agentRole: agentRole,
-                    agentName: agentName));
         }
     }
 }
