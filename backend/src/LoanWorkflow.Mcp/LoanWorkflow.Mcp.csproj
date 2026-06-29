@@ -20,4 +20,8 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LoanWorkflow.Governance\LoanWorkflow.Governance.csproj" />
+  </ItemGroup>
+
 </Project>

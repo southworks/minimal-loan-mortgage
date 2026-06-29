@@ -1,0 +1,33 @@
+apiVersion: governance.toolkit/v1
+version: "1.0"
+name: document-processing-agent-governance
+default_action: allow
+rules:
+  - name: deny-get-case-documents
+    condition: "tool_name == 'get_case_documents'"
+    action: deny
+    priority: 100
+  - name: deny-get-application-profile
+    condition: "tool_name == 'get_application_profile'"
+    action: deny
+    priority: 100
+  - name: deny-get-underwriting-context
+    condition: "tool_name == 'get_underwriting_context'"
+    action: deny
+    priority: 100
+  - name: deny-get-relevant-policies
+    condition: "tool_name == 'get_relevant_policies'"
+    action: deny
+    priority: 100
+  - name: deny-get-policies-by-refs
+    condition: "tool_name == 'get_policies_by_refs'"
+    action: deny
+    priority: 100
+  - name: deny-validate-human-decision
+    condition: "tool_name == 'validate_human_decision'"
+    action: deny
+    priority: 100
+  - name: deny-build-account-setup-draft
+    condition: "tool_name == 'build_account_setup_draft'"
+    action: deny
+    priority: 100

@@ -60,9 +60,16 @@ public sealed class AgentDefinitionBuilder
         return request.ToJsonString(SerializerOptions);
     }
 
-    public string ComputeFingerprint(string definitionJson)
+    public string ComputeFingerprint(AgentAssetBundle bundle, string definitionJson)
     {
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(definitionJson));
+        StringBuilder builder = new();
+        builder.Append(definitionJson);
+        builder.Append('\n');
+        builder.Append(bundle.GovernancePolicyYaml);
+        builder.Append('\n');
+        builder.Append(bundle.GovernanceRogueYaml);
+
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
         return Convert.ToHexString(hash);
     }
 

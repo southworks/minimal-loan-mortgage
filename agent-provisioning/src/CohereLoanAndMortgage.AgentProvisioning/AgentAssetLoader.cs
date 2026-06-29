@@ -74,6 +74,18 @@ public sealed class AgentAssetLoader
                 $"Agent '{manifest.Name}' must declare at least one allowed decision value.");
         }
 
+        string governancePolicyPath = Path.Combine(agentDirectory, manifest.GovernancePolicyFile);
+        string governanceRoguePath = Path.Combine(agentDirectory, manifest.GovernanceRogueFile);
+        EnsureFileExists(governancePolicyPath);
+        EnsureFileExists(governanceRoguePath);
+        string governancePolicyYaml = File.ReadAllText(governancePolicyPath).Trim();
+        string governanceRogueYaml = File.ReadAllText(governanceRoguePath).Trim();
+        if (string.IsNullOrWhiteSpace(governancePolicyYaml) || string.IsNullOrWhiteSpace(governanceRogueYaml))
+        {
+            throw new InvalidOperationException(
+                $"Agent '{manifest.Name}' governance files must not be empty.");
+        }
+
         string instructions = File.ReadAllText(instructionsPath).Trim();
         if (string.IsNullOrWhiteSpace(instructions))
         {
@@ -96,7 +108,9 @@ public sealed class AgentAssetLoader
             Manifest = manifest,
             Instructions = instructions,
             OutputSchemaJson = outputSchemaJson,
-            Mcp = mcp
+            Mcp = mcp,
+            GovernancePolicyYaml = governancePolicyYaml,
+            GovernanceRogueYaml = governanceRogueYaml
         };
     }
 

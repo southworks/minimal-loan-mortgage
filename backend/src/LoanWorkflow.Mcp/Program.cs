@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using LoanWorkflow.Mcp;
+using LoanWorkflow.Mcp.Governance;
 using LoanWorkflow.Mcp.Startup;
 using ModelContextProtocol.Server;
 
@@ -24,6 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
+builder.Services.AddMcpGovernance(builder.Configuration);
 builder.Services.AddHostedService<McpStartupInitializer>();
 
 var toolDictionary = new ConcurrentDictionary<string, McpServerTool[]>(StringComparer.OrdinalIgnoreCase);
@@ -55,6 +57,8 @@ builder.Services.AddMcpServer()
 var app = builder.Build();
 
 ServiceCollectionExtensions.PopulateToolDictionary(app.Services, toolDictionary);
+
+app.UseMiddleware<McpAgentRoleMiddleware>();
 
 app.MapMcp("/document-retrieval/mcp");
 app.MapMcp("/underwriting-rules/mcp");

@@ -49,6 +49,12 @@ internal static class Program
                 Console.WriteLine($"{result.Outcome,-10} {result.AgentName} - {result.Message}");
             }
 
+            Console.WriteLine();
+            Console.WriteLine("Governance report:");
+            Console.WriteLine($"  governanceToolkitVersion: {GovernanceProvisioningMetadata.GovernanceToolkitVersion}");
+            Console.WriteLine($"  policyBundleVersion: {GovernanceProvisioningMetadata.PolicyBundleVersion}");
+            Console.WriteLine($"  governedAgents: [{string.Join(", ", bundles.Select(bundle => bundle.Manifest.Name))}]");
+
             Console.WriteLine("Agent provisioning completed successfully.");
             return 0;
         }

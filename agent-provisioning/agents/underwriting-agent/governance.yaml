@@ -1,0 +1,29 @@
+apiVersion: governance.toolkit/v1
+version: "1.0"
+name: underwriting-agent-governance
+default_action: allow
+rules:
+  - name: deny-get-case-documents
+    condition: "tool_name == 'get_case_documents'"
+    action: deny
+    priority: 100
+  - name: deny-enrich-customer-context
+    condition: "tool_name == 'enrich_customer_context'"
+    action: deny
+    priority: 100
+  - name: deny-index-case-documents
+    condition: "tool_name == 'index_case_documents'"
+    action: deny
+    priority: 100
+  - name: deny-get-policies-by-refs
+    condition: "tool_name == 'get_policies_by_refs'"
+    action: deny
+    priority: 100
+  - name: deny-validate-human-decision
+    condition: "tool_name == 'validate_human_decision'"
+    action: deny
+    priority: 100
+  - name: deny-build-account-setup-draft
+    condition: "tool_name == 'build_account_setup_draft'"
+    action: deny
+    priority: 100

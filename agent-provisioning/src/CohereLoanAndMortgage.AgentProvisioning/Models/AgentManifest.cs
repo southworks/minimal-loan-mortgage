@@ -11,4 +11,8 @@ public sealed class AgentManifest
     public required string OutputSchemaFile { get; init; }
 
     public required IReadOnlyList<string> AllowedDecisions { get; init; }
+
+    public string GovernancePolicyFile { get; init; } = "governance.yaml";
+
+    public string GovernanceRogueFile { get; init; } = "rogue.yaml";
 }

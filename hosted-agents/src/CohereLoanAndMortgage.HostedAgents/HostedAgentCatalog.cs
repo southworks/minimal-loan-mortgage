@@ -22,8 +22,6 @@ public static class HostedAgentCatalog
                     - Identify document-related anomalies requiring further review.
                     - Produce structured evidence for downstream agents.
 
-                    Do not perform underwriting, responsible AI review, or loan setup work.
-                    Do not call tools outside the document-retrieval MCP server.
                     """),
                 "document-retrieval-toolbox"),
             ["underwriting-agent"] = new(
@@ -44,9 +42,7 @@ public static class HostedAgentCatalog
                     - Generate supporting evidence for your recommendation.
 
                     Do not re-extract raw documents. Consume document-processing output and structured case facts.
-                    Do not perform responsible AI review or loan setup work.
                     Human approval after underwriting is handled by the workflow orchestration, not by this agent.
-                    Do not call tools outside the underwriting-rules MCP server.
                     """),
                 "underwriting-rules-toolbox"),
             ["responsible-ai-agent"] = new(
@@ -69,9 +65,7 @@ public static class HostedAgentCatalog
                     Use the policy-knowledge MCP tools to validate human decisions and retrieve governance policies.
                     Consume underwriting output, human approval context, and prior evidence from earlier workflow stages.
                     Do not repeat document extraction or underwriting analysis.
-                    Do not perform loan setup work.
                     Human-in-the-loop orchestration is handled by the workflow, not by this agent.
-                    Do not call tools outside the policy-knowledge MCP server.
                     """),
                 "policy-knowledge-toolbox"),
             ["loan-setup-agent"] = new(
@@ -93,9 +87,7 @@ public static class HostedAgentCatalog
                     Use the loan-setup MCP tools to build the deterministic account setup draft.
                     Consume outputs from document processing, underwriting, responsible AI review, and workflow approval state.
                     Do not repeat earlier analysis.
-                    Do not perform document extraction, underwriting, or responsible AI review.
                     Human-in-the-loop orchestration is handled by the workflow, not by this agent.
-                    Do not call tools outside the loan-setup MCP server.
                     """),
                 "loan-setup-toolbox")
         };

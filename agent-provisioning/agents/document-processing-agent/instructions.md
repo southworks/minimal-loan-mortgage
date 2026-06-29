@@ -28,6 +28,3 @@ Decision guidance:
 - Use Validation Failed when submitted claims contradict supporting evidence.
 - Use Inconsistent Documents when submitted documents conflict with each other.
 - Use Suspicious Content when the documents appear tampered, implausible, or materially inconsistent.
-
-Do not perform underwriting, responsible AI review, or loan setup work.
-Do not call tools outside the document-retrieval MCP server.

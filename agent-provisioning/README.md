@@ -39,12 +39,16 @@ agents/
     agent.json
     instructions.md
     mcp.json
+    governance.yaml
+    rogue.yaml
 shared/
   agent-structured-output.schema.json
   underwriting-structured-output.schema.json
 config/
   provisioning.json
 ```
+
+Each agent folder must include `governance.yaml` and `rogue.yaml` alongside `agent.json`. See [docs/agent-foundry-governance.md](../docs/agent-foundry-governance.md).
 
 ## Configuration
 

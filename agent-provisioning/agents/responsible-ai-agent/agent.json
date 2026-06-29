@@ -8,5 +8,7 @@
     "Approval Supported with Caveats",
     "Approval Not Supported",
     "Insufficient Information"
-  ]
+  ],
+  "governancePolicyFile": "governance.yaml",
+  "governanceRogueFile": "rogue.yaml"
 }

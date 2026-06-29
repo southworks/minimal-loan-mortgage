@@ -10,5 +10,7 @@
     "Setup Blocked",
     "Operational Review Required",
     "Setup Completed"
-  ]
+  ],
+  "governancePolicyFile": "governance.yaml",
+  "governanceRogueFile": "rogue.yaml"
 }

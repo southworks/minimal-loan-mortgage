@@ -16,3 +16,4 @@ deployment-outputs.json
 !.vscode/tasks.json
 !.vscode/extensions.json
 !.vscode/settings.json
+agent-provisioning/config/provisioning.local.json
