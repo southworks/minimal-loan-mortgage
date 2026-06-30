@@ -9,7 +9,7 @@ namespace Cohere.LoanProcessing.WebApp.Services;
 
 public sealed class DatasetSeedCatalogService
 {
-    private static readonly JsonSerializerOptions CatalogJsonOptions = new()
+    private static readonly JsonSerializerOptions MatrixJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
@@ -27,71 +27,89 @@ public sealed class DatasetSeedCatalogService
 
     public SeedCaseDefinition? TryGetCase(string caseId) =>
         _cases.Value.FirstOrDefault(seedCase =>
-            string.Equals(seedCase.CaseId, caseId.Trim(), StringComparison.OrdinalIgnoreCase));
+            string.Equals(seedCase.CaseId, caseId, StringComparison.OrdinalIgnoreCase));
 
     public string DatasetRoot => _datasetRoot;
 
     private IReadOnlyList<SeedCaseDefinition> LoadCases()
     {
-        string catalogPath = Path.Combine(_datasetRoot, "cases", "catalog.json");
-        if (!File.Exists(catalogPath))
+        var casesRoot = Path.Combine(_datasetRoot, "cases");
+        if (!Directory.Exists(casesRoot))
         {
-            throw new FileNotFoundException($"Case catalog not found at '{catalogPath}'.");
+            throw new DirectoryNotFoundException(
+                $"Dataset seed folder was not found at '{casesRoot}'. Configure DatasetSeed:RootPath if needed.");
         }
 
-        CaseCatalogEntry[]? entries = JsonSerializer.Deserialize<CaseCatalogEntry[]>(
-            File.ReadAllText(catalogPath),
-            CatalogJsonOptions);
+        var matrixById = LoadCaseMatrix();
 
-        if (entries is null || entries.Length == 0)
-        {
-            throw new InvalidOperationException("Case catalog is empty.");
-        }
-
-        return entries
-            .Where(entry => !string.IsNullOrWhiteSpace(entry.CaseId))
-            .OrderBy(entry => entry.CaseId, StringComparer.OrdinalIgnoreCase)
-            .Select(BuildCaseDefinition)
+        var cases = Directory
+            .EnumerateDirectories(casesRoot)
+            .Select(directory => Path.GetFileName(directory))
+            .Where(caseId => !string.IsNullOrWhiteSpace(caseId))
+            .OrderBy(caseId => caseId, StringComparer.OrdinalIgnoreCase)
+            .Select(caseId => BuildCaseDefinition(caseId!, casesRoot, matrixById))
             .ToList();
+
+        return cases;
     }
 
-    private SeedCaseDefinition BuildCaseDefinition(CaseCatalogEntry entry)
+    private SeedCaseDefinition BuildCaseDefinition(
+        string caseId,
+        string casesRoot,
+        IReadOnlyDictionary<string, CaseMatrixEntry> matrixById)
     {
-        string caseId = entry.CaseId.Trim();
-        string applicationPath = Path.Combine(_datasetRoot, "cases", caseId, "ingest", "loan_application.txt");
+        string applicationPath = Path.Combine(casesRoot, caseId, "ingest", "loan_application.txt");
         if (!File.Exists(applicationPath))
         {
             throw new FileNotFoundException($"Missing loan application seed file for case '{caseId}'.", applicationPath);
         }
 
         ParsedLoanApplication parsed = LoanApplicationTextParser.Parse(File.ReadAllText(applicationPath), caseId);
-        string borrower = entry.Context?.Borrower ?? parsed.BorrowerName;
-        string expectedOutcome = MapExpectedOutcome(entry.Context?.ExpectedDecision);
-        string description = string.IsNullOrWhiteSpace(entry.Description)
-            ? $"Mortgage application for {borrower}."
-            : entry.Description.Trim();
+        matrixById.TryGetValue(caseId, out CaseMatrixEntry? matrixEntry);
+
+        string expectedOutcome = MapExpectedOutcome(matrixEntry?.Decision);
+        string borrower = matrixEntry?.Borrower ?? parsed.BorrowerName;
+        string propertySummary = BuildPropertySummary(parsed, matrixEntry);
+        string description =
+            $"Mortgage application {caseId} for {borrower}. {propertySummary} Requested loan {FormatCurrency(parsed.RequestedLoanAmount)}.";
 
         return new SeedCaseDefinition(
             CaseId: caseId,
             BorrowerName: borrower,
-            CoBorrowerName: entry.Context?.CoBorrower ?? parsed.CoBorrowerName,
-            RequestedLoanAmount: parsed.RequestedLoanAmount > 0 ? parsed.RequestedLoanAmount : 0m,
-            PurchasePrice: parsed.PurchasePrice,
-            MonthlyIncome: parsed.MonthlyIncome,
-            MonthlyDebt: parsed.MonthlyDebt,
-            PropertyAddress: parsed.PropertyAddress,
+            CoBorrowerName: matrixEntry?.CoBorrower ?? parsed.CoBorrowerName,
+            RequestedLoanAmount: parsed.RequestedLoanAmount > 0 ? parsed.RequestedLoanAmount : matrixEntry?.RequestedLoan ?? 0m,
+            PurchasePrice: parsed.PurchasePrice ?? matrixEntry?.PurchasePrice,
+            MonthlyIncome: parsed.MonthlyIncome ?? matrixEntry?.MonthlyIncome,
+            MonthlyDebt: parsed.MonthlyDebt ?? matrixEntry?.MonthlyDebt,
+            PropertyAddress: matrixEntry?.PropertyAddress ?? parsed.PropertyAddress,
             PropertyCityState: parsed.PropertyCityState,
-            PropertyType: parsed.PropertyType,
+            PropertyType: matrixEntry?.PropertyType ?? parsed.PropertyType,
             Product: parsed.Product,
             Purpose: parsed.Purpose,
             ExpectedOutcome: expectedOutcome,
-            PrimaryReason: entry.Context?.PrimaryReason,
-            OccupationTitle: null,
-            Description: description,
-            DemoTagline: BuildDemoTagline(entry, parsed));
+            PrimaryReason: matrixEntry?.PrimaryReason,
+            OccupationTitle: matrixEntry?.Title,
+            Description: description.Trim(),
+            DemoTagline: BuildDemoTagline(parsed, matrixEntry));
     }
 
-    private static string BuildDemoTagline(CaseCatalogEntry entry, ParsedLoanApplication parsed)
+    private static string BuildPropertySummary(ParsedLoanApplication parsed, CaseMatrixEntry? matrixEntry)
+    {
+        string? address = matrixEntry?.PropertyAddress ?? parsed.PropertyAddress;
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            return $"Property at {address}.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(parsed.PropertyCityState))
+        {
+            return $"Property in {parsed.PropertyCityState}.";
+        }
+
+        return "Synthetic mortgage application package.";
+    }
+
+    private static string BuildDemoTagline(ParsedLoanApplication parsed, CaseMatrixEntry? matrixEntry)
     {
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(parsed.Product))
@@ -99,12 +117,42 @@ public sealed class DatasetSeedCatalogService
             parts.Add(parsed.Product);
         }
 
-        if (!string.IsNullOrWhiteSpace(entry.OutcomeTag))
+        if (!string.IsNullOrWhiteSpace(matrixEntry?.Title))
         {
-            parts.Add(entry.OutcomeTag);
+            parts.Add(matrixEntry.Title);
+        }
+
+        if (matrixEntry?.Score is int score)
+        {
+            parts.Add($"Credit score {score}");
         }
 
         return parts.Count == 0 ? "Dataset seed application" : string.Join(" · ", parts);
+    }
+
+    private Dictionary<string, CaseMatrixEntry> LoadCaseMatrix()
+    {
+        string catalogPath = Path.Combine(_datasetRoot, "cases", "catalog.json");
+        if (!File.Exists(catalogPath))
+        {
+            return new Dictionary<string, CaseMatrixEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        CatalogEntry[]? entries = JsonSerializer.Deserialize<CatalogEntry[]>(File.ReadAllText(catalogPath), MatrixJsonOptions);
+        return entries?
+                   .Where(entry => !string.IsNullOrWhiteSpace(entry.CaseId))
+                   .ToDictionary(
+                       entry => entry.CaseId,
+                       entry => new CaseMatrixEntry
+                       {
+                           Id = entry.CaseId,
+                           Borrower = entry.Context?.Borrower,
+                           CoBorrower = entry.Context?.CoBorrower,
+                           Decision = entry.Context?.ExpectedDecision,
+                           PrimaryReason = entry.Context?.PrimaryReason
+                       },
+                       StringComparer.OrdinalIgnoreCase)
+               ?? new Dictionary<string, CaseMatrixEntry>(StringComparer.OrdinalIgnoreCase);
     }
 
     private static string MapExpectedOutcome(string? decision) =>
@@ -115,6 +163,8 @@ public sealed class DatasetSeedCatalogService
             "manual_review" => "review",
             _ => "review"
         };
+
+    private static string FormatCurrency(decimal amount) => amount.ToString("C0", CultureInfo.CurrentCulture);
 
     internal static string ResolveDatasetRoot(string contentRootPath, string? configuredRoot)
     {
@@ -146,22 +196,16 @@ public sealed class DatasetSeedCatalogService
         return Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "..", "dataset-seed"));
     }
 
-    private sealed class CaseCatalogEntry
+    private sealed class CatalogEntry
     {
         [JsonPropertyName("caseId")]
         public string CaseId { get; set; } = string.Empty;
 
-        [JsonPropertyName("description")]
-        public string? Description { get; set; }
-
-        [JsonPropertyName("outcomeTag")]
-        public string? OutcomeTag { get; set; }
-
         [JsonPropertyName("context")]
-        public CaseCatalogContext? Context { get; set; }
+        public CatalogContext? Context { get; set; }
     }
 
-    private sealed class CaseCatalogContext
+    private sealed class CatalogContext
     {
         [JsonPropertyName("borrower")]
         public string? Borrower { get; set; }
@@ -174,5 +218,34 @@ public sealed class DatasetSeedCatalogService
 
         [JsonPropertyName("primaryReason")]
         public string? PrimaryReason { get; set; }
+    }
+
+    private sealed class CaseMatrixEntry
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string? Borrower { get; set; }
+
+        public string? CoBorrower { get; set; }
+
+        public decimal? RequestedLoan { get; set; }
+
+        public decimal? PurchasePrice { get; set; }
+
+        public decimal? MonthlyIncome { get; set; }
+
+        public decimal? MonthlyDebt { get; set; }
+
+        public string? PropertyAddress { get; set; }
+
+        public string? PropertyType { get; set; }
+
+        public string? Title { get; set; }
+
+        public string? Decision { get; set; }
+
+        public string? PrimaryReason { get; set; }
+
+        public int? Score { get; set; }
     }
 }
