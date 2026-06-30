@@ -41,30 +41,22 @@ public sealed class LocalCaseDocumentService
 
     private readonly string _datasetRoot;
     private readonly DatasetOptions _datasetOptions;
-    private readonly CaseCatalog _caseCatalog;
     private readonly ILogger<LocalCaseDocumentService> _logger;
 
     public LocalCaseDocumentService(
         IOptions<DatasetOptions> options,
         IHostEnvironment environment,
-        CaseCatalog caseCatalog,
         ILogger<LocalCaseDocumentService> logger)
     {
         _logger = logger;
         _datasetOptions = options.Value;
-        _caseCatalog = caseCatalog;
         _datasetRoot = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
     }
 
-    public static string GetCaseDirectory(string caseId) => caseId.Trim();
+    public static string GetCaseDirectory(string caseId) => CasePathResolver.NormalizeCaseId(caseId);
 
-    public string NormalizeCaseId(string caseId) => _caseCatalog.NormalizeCaseId(caseId);
-
-    public string GetCaseIngestRelativePath(string caseId)
-    {
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
-        return CasePathResolver.GetIngestRelativePath(_datasetOptions, normalizedCaseId);
-    }
+    public string GetCaseIngestRelativePath(string caseId) =>
+        CasePathResolver.GetIngestRelativePath(_datasetOptions, CasePathResolver.NormalizeCaseId(caseId));
 
     public Task<IReadOnlyList<CaseDocumentInfo>> ListCaseDocumentsAsync(
         string caseId,
@@ -92,7 +84,7 @@ public sealed class LocalCaseDocumentService
             throw new InvalidOperationException("SourcePath is required.");
         }
 
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         string normalizedSourcePath = sourcePath.Trim();
         string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
 
@@ -118,7 +110,7 @@ public sealed class LocalCaseDocumentService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
         if (!Directory.Exists(caseDirectory))
         {
@@ -146,7 +138,7 @@ public sealed class LocalCaseDocumentService
 
     private IReadOnlyList<CaseDocumentInfo> ListCaseDocuments(string caseId)
     {
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
         if (!Directory.Exists(caseDirectory))
         {

@@ -113,9 +113,9 @@ For local runs, the default dataset paths in [appsettings.json](appsettings.json
 
 ## Demo Validation Cases
 
-- `APP-001` — clearly approvable
-- `APP-017` — borderline/manual review style case
-- `APP-015` — clearly rejectable
+- `case-01` — clearly approvable
+- `case-17` — borderline/manual review style case
+- `case-15` — clearly rejectable
 
 When the API workflow starts, normalized case documents may be pre-indexed under `sourceType=workflow-payload` and `sourceKey=case:{caseId}`. During document processing, the agent calls `index_case_documents` with the same identity so idempotency avoids duplicate embedding work, then calls `enrich_customer_context` to index supporting evidence under `sourceType=customer-context` and `sourceKey=assets:{caseId}`. The agent uses `search_case_evidence` with optional `sourceType` filters to compare submitted documents against supporting context with Cohere rerank. Policies are still indexed by deploy-time seed.
 

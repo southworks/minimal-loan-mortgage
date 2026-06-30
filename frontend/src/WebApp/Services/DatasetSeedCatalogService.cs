@@ -25,12 +25,9 @@ public sealed class DatasetSeedCatalogService
 
     public IReadOnlyList<SeedCaseDefinition> GetAllCases() => _cases.Value;
 
-    public SeedCaseDefinition? TryGetCase(string caseId)
-    {
-        string normalized = NormalizeCaseId(caseId);
-        return _cases.Value.FirstOrDefault(seedCase =>
-            string.Equals(seedCase.CaseId, normalized, StringComparison.OrdinalIgnoreCase));
-    }
+    public SeedCaseDefinition? TryGetCase(string caseId) =>
+        _cases.Value.FirstOrDefault(seedCase =>
+            string.Equals(seedCase.CaseId, caseId.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public string DatasetRoot => _datasetRoot;
 
@@ -92,38 +89,6 @@ public sealed class DatasetSeedCatalogService
             OccupationTitle: null,
             Description: description,
             DemoTagline: BuildDemoTagline(entry, parsed));
-    }
-
-    private string NormalizeCaseId(string caseId)
-    {
-        string trimmed = caseId.Trim();
-        string catalogPath = Path.Combine(_datasetRoot, "cases", "catalog.json");
-        if (!File.Exists(catalogPath))
-        {
-            return trimmed;
-        }
-
-        CaseCatalogEntry[]? entries = JsonSerializer.Deserialize<CaseCatalogEntry[]>(
-            File.ReadAllText(catalogPath),
-            CatalogJsonOptions);
-
-        if (entries is null)
-        {
-            return trimmed;
-        }
-
-        CaseCatalogEntry? byCaseId = entries.FirstOrDefault(entry =>
-            string.Equals(entry.CaseId, trimmed, StringComparison.OrdinalIgnoreCase));
-        if (byCaseId is not null)
-        {
-            return byCaseId.CaseId;
-        }
-
-        CaseCatalogEntry? byLegacyId = entries.FirstOrDefault(entry =>
-            string.Equals(entry.LegacyId, trimmed, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(entry.ApplicationId, trimmed, StringComparison.OrdinalIgnoreCase));
-
-        return byLegacyId?.CaseId ?? trimmed;
     }
 
     private static string BuildDemoTagline(CaseCatalogEntry entry, ParsedLoanApplication parsed)
@@ -191,12 +156,6 @@ public sealed class DatasetSeedCatalogService
 
         [JsonPropertyName("outcomeTag")]
         public string? OutcomeTag { get; set; }
-
-        [JsonPropertyName("legacyId")]
-        public string? LegacyId { get; set; }
-
-        [JsonPropertyName("applicationId")]
-        public string? ApplicationId { get; set; }
 
         [JsonPropertyName("context")]
         public CaseCatalogContext? Context { get; set; }

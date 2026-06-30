@@ -7,15 +7,10 @@ public sealed class LocalCaseDataStore : ICaseDataStore
 {
     private readonly string _datasetRootPath;
     private readonly DatasetOptions _datasetOptions;
-    private readonly CaseCatalog _caseCatalog;
 
-    public LocalCaseDataStore(
-        IOptions<DatasetOptions> options,
-        IHostEnvironment environment,
-        CaseCatalog caseCatalog)
+    public LocalCaseDataStore(IOptions<DatasetOptions> options, IHostEnvironment environment)
     {
         _datasetOptions = options.Value;
-        _caseCatalog = caseCatalog;
         _datasetRootPath = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
     }
 
@@ -27,7 +22,7 @@ public sealed class LocalCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         var path = FilePath(normalizedCaseId, category, fileName);
         if (!File.Exists(path))
         {
@@ -40,7 +35,7 @@ public sealed class LocalCaseDataStore : ICaseDataStore
     public Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         var dir = CategoryDirectory(normalizedCaseId, category);
         if (!Directory.Exists(dir))
         {

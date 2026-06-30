@@ -1,6 +1,7 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Workflow;
+using LoanWorkflow.Mcp.Adapters;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
@@ -65,7 +66,7 @@ public sealed class BasicLoanWorkflowService
             throw new InvalidOperationException("ExecutionId is required.");
         }
 
-        string normalizedCaseId = _documentStorage.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
 
         IReadOnlyList<LoadedCaseDocument> documents =
             await _documentStorage.LoadCaseDocumentsAsync(normalizedCaseId, cancellationToken).ConfigureAwait(false);
@@ -117,7 +118,7 @@ public sealed class BasicLoanWorkflowService
         CancellationToken cancellationToken)
     {
         BasicWorkflowExecution execution = _store.GetRequired(executionId);
-        string normalizedCaseId = _documentStorage.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
 
         if (!string.Equals(execution.CaseId, normalizedCaseId, StringComparison.OrdinalIgnoreCase))
         {

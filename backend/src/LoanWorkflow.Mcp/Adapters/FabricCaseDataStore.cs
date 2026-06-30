@@ -8,18 +8,15 @@ public sealed class FabricCaseDataStore : ICaseDataStore
 {
     private readonly IFabricLakehouseClient _client;
     private readonly DatasetOptions _datasetOptions;
-    private readonly CaseCatalog _caseCatalog;
     private readonly string _evidenceRoot;
 
     public FabricCaseDataStore(
         IFabricLakehouseClient client,
         IOptions<DataSourceOptions> dataSourceOptions,
-        IOptions<DatasetOptions> datasetOptions,
-        CaseCatalog caseCatalog)
+        IOptions<DatasetOptions> datasetOptions)
     {
         _client = client;
         _datasetOptions = datasetOptions.Value;
-        _caseCatalog = caseCatalog;
         _evidenceRoot = string.IsNullOrWhiteSpace(dataSourceOptions.Value.FabricLakehouse?.EvidenceRoot)
             ? "Files/bronze"
             : dataSourceOptions.Value.FabricLakehouse!.EvidenceRoot;
@@ -33,7 +30,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         var path = FilePath(normalizedCaseId, category, fileName);
         try
         {
@@ -48,7 +45,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
     public async Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         var categoryPath = CategoryPath(normalizedCaseId, category);
 
         IReadOnlyList<string> all;

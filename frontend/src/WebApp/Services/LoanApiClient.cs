@@ -251,7 +251,7 @@ public sealed class LoanApiClient(
     }
 
     private string ResolveCaseId(string caseId) =>
-        catalog.TryGetCase(caseId)?.CaseId
+        catalog.TryGetCase(caseId.Trim())?.CaseId
         ?? throw new InvalidOperationException($"Case '{caseId}' was not found in the dataset seed catalog.");
 
     private CaseSession? TryGetSession(string caseId) =>

@@ -1,5 +1,6 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
 using CohereLoanAndMortgage.Api.Host.Services;
+using LoanWorkflow.Mcp.Adapters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CohereLoanAndMortgage.Api.Host.Controllers;
@@ -81,7 +82,7 @@ public sealed class LoanMortgageController : ControllerBase
     {
         try
         {
-            string normalizedCaseId = _documentStorageService.NormalizeCaseId(caseId);
+            string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
             IReadOnlyList<CaseDocumentInfo> documents = await _documentStorageService.ListCaseDocumentsAsync(
                 normalizedCaseId,
                 cancellationToken);
