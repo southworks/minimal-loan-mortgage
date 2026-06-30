@@ -65,15 +65,13 @@ public sealed class BasicLoanWorkflowService
             throw new InvalidOperationException("ExecutionId is required.");
         }
 
-        caseId = caseId.Trim();
-
         IReadOnlyList<LoadedCaseDocument> documents =
             await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
 
         if (documents.Count == 0)
         {
             throw new KeyNotFoundException(
-                $"Case '{caseId}' was not found in dataset assets or has no documents under '{_documentStorage.GetCaseIngestRelativePath(caseId)}'.");
+                $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'.");
         }
 
         IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
@@ -90,7 +88,7 @@ public sealed class BasicLoanWorkflowService
         var execution = new BasicWorkflowExecution
         {
             ExecutionId = executionId,
-            CaseId = caseId,
+            CaseId = caseId.Trim(),
             Status = BasicWorkflowStatus.Running,
             WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
         };
@@ -117,9 +115,8 @@ public sealed class BasicLoanWorkflowService
         CancellationToken cancellationToken)
     {
         BasicWorkflowExecution execution = _store.GetRequired(executionId);
-        caseId = caseId.Trim();
 
-        if (!string.Equals(execution.CaseId, caseId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(execution.CaseId, caseId.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Execution '{executionId}' does not belong to case '{caseId}'.");

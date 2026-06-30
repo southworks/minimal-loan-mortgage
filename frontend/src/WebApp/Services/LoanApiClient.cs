@@ -35,12 +35,11 @@ public sealed class LoanApiClient(
 
     public async Task<WorkflowStartResponse?> StartWorkflowAsync(string caseId, CancellationToken cancellationToken = default)
     {
-        string resolvedCaseId = RequireCaseId(caseId);
-        CaseSession session = sessions.TryGet(resolvedCaseId)
+        CaseSession session = sessions.TryGet(caseId)
             ?? await OpenCaseSessionAsync(caseId, cancellationToken);
 
         using var response = await httpClient.PostAsync(
-            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(resolvedCaseId)}/workflow/basic/start",
+            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(caseId)}/workflow/basic/start",
             null,
             cancellationToken);
         await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
@@ -54,7 +53,7 @@ public sealed class LoanApiClient(
         sessions.ApplyWorkflowStatus(session, status);
 
         return new WorkflowStartResponse(
-            resolvedCaseId,
+            caseId,
             status.ExecutionId,
             true,
             MapQueuedStatus(status.Status),
@@ -82,7 +81,7 @@ public sealed class LoanApiClient(
         string caseId,
         CancellationToken cancellationToken = default)
     {
-        CaseSession? session = TryGetSession(caseId);
+        CaseSession? session = sessions.TryGet(caseId);
         if (session?.ExecutionId is null)
         {
             return null;
@@ -97,7 +96,7 @@ public sealed class LoanApiClient(
         string? notes,
         CancellationToken cancellationToken = default)
     {
-        CaseSession? session = TryGetSession(caseId);
+        CaseSession? session = sessions.TryGet(caseId);
         if (session?.ExecutionId is null)
         {
             throw new InvalidOperationException("No active workflow execution is available for this case.");
@@ -110,7 +109,7 @@ public sealed class LoanApiClient(
         };
 
         using var response = await httpClient.PostAsJsonAsync(
-            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(session.SeedCase.CaseId)}/workflow/basic/executions/{Uri.EscapeDataString(session.ExecutionId)}/resume",
+            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(caseId)}/workflow/basic/executions/{Uri.EscapeDataString(session.ExecutionId)}/resume",
             request,
             cancellationToken);
         await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
@@ -121,7 +120,7 @@ public sealed class LoanApiClient(
 
     public async Task<CaseDetailResponse?> ContinueAccountSetupAsync(string caseId, CancellationToken cancellationToken = default)
     {
-        CaseSession? session = TryGetSession(caseId);
+        CaseSession? session = sessions.TryGet(caseId);
         if (session?.ExecutionId is null)
         {
             return null;
@@ -140,7 +139,7 @@ public sealed class LoanApiClient(
         string caseId,
         CancellationToken cancellationToken = default)
     {
-        CaseSession? session = TryGetSession(caseId);
+        CaseSession? session = sessions.TryGet(caseId);
         if (session is null)
         {
             return null;
@@ -163,7 +162,7 @@ public sealed class LoanApiClient(
 
     public Task<ExecutionTraceResponse?> GetExecutionTraceAsync(string caseId, CancellationToken cancellationToken = default)
     {
-        CaseSession? session = TryGetSession(caseId);
+        CaseSession? session = sessions.TryGet(caseId);
         if (session?.ExecutionId is null)
         {
             return Task.FromResult<ExecutionTraceResponse?>(null);
@@ -239,7 +238,7 @@ public sealed class LoanApiClient(
 
         if (session.Documents.Count == 0)
         {
-            CaseDocumentsResponse? documents = await TryGetCaseDocumentsAsync(seedCase.CaseId, cancellationToken);
+            CaseDocumentsResponse? documents = await TryGetCaseDocumentsAsync(caseId, cancellationToken);
             if (documents is not null)
             {
                 sessions.ApplyDocuments(session, documents);
@@ -248,13 +247,6 @@ public sealed class LoanApiClient(
 
         return session;
     }
-
-    private string RequireCaseId(string caseId) =>
-        catalog.TryGetCase(caseId.Trim())?.CaseId
-        ?? throw new InvalidOperationException($"Case '{caseId}' was not found in the dataset seed catalog.");
-
-    private CaseSession? TryGetSession(string caseId) =>
-        sessions.TryGet(RequireCaseId(caseId));
 
     private async Task<BasicWorkflowStatusResponse?> GetBasicWorkflowStatusAsync(
         string executionId,

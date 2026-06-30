@@ -1,4 +1,3 @@
-using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Options;
 using Microsoft.Extensions.Options;
 
@@ -40,7 +39,6 @@ public sealed class LocalCaseDocumentService
     };
 
     private readonly string _datasetRoot;
-    private readonly DatasetOptions _datasetOptions;
     private readonly ILogger<LocalCaseDocumentService> _logger;
 
     public LocalCaseDocumentService(
@@ -49,21 +47,17 @@ public sealed class LocalCaseDocumentService
         ILogger<LocalCaseDocumentService> logger)
     {
         _logger = logger;
-        _datasetOptions = options.Value;
-        _datasetRoot = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
+        _datasetRoot = ResolveDatasetRoot(environment.ContentRootPath, options.Value.RootPath);
     }
 
     public static string GetCaseDirectory(string caseId) => caseId.Trim();
-
-    public string GetCaseIngestRelativePath(string caseId) =>
-        CasePathResolver.GetIngestRelativePath(_datasetOptions, caseId);
 
     public Task<IReadOnlyList<CaseDocumentInfo>> ListCaseDocumentsAsync(
         string caseId,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyList<CaseDocumentInfo> documents = ListCaseDocuments(RequireCaseId(caseId));
+        IReadOnlyList<CaseDocumentInfo> documents = ListCaseDocuments(caseId);
         return Task.FromResult(documents);
     }
 
@@ -74,30 +68,34 @@ public sealed class LocalCaseDocumentService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        caseId = RequireCaseId(caseId);
+        if (string.IsNullOrWhiteSpace(caseId))
+        {
+            throw new InvalidOperationException("CaseId is required.");
+        }
 
         if (string.IsNullOrWhiteSpace(sourcePath))
         {
             throw new InvalidOperationException("SourcePath is required.");
         }
 
+        string normalizedCaseId = caseId.Trim();
         string normalizedSourcePath = sourcePath.Trim();
-        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
+        string caseDirectory = GetCaseDirectoryPath(normalizedCaseId);
 
         if (!Directory.Exists(caseDirectory))
         {
             throw new KeyNotFoundException(
-                $"Case '{caseId}' was not found in dataset assets at '{caseDirectory}'.");
+                $"Case '{normalizedCaseId}' was not found in dataset assets at '{caseDirectory}'.");
         }
 
-        string resolvedPath = ResolveDocumentPath(caseDirectory, caseId, normalizedSourcePath);
+        string resolvedPath = ResolveDocumentPath(caseDirectory, normalizedCaseId, normalizedSourcePath);
         if (!File.Exists(resolvedPath))
         {
             throw new KeyNotFoundException(
-                $"Document '{normalizedSourcePath}' was not found for case '{caseId}'.");
+                $"Document '{normalizedSourcePath}' was not found for case '{normalizedCaseId}'.");
         }
 
-        return Task.FromResult(LoadDocumentFromFile(resolvedPath, caseId, caseDirectory));
+        return Task.FromResult(LoadDocumentFromFile(resolvedPath, normalizedCaseId, caseDirectory));
     }
 
     public Task<IReadOnlyList<LoadedCaseDocument>> LoadCaseDocumentsAsync(
@@ -106,12 +104,11 @@ public sealed class LocalCaseDocumentService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        caseId = RequireCaseId(caseId);
-        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
+        string caseDirectory = GetCaseDirectoryPath(caseId);
         if (!Directory.Exists(caseDirectory))
         {
             _logger.LogInformation(
-                "Case ingest directory not found for case {CaseId} at {CaseDirectory}.",
+                "Case directory not found for case {CaseId} at {CaseDirectory}.",
                 caseId,
                 caseDirectory);
 
@@ -120,7 +117,7 @@ public sealed class LocalCaseDocumentService
 
         var documents = EnumerateIngestFiles(caseDirectory)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path => LoadDocumentFromFile(path, caseId, caseDirectory))
+            .Select(path => LoadDocumentFromFile(path, caseId.Trim(), caseDirectory))
             .ToArray();
 
         _logger.LogInformation(
@@ -134,11 +131,11 @@ public sealed class LocalCaseDocumentService
 
     private IReadOnlyList<CaseDocumentInfo> ListCaseDocuments(string caseId)
     {
-        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
+        string caseDirectory = GetCaseDirectoryPath(caseId);
         if (!Directory.Exists(caseDirectory))
         {
             _logger.LogInformation(
-                "Case ingest directory not found for case {CaseId} at {CaseDirectory}.",
+                "Case directory not found for case {CaseId} at {CaseDirectory}.",
                 caseId,
                 caseDirectory);
 
@@ -147,7 +144,7 @@ public sealed class LocalCaseDocumentService
 
         var documents = EnumerateIngestFiles(caseDirectory)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path => CreateDocumentInfo(path, caseId, caseDirectory))
+            .Select(path => CreateDocumentInfo(path, caseId.Trim(), caseDirectory))
             .ToArray();
 
         _logger.LogInformation(
@@ -159,18 +156,8 @@ public sealed class LocalCaseDocumentService
         return documents;
     }
 
-    private string GetCaseIngestDirectoryPath(string caseId) =>
-        CasePathResolver.GetIngestDirectory(_datasetRoot, _datasetOptions, caseId);
-
-    private static string RequireCaseId(string caseId)
-    {
-        if (string.IsNullOrWhiteSpace(caseId))
-        {
-            throw new InvalidOperationException("CaseId is required.");
-        }
-
-        return caseId.Trim();
-    }
+    private string GetCaseDirectoryPath(string caseId) =>
+        Path.Combine(_datasetRoot, "cases", GetCaseDirectory(caseId), "ingest");
 
     private static IEnumerable<string> EnumerateIngestFiles(string caseDirectory) =>
         Directory
@@ -246,5 +233,35 @@ public sealed class LocalCaseDocumentService
             ".jpg" or ".jpeg" => "image/jpeg",
             _ => "application/octet-stream"
         };
+    }
+
+    internal static string ResolveDatasetRoot(string contentRootPath, string? configuredRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredRoot))
+        {
+            string resolved = Path.GetFullPath(
+                Path.IsPathRooted(configuredRoot)
+                    ? configuredRoot
+                    : Path.Combine(contentRootPath, configuredRoot));
+
+            if (Directory.Exists(resolved))
+            {
+                return resolved;
+            }
+        }
+
+        var current = new DirectoryInfo(contentRootPath);
+        while (current is not null)
+        {
+            string candidate = Path.Combine(current.FullName, "dataset-seed");
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        return Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "..", "dataset-seed"));
     }
 }

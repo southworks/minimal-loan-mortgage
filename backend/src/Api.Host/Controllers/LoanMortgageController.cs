@@ -81,7 +81,6 @@ public sealed class LoanMortgageController : ControllerBase
     {
         try
         {
-            caseId = caseId.Trim();
             IReadOnlyList<CaseDocumentInfo> documents = await _documentStorageService.ListCaseDocumentsAsync(
                 caseId,
                 cancellationToken);
@@ -91,13 +90,13 @@ public sealed class LoanMortgageController : ControllerBase
                 return NotFound(new ProblemDetailsResponse
                 {
                     Title = "Loan case not found.",
-                    Detail = $"Case '{caseId}' was not found in dataset assets or has no documents under '{_documentStorageService.GetCaseIngestRelativePath(caseId)}'."
+                    Detail = $"Case '{caseId}' was not found in dataset assets or has no documents under '{LocalCaseDocumentService.GetCaseDirectory(caseId)}'."
                 });
             }
 
             return Ok(new CaseDocumentsResponse
             {
-                CaseId = caseId,
+                CaseId = caseId.Trim(),
                 Documents = documents
                     .Select(document => new CaseDocumentResponse
                     {
