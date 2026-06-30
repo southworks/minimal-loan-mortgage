@@ -18,7 +18,7 @@ The Bronze JSON files (`01_application/`, `02_identity/`, etc.) represent what a
 data-generation/
   corpus/
     bronze/                          ← source of truth (01_application … 07_collateral)
-    policy_rag/                      ← underwriting policies
+    policies/                      ← underwriting policies
     raw/
       txt/                           ← generate_raw_layer.py
         APP-001/
@@ -31,14 +31,17 @@ data-generation/
   scripts/
     generate_raw_layer.py
     generate_agent_documents.py
-    build_dataset_seed.py            → copies corpus into dataset-seed/
+    build_case_folders.py            → dataset-seed/cases/
     scenarios.py
     requirements.txt                 ← pdf/png only
 
 dataset-seed/                        ← runtime demo package (built output)
-  00_raw/                            ← same layout as corpus/raw/
-  01_application/ … 08_policy_rag/
-  case_matrix.json
+  cases/
+    case-01/
+      ingest/                        ← flat txt + pdf/png (workflow start)
+      fabric-pre-requisite-data/     ← case-scoped bronze JSON (MCP)
+    catalog.json
+  policies/                     ← shared policies
 ```
 
 9 txt files per application × 20 applications = **180 txt files**.  
@@ -102,7 +105,7 @@ cd data-generation/scripts
 python3 generate_raw_layer.py                    # corpus/raw/txt/
 pip install -r requirements.txt
 python3 generate_agent_documents.py              # corpus/raw/pdf/ and corpus/raw/png/
-python3 build_dataset_seed.py                    # dataset-seed/
+python3 build_case_folders.py                    # dataset-seed/cases/
 ```
 
 **When to re-run:**

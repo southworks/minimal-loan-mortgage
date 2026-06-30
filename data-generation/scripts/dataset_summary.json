@@ -10,7 +10,7 @@
                             "banking":  60,
                             "credit":  20,
                             "collateral":  40,
-                            "policy_rag":  7,
+                            "policies":  7,
                             "decision_ground_truth":  20
                         },
     "decision_distribution":  {

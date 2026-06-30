@@ -11,9 +11,9 @@ Each scenario is one full path through:
 Generators import this module so ground-truth rollups and dataset-seed stay aligned:
 
   - generate_normalized_layers.py  -> ground-truth/APP-XXX_decision.json
-  - build_dataset_seed.py          -> dataset-seed/ (runtime demo package)
+  - build_case_folders.py          -> dataset-seed/cases/*/ingest + fabric-pre-requisite-data/
 
-Trackable prefix: APP-### (loan application), like IPF-### in inventory and ING-### in HLS.
+Trackable prefix: APP-### (loan application legacy id). Demo API case ids are case-01 … case-20.
 """
 
 from __future__ import annotations
@@ -35,9 +35,30 @@ BRONZE_LAYERS = [
     "07_collateral",
 ]
 
+CASE_FOLDERS: dict[str, str] = {
+    f"APP-{index:03d}": f"case-{index:02d}" for index in range(1, 21)
+}
+
+OUTCOME_TAGS: dict[str, str] = {
+    "approve": "Approved",
+    "deny": "Denied",
+    "manual_review": "ManualReview",
+}
+
+
+def application_id(scenario: dict) -> str:
+    """Legacy application id carried inside bronze JSON and fabric filenames (APP-XXX)."""
+    return scenario["scenario_id"]
+
+
+def case_folder(scenario: dict) -> str:
+    """Demo folder under dataset-seed/cases/ (case-01 … case-20)."""
+    return CASE_FOLDERS[scenario["scenario_id"]]
+
+
 def scenario_folder(scenario: dict) -> str:
-    """Runtime folder name — flat APP-XXX id (loan uses numbered bronze layers)."""
-    return scenario['scenario_id']
+    """Long-form scenario label (APP-XXX_<path>) for docs and ground truth."""
+    return f"{scenario['scenario_id']}_{scenario['path']}"
 
 
 SCENARIOS = [
