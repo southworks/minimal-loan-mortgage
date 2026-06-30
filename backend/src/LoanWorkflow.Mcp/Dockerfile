@@ -17,5 +17,5 @@ WORKDIR /app
 COPY --from=build /app/publish .
 COPY --from=build /src/dataset-seed /app/dataset-seed
 ENV Dataset__RootPath=/app/dataset-seed
-ENV Dataset__PolicyFilePath=/app/dataset-seed/policies/general_policy.txt
+ENV Dataset__PolicyFilePath=/app/dataset-seed/08_policy_rag/general_policy.txt
 ENTRYPOINT ["dotnet", "LoanWorkflow.Mcp.dll"]

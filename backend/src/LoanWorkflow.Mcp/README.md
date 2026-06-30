@@ -19,7 +19,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 - Enrich customer context from local assets today, with the same adapter boundary intended for Fabric later
 - Ensure case and customer-context evidence are indexed idempotently into the shared Azure AI Search evidence index using Azure AI Foundry `embed-v-4-0`
 - Retrieve evidence and policies from Azure AI Search using Azure AI Foundry `Cohere-rerank-v4.0-pro`
-- Seed the policy index from `dataset-seed/policies/general_policy.txt` during deploy-time seeding
+- Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` during deploy-time seeding
 - Reindex policies only when the policy source hash changes
 - Batch embedding inputs, limit Foundry concurrency, and retry transient throttling/server errors
 
@@ -57,7 +57,7 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
   },
   "Dataset": {
     "RootPath": "/app/dataset-seed",
-    "PolicyFilePath": "/app/dataset-seed/policies/general_policy.txt"
+    "PolicyFilePath": "/app/dataset-seed/08_policy_rag/general_policy.txt"
   },
   "AzureSearch": {
     "Endpoint": "https://{search-service}.search.windows.net",
