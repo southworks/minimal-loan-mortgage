@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-011
+Application Date : February 19, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $382,500.00
+  Purchase Price   : $510,000.00
+  Down Payment     : $127,500.00
+  Est. Interest    : 6.1%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Harper Scott
+  Date of Birth  : June 30, 1993
+  Current Address: 71 Vineyard Row, Sacramento, CA 95818
+
+PROPERTY
+  Address        : 71 Vineyard Row, Sacramento, CA 95818
+  City / State   : Sacramento, CA
+  Property Type  : Townhome
+
+DECLARED FINANCIALS
+  Monthly Income : $11,333.00
+  Monthly Debt   : $1,800.00
+  Liquid Assets  : $68,850.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

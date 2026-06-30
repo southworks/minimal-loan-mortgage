@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-008",
+    "document_id":  "APP-008-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-01-28",
+    "source_system":  "appraisal_report",
+    "property_address":  "6203 Cedar Glen, Nashville, TN 37205",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  640000,
+    "appraised_value":  650000,
+    "calculated_ltv":  73.8,
+    "condition_rating":  "C3"
+}

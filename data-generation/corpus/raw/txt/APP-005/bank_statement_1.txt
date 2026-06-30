@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Ava Patel
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $18,375.00
+  Total Deposits    : $11,000.00
+  Ending Balance    : $24,175.00
+  Average Balance   : $21,275.00
+
+TRANSACTIONS
+  2026-01-13  Payroll                          +$5,500.00
+  2026-01-25  Payroll                          +$5,500.00
+  2026-01-21  Housing expense                  $-2,200.00
+  2026-01-22  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

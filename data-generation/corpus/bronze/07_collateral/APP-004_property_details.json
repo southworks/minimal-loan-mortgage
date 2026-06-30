@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-004",
+    "document_id":  "APP-004-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-01-22",
+    "source_system":  "property_record",
+    "property_address":  "908 Sabal Ridge, Austin, TX 78757",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  680000
+}

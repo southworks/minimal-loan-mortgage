@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-008",
+    "document_id":  "APP-008-INC-001",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-10",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "James Sullivan",
+    "employer":  "Crescent Biotech",
+    "pay_date":  "2026-01-10",
+    "gross_pay":  6666.67,
+    "net_pay":  4800.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2025-12-28",
+    "pay_period_end":  "2026-01-10",
+    "ytd_gross":  20000.01
+}

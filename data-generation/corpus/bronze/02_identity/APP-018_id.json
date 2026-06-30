@@ -1,0 +1,13 @@
+﻿{
+    "application_id":  "APP-018",
+    "document_id":  "APP-018-ID-001",
+    "document_type":  "drivers_license",
+    "document_date":  "2026-01-15",
+    "source_system":  "identity_document",
+    "party_role":  "borrower",
+    "full_name":  "William Cooper",
+    "date_of_birth":  "1985-06-13",
+    "address":  "1451 Garden Loop, Orlando, FL 32804",
+    "document_number":  "D100251",
+    "expiry_date":  "2030-01-15"
+}

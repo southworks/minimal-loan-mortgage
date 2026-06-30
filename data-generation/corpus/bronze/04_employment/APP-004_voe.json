@@ -1,0 +1,15 @@
+﻿{
+    "application_id":  "APP-004",
+    "document_id":  "APP-004-EMP-001",
+    "document_type":  "employment_verification",
+    "document_date":  "2026-01-22",
+    "source_system":  "employer_verification",
+    "party_role":  "borrower",
+    "employee_name":  "Noah Rivera",
+    "employer":  "Lone Star DataWorks",
+    "employment_status":  "full_time",
+    "hire_date":  "2017-08-14",
+    "base_salary_annual":  168000,
+    "job_title":  "Solutions Architect",
+    "bonus_annual":  15000
+}

@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-11
+========================
+Account Holder : Olivia Bennett
+Statement Date : November 28, 2025
+Period         : 2025-11
+
+SUMMARY
+  Beginning Balance : $27,300.00
+  Total Deposits    : $11,500.00
+  Ending Balance    : $33,300.00
+  Average Balance   : $30,300.00
+
+TRANSACTIONS
+  2025-10-28  Payroll                          +$5,750.00
+  2025-11-09  Payroll                          +$5,750.00
+  2025-11-05  Housing expense                  $-2,200.00
+  2025-11-06  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

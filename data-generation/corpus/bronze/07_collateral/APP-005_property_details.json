@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-005",
+    "document_id":  "APP-005-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-01-26",
+    "source_system":  "property_record",
+    "property_address":  "44 Huron Park, Chicago, IL 60611",
+    "property_type":  "townhome",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  490000
+}

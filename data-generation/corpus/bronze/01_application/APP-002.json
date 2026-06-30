@@ -1,0 +1,34 @@
+﻿{
+    "application_id":  "APP-002",
+    "document_id":  "APP-002-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-01-14",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  457000,
+    "purchase_price":  610000,
+    "down_payment":  153000,
+    "interest_rate_estimate":  6.2,
+    "borrower":  {
+                     "full_name":  "Ethan Carter",
+                     "date_of_birth":  "1986-09-03",
+                     "current_address":  "827 Magnolia Ave, Phoenix, AZ 85016"
+                 },
+    "co_borrower":  {
+                        "full_name":  "Sophia Carter"
+                    },
+    "property":  {
+                     "address":  "827 Magnolia Ave, Phoenix, AZ 85016",
+                     "city":  "Phoenix",
+                     "state":  "AZ",
+                     "property_type":  "single_family"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  12833,
+                                "existing_monthly_debt":  2400,
+                                "liquid_assets":  82260
+                            }
+}

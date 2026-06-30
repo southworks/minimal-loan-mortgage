@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-014",
+    "document_id":  "APP-014-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-03-03",
+    "source_system":  "property_record",
+    "property_address":  "1810 Ridgeview Ct, Las Vegas, NV 89117",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  410000
+}

@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-03
+========================
+Account Holder : William Cooper
+Statement Date : March 28, 2026
+Period         : 2026-03
+
+SUMMARY
+  Beginning Balance : $18,000.00
+  Total Deposits    : $11,166.67
+  Ending Balance    : $23,466.67
+  Average Balance   : $20,733.34
+
+TRANSACTIONS
+  2026-03-06  Payroll                          +$5,583.34
+  2026-03-18  Payroll                          +$5,583.34
+  2026-03-14  Housing expense                  $-2,200.00
+  2026-03-15  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

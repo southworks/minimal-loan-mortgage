@@ -1,0 +1,34 @@
+﻿{
+    "application_id":  "APP-012",
+    "document_id":  "APP-012-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-02-23",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  517500,
+    "purchase_price":  690000,
+    "down_payment":  172500,
+    "interest_rate_estimate":  6.2,
+    "borrower":  {
+                     "full_name":  "Daniel Kim",
+                     "date_of_birth":  "1988-08-16",
+                     "current_address":  "380 Willow Bend, Portland, OR 97212"
+                 },
+    "co_borrower":  {
+                        "full_name":  "Grace Kim"
+                    },
+    "property":  {
+                     "address":  "1406 Fremont Ave, Portland, OR 97227",
+                     "city":  "Portland",
+                     "state":  "OR",
+                     "property_type":  "single_family"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  14167,
+                                "existing_monthly_debt":  2700,
+                                "liquid_assets":  93150
+                            }
+}

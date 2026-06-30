@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Daniel Kim
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $25,875.00
+  Total Deposits    : $14,166.67
+  Ending Balance    : $33,941.67
+  Average Balance   : $29,908.34
+
+TRANSACTIONS
+  2026-02-10  Payroll                          +$7,083.34
+  2026-02-22  Payroll                          +$7,083.34
+  2026-02-18  Housing expense                  $-2,200.00
+  2026-02-19  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

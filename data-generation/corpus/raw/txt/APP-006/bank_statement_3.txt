@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-11
+========================
+Account Holder : Liam Brooks
+Statement Date : November 28, 2025
+Period         : 2025-11
+
+SUMMARY
+  Beginning Balance : $29,925.00
+  Total Deposits    : $12,333.33
+  Ending Balance    : $36,658.33
+  Average Balance   : $33,291.66
+
+TRANSACTIONS
+  2025-11-17  Payroll                          +$6,166.66
+  2025-11-29  Payroll                          +$6,166.66
+  2025-11-25  Housing expense                  $-2,200.00
+  2025-11-26  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

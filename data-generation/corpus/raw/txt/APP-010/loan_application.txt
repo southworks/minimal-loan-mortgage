@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-010
+Application Date : February 15, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $397,500.00
+  Purchase Price   : $530,000.00
+  Down Payment     : $132,500.00
+  Est. Interest    : 6.5%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Benjamin Flores
+  Date of Birth  : October 08, 1983
+  Current Address: 901 Lakeview Road, Minneapolis, MN 55416
+
+PROPERTY
+  Address        : 901 Lakeview Road, Minneapolis, MN 55416
+  City / State   : Minneapolis, MN
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $12,667.00
+  Monthly Debt   : $2,300.00
+  Liquid Assets  : $71,550.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

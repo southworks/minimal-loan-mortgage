@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-011",
+    "document_id":  "APP-011-INC-001",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-22",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Harper Scott",
+    "employer":  "Golden State Renewables",
+    "pay_date":  "2026-01-22",
+    "gross_pay":  5666.67,
+    "net_pay":  4080.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-09",
+    "pay_period_end":  "2026-01-22",
+    "ytd_gross":  17000.01
+}

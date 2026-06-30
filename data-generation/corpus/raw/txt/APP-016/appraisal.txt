@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : March 01, 2026
+Property Type  : Single Family
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  330 Riverstone Dr, Columbus, OH 43215
+
+VALUATION
+  Purchase Price   : $620,000.00
+  Appraised Value  : $585,000.00
+  Calculated LTV   : 95.4%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

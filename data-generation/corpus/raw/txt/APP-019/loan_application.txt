@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-019
+Application Date : March 23, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $341,250.00
+  Purchase Price   : $455,000.00
+  Down Payment     : $113,750.00
+  Est. Interest    : 6.4%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Evelyn Ross
+  Date of Birth  : November 28, 1989
+  Current Address: 87 Summit Park, Salt Lake City, UT 84103
+
+PROPERTY
+  Address        : 87 Summit Park, Salt Lake City, UT 84103
+  City / State   : Salt Lake City, UT
+  Property Type  : Condo
+
+DECLARED FINANCIALS
+  Monthly Income : $10,083.00
+  Monthly Debt   : $2,100.00
+  Liquid Assets  : $61,425.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

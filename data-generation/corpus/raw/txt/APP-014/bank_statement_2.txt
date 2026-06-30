@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Michael Torres
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $18,450.00
+  Total Deposits    : $8,500.00
+  Ending Balance    : $18,850.00
+  Average Balance   : $18,650.00
+
+TRANSACTIONS
+  2026-01-21  Payroll                          +$4,250.00
+  2026-02-02  Payroll                          +$4,250.00
+  2026-01-29  Housing expense                  $-2,200.00
+  2026-01-30  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

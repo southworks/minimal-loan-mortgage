@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Daniel Kim
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $36,225.00
+  Total Deposits    : $14,166.67
+  Ending Balance    : $44,291.67
+  Average Balance   : $40,258.34
+
+TRANSACTIONS
+  2025-12-10  Payroll                          +$7,083.34
+  2025-12-22  Payroll                          +$7,083.34
+  2025-12-18  Housing expense                  $-2,200.00
+  2025-12-19  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Harper Scott
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $19,125.00
+  Total Deposits    : $11,333.33
+  Ending Balance    : $25,258.33
+  Average Balance   : $22,191.66
+
+TRANSACTIONS
+  2026-02-06  Payroll                          +$5,666.66
+  2026-02-18  Payroll                          +$5,666.66
+  2026-02-14  Housing expense                  $-2,200.00
+  2026-02-15  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

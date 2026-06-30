@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : February 17, 2026
+Property Type  : Townhome
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  95 Oak Crossing, Atlanta, GA 30309
+
+VALUATION
+  Purchase Price   : $430,000.00
+  Appraised Value  : $438,000.00
+  Calculated LTV   : 73.6%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

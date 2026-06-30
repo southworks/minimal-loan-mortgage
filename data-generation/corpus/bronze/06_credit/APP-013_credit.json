@@ -1,0 +1,33 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-CRD-001",
+    "document_type":  "credit_report",
+    "document_date":  "2026-02-27",
+    "source_system":  "credit_bureau",
+    "party_role":  "borrower",
+    "borrower_name":  "Emily Reed",
+    "credit_score":  604,
+    "credit_utilization":  61,
+    "monthly_debt_obligations":  2100,
+    "delinquencies_12m":  2,
+    "recent_inquiries":  4,
+    "tradelines":  [
+                       {
+                           "type":  "auto_loan",
+                           "status":  "current",
+                           "balance":  12400
+                       },
+                       {
+                           "type":  "credit_card",
+                           "status":  "current",
+                           "balance":  7600
+                       },
+                       {
+                           "type":  "student_loan",
+                           "status":  "current",
+                           "balance":  18400
+                       }
+                   ],
+    "collections_flag":  true,
+    "bankruptcy_flag":  false
+}

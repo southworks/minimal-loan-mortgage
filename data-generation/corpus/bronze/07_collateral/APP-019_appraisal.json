@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-019",
+    "document_id":  "APP-019-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-03-13",
+    "source_system":  "appraisal_report",
+    "property_address":  "87 Summit Park, Salt Lake City, UT 84103",
+    "property_type":  "condo",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  455000,
+    "appraised_value":  462000,
+    "calculated_ltv":  73.9,
+    "condition_rating":  "C3"
+}

@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-005",
+    "document_id":  "APP-005-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-12",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Ava Patel",
+    "employer":  "Meridian Consulting Group",
+    "pay_date":  "2026-01-12",
+    "gross_pay":  5500,
+    "net_pay":  3960.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2025-12-30",
+    "pay_period_end":  "2026-01-12",
+    "ytd_gross":  22000
+}

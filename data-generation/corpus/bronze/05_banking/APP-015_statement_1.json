@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-015",
+    "document_id":  "APP-015-BNK-001",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-03-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-03",
+    "owner_name":  "Sofia Alvarez",
+    "beginning_balance":  20250.00,
+    "ending_balance":  25283.33,
+    "average_balance":  22766.66,
+    "total_deposits":  10333.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-02-22",
+                             "description":  "Payroll",
+                             "amount":  5166.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-03-06",
+                             "description":  "Payroll",
+                             "amount":  5166.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-03-02",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-03-03",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}
