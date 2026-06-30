@@ -35,12 +35,12 @@ public sealed class LoanApiClient(
 
     public async Task<WorkflowStartResponse?> StartWorkflowAsync(string caseId, CancellationToken cancellationToken = default)
     {
-        string normalizedCaseId = ResolveCaseId(caseId);
-        CaseSession session = sessions.TryGet(normalizedCaseId)
+        string resolvedCaseId = RequireCaseId(caseId);
+        CaseSession session = sessions.TryGet(resolvedCaseId)
             ?? await OpenCaseSessionAsync(caseId, cancellationToken);
 
         using var response = await httpClient.PostAsync(
-            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(normalizedCaseId)}/workflow/basic/start",
+            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(resolvedCaseId)}/workflow/basic/start",
             null,
             cancellationToken);
         await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
@@ -54,7 +54,7 @@ public sealed class LoanApiClient(
         sessions.ApplyWorkflowStatus(session, status);
 
         return new WorkflowStartResponse(
-            normalizedCaseId,
+            resolvedCaseId,
             status.ExecutionId,
             true,
             MapQueuedStatus(status.Status),
@@ -103,7 +103,6 @@ public sealed class LoanApiClient(
             throw new InvalidOperationException("No active workflow execution is available for this case.");
         }
 
-        string normalizedCaseId = session.SeedCase.CaseId;
         var request = new BasicWorkflowApprovalRequest
         {
             Approved = approved,
@@ -111,7 +110,7 @@ public sealed class LoanApiClient(
         };
 
         using var response = await httpClient.PostAsJsonAsync(
-            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(normalizedCaseId)}/workflow/basic/executions/{Uri.EscapeDataString(session.ExecutionId)}/resume",
+            $"{LoanMortgageBase}/applications/{Uri.EscapeDataString(session.SeedCase.CaseId)}/workflow/basic/executions/{Uri.EscapeDataString(session.ExecutionId)}/resume",
             request,
             cancellationToken);
         await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
@@ -250,12 +249,12 @@ public sealed class LoanApiClient(
         return session;
     }
 
-    private string ResolveCaseId(string caseId) =>
+    private string RequireCaseId(string caseId) =>
         catalog.TryGetCase(caseId.Trim())?.CaseId
         ?? throw new InvalidOperationException($"Case '{caseId}' was not found in the dataset seed catalog.");
 
     private CaseSession? TryGetSession(string caseId) =>
-        sessions.TryGet(ResolveCaseId(caseId));
+        sessions.TryGet(RequireCaseId(caseId));
 
     private async Task<BasicWorkflowStatusResponse?> GetBasicWorkflowStatusAsync(
         string executionId,

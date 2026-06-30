@@ -1,6 +1,5 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
 using CohereLoanAndMortgage.Api.Host.Services;
-using LoanWorkflow.Mcp.Adapters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CohereLoanAndMortgage.Api.Host.Controllers;
@@ -82,9 +81,9 @@ public sealed class LoanMortgageController : ControllerBase
     {
         try
         {
-            string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
+            caseId = caseId.Trim();
             IReadOnlyList<CaseDocumentInfo> documents = await _documentStorageService.ListCaseDocumentsAsync(
-                normalizedCaseId,
+                caseId,
                 cancellationToken);
 
             if (documents.Count == 0)
@@ -92,13 +91,13 @@ public sealed class LoanMortgageController : ControllerBase
                 return NotFound(new ProblemDetailsResponse
                 {
                     Title = "Loan case not found.",
-                    Detail = $"Case '{normalizedCaseId}' was not found in dataset assets or has no documents under '{_documentStorageService.GetCaseIngestRelativePath(normalizedCaseId)}'."
+                    Detail = $"Case '{caseId}' was not found in dataset assets or has no documents under '{_documentStorageService.GetCaseIngestRelativePath(caseId)}'."
                 });
             }
 
             return Ok(new CaseDocumentsResponse
             {
-                CaseId = normalizedCaseId,
+                CaseId = caseId,
                 Documents = documents
                     .Select(document => new CaseDocumentResponse
                     {

@@ -30,8 +30,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        var path = FilePath(normalizedCaseId, category, fileName);
+        var path = FilePath(caseId, category, fileName);
         try
         {
             return await _client.ReadFileAsync(path, cancellationToken).ConfigureAwait(false);
@@ -45,8 +44,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
     public async Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        var categoryPath = CategoryPath(normalizedCaseId, category);
+        var categoryPath = CategoryPath(caseId, category);
 
         IReadOnlyList<string> all;
         try
@@ -68,11 +66,8 @@ public sealed class FabricCaseDataStore : ICaseDataStore
             .ToList();
     }
 
-    private string CategoryPath(string caseId, EvidenceCategory category)
-    {
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        return $"{_evidenceRoot}/{_datasetOptions.CasesRelativePath}/{normalizedCaseId}/{_datasetOptions.FabricPrerequisiteSubfolder}/{EvidenceCategoryFolders.For(category)}";
-    }
+    private string CategoryPath(string caseId, EvidenceCategory category) =>
+        $"{_evidenceRoot}/{_datasetOptions.CasesRelativePath}/{caseId.Trim()}/{_datasetOptions.FabricPrerequisiteSubfolder}/{EvidenceCategoryFolders.For(category)}";
 
     private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
         $"{CategoryPath(caseId, category)}/{fileName}";

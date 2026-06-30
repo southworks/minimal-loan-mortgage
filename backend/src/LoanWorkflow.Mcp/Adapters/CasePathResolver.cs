@@ -4,17 +4,11 @@ namespace LoanWorkflow.Mcp.Adapters;
 
 public static class CasePathResolver
 {
-    public static string NormalizeCaseId(string caseId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
-        return caseId.Trim();
-    }
-
     public static string GetCaseDirectory(string datasetRootPath, DatasetOptions options, string caseId) =>
         Path.Combine(
             datasetRootPath,
             options.CasesRelativePath,
-            NormalizeCaseId(caseId));
+            TrimCaseId(caseId));
 
     public static string GetIngestDirectory(string datasetRootPath, DatasetOptions options, string caseId) =>
         Path.Combine(
@@ -36,7 +30,7 @@ public static class CasePathResolver
             EvidenceCategoryFolders.For(category));
 
     public static string GetIngestRelativePath(DatasetOptions options, string caseId) =>
-        $"{options.CasesRelativePath}/{NormalizeCaseId(caseId)}/{options.IngestSubfolder}";
+        $"{options.CasesRelativePath}/{TrimCaseId(caseId)}/{options.IngestSubfolder}";
 
     public static string ResolveDatasetRoot(string contentRootPath, string? configuredRoot)
     {
@@ -78,5 +72,11 @@ public static class CasePathResolver
         return Path.GetFullPath(Path.IsPathRooted(path)
             ? path
             : Path.Combine(contentRootPath, path));
+    }
+
+    private static string TrimCaseId(string caseId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(caseId);
+        return caseId.Trim();
     }
 }

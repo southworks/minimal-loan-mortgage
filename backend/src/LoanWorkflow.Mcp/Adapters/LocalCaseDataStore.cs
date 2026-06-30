@@ -22,8 +22,7 @@ public sealed class LocalCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        var path = FilePath(normalizedCaseId, category, fileName);
+        var path = FilePath(caseId, category, fileName);
         if (!File.Exists(path))
         {
             throw new FileNotFoundException($"Case document not found: {path}", path);
@@ -35,8 +34,7 @@ public sealed class LocalCaseDataStore : ICaseDataStore
     public Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        var dir = CategoryDirectory(normalizedCaseId, category);
+        var dir = CategoryDirectory(caseId, category);
         if (!Directory.Exists(dir))
         {
             return Task.FromResult<IReadOnlyList<string>>([]);

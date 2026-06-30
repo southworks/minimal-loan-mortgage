@@ -53,17 +53,17 @@ public sealed class LocalCaseDocumentService
         _datasetRoot = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
     }
 
-    public static string GetCaseDirectory(string caseId) => CasePathResolver.NormalizeCaseId(caseId);
+    public static string GetCaseDirectory(string caseId) => caseId.Trim();
 
     public string GetCaseIngestRelativePath(string caseId) =>
-        CasePathResolver.GetIngestRelativePath(_datasetOptions, CasePathResolver.NormalizeCaseId(caseId));
+        CasePathResolver.GetIngestRelativePath(_datasetOptions, caseId);
 
     public Task<IReadOnlyList<CaseDocumentInfo>> ListCaseDocumentsAsync(
         string caseId,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyList<CaseDocumentInfo> documents = ListCaseDocuments(caseId);
+        IReadOnlyList<CaseDocumentInfo> documents = ListCaseDocuments(RequireCaseId(caseId));
         return Task.FromResult(documents);
     }
 
@@ -74,34 +74,30 @@ public sealed class LocalCaseDocumentService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(caseId))
-        {
-            throw new InvalidOperationException("CaseId is required.");
-        }
+        caseId = RequireCaseId(caseId);
 
         if (string.IsNullOrWhiteSpace(sourcePath))
         {
             throw new InvalidOperationException("SourcePath is required.");
         }
 
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
         string normalizedSourcePath = sourcePath.Trim();
-        string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
+        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
 
         if (!Directory.Exists(caseDirectory))
         {
             throw new KeyNotFoundException(
-                $"Case '{normalizedCaseId}' was not found in dataset assets at '{caseDirectory}'.");
+                $"Case '{caseId}' was not found in dataset assets at '{caseDirectory}'.");
         }
 
-        string resolvedPath = ResolveDocumentPath(caseDirectory, normalizedCaseId, normalizedSourcePath);
+        string resolvedPath = ResolveDocumentPath(caseDirectory, caseId, normalizedSourcePath);
         if (!File.Exists(resolvedPath))
         {
             throw new KeyNotFoundException(
-                $"Document '{normalizedSourcePath}' was not found for case '{normalizedCaseId}'.");
+                $"Document '{normalizedSourcePath}' was not found for case '{caseId}'.");
         }
 
-        return Task.FromResult(LoadDocumentFromFile(resolvedPath, normalizedCaseId, caseDirectory));
+        return Task.FromResult(LoadDocumentFromFile(resolvedPath, caseId, caseDirectory));
     }
 
     public Task<IReadOnlyList<LoadedCaseDocument>> LoadCaseDocumentsAsync(
@@ -110,13 +106,13 @@ public sealed class LocalCaseDocumentService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
+        caseId = RequireCaseId(caseId);
+        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
         if (!Directory.Exists(caseDirectory))
         {
             _logger.LogInformation(
                 "Case ingest directory not found for case {CaseId} at {CaseDirectory}.",
-                normalizedCaseId,
+                caseId,
                 caseDirectory);
 
             return Task.FromResult<IReadOnlyList<LoadedCaseDocument>>([]);
@@ -124,13 +120,13 @@ public sealed class LocalCaseDocumentService
 
         var documents = EnumerateIngestFiles(caseDirectory)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path => LoadDocumentFromFile(path, normalizedCaseId, caseDirectory))
+            .Select(path => LoadDocumentFromFile(path, caseId, caseDirectory))
             .ToArray();
 
         _logger.LogInformation(
             "Loaded {DocumentCount} document(s) for case {CaseId} from {CaseDirectory}.",
             documents.Length,
-            normalizedCaseId,
+            caseId,
             caseDirectory);
 
         return Task.FromResult<IReadOnlyList<LoadedCaseDocument>>(documents);
@@ -138,13 +134,12 @@ public sealed class LocalCaseDocumentService
 
     private IReadOnlyList<CaseDocumentInfo> ListCaseDocuments(string caseId)
     {
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
-        string caseDirectory = GetCaseIngestDirectoryPath(normalizedCaseId);
+        string caseDirectory = GetCaseIngestDirectoryPath(caseId);
         if (!Directory.Exists(caseDirectory))
         {
             _logger.LogInformation(
                 "Case ingest directory not found for case {CaseId} at {CaseDirectory}.",
-                normalizedCaseId,
+                caseId,
                 caseDirectory);
 
             return [];
@@ -152,13 +147,13 @@ public sealed class LocalCaseDocumentService
 
         var documents = EnumerateIngestFiles(caseDirectory)
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path => CreateDocumentInfo(path, normalizedCaseId, caseDirectory))
+            .Select(path => CreateDocumentInfo(path, caseId, caseDirectory))
             .ToArray();
 
         _logger.LogInformation(
             "Listed {DocumentCount} document(s) for case {CaseId} from {CaseDirectory}.",
             documents.Length,
-            normalizedCaseId,
+            caseId,
             caseDirectory);
 
         return documents;
@@ -166,6 +161,16 @@ public sealed class LocalCaseDocumentService
 
     private string GetCaseIngestDirectoryPath(string caseId) =>
         CasePathResolver.GetIngestDirectory(_datasetRoot, _datasetOptions, caseId);
+
+    private static string RequireCaseId(string caseId)
+    {
+        if (string.IsNullOrWhiteSpace(caseId))
+        {
+            throw new InvalidOperationException("CaseId is required.");
+        }
+
+        return caseId.Trim();
+    }
 
     private static IEnumerable<string> EnumerateIngestFiles(string caseDirectory) =>
         Directory

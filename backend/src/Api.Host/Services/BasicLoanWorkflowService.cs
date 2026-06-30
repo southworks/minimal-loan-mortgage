@@ -1,7 +1,6 @@
 using CohereLoanAndMortgage.Api.Host.Contracts;
 using CohereLoanAndMortgage.Api.Host.Options;
 using CohereLoanAndMortgage.Api.Host.Workflow;
-using LoanWorkflow.Mcp.Adapters;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
@@ -66,15 +65,15 @@ public sealed class BasicLoanWorkflowService
             throw new InvalidOperationException("ExecutionId is required.");
         }
 
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
+        caseId = caseId.Trim();
 
         IReadOnlyList<LoadedCaseDocument> documents =
-            await _documentStorage.LoadCaseDocumentsAsync(normalizedCaseId, cancellationToken).ConfigureAwait(false);
+            await _documentStorage.LoadCaseDocumentsAsync(caseId, cancellationToken).ConfigureAwait(false);
 
         if (documents.Count == 0)
         {
             throw new KeyNotFoundException(
-                $"Case '{normalizedCaseId}' was not found in dataset assets or has no documents under '{_documentStorage.GetCaseIngestRelativePath(normalizedCaseId)}'.");
+                $"Case '{caseId}' was not found in dataset assets or has no documents under '{_documentStorage.GetCaseIngestRelativePath(caseId)}'.");
         }
 
         IReadOnlyList<NormalizedCaseDocument> normalizedDocuments = await _documentTextExtractionService
@@ -84,21 +83,21 @@ public sealed class BasicLoanWorkflowService
         if (_caseWorkflowOptions.PreIndexCaseDocuments)
         {
             await _caseEvidenceIndexingService
-                .EnsureCaseDocumentsIndexedAsync(normalizedCaseId, executionId, normalizedDocuments, cancellationToken)
+                .EnsureCaseDocumentsIndexedAsync(caseId, executionId, normalizedDocuments, cancellationToken)
                 .ConfigureAwait(false);
         }
 
         var execution = new BasicWorkflowExecution
         {
             ExecutionId = executionId,
-            CaseId = normalizedCaseId,
+            CaseId = caseId,
             Status = BasicWorkflowStatus.Running,
             WorkflowCheckpointManager = CheckpointManager.CreateInMemory()
         };
         _store.Save(execution);
 
         List<ChatMessage> input = CaseWorkflowPayloadBuilder.CreateInitialMessages(
-            normalizedCaseId,
+            caseId,
             executionId,
             normalizedDocuments,
             _caseWorkflowOptions.PreIndexCaseDocuments);
@@ -118,12 +117,12 @@ public sealed class BasicLoanWorkflowService
         CancellationToken cancellationToken)
     {
         BasicWorkflowExecution execution = _store.GetRequired(executionId);
-        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
+        caseId = caseId.Trim();
 
-        if (!string.Equals(execution.CaseId, normalizedCaseId, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(execution.CaseId, caseId, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"Execution '{executionId}' does not belong to case '{normalizedCaseId}'.");
+                $"Execution '{executionId}' does not belong to case '{caseId}'.");
         }
 
         if (execution.Status != BasicWorkflowStatus.AwaitingHumanApproval ||
