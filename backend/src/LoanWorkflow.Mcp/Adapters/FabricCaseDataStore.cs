@@ -7,19 +7,14 @@ namespace LoanWorkflow.Mcp.Adapters;
 public sealed class FabricCaseDataStore : ICaseDataStore
 {
     private readonly IFabricLakehouseClient _client;
-    private readonly DatasetOptions _datasetOptions;
     private readonly string _evidenceRoot;
 
-    public FabricCaseDataStore(
-        IFabricLakehouseClient client,
-        IOptions<DataSourceOptions> dataSourceOptions,
-        IOptions<DatasetOptions> datasetOptions)
+    public FabricCaseDataStore(IFabricLakehouseClient client, IOptions<DataSourceOptions> options)
     {
         _client = client;
-        _datasetOptions = datasetOptions.Value;
-        _evidenceRoot = string.IsNullOrWhiteSpace(dataSourceOptions.Value.FabricLakehouse?.EvidenceRoot)
+        _evidenceRoot = string.IsNullOrWhiteSpace(options.Value.FabricLakehouse?.EvidenceRoot)
             ? "Files/bronze"
-            : dataSourceOptions.Value.FabricLakehouse!.EvidenceRoot;
+            : options.Value.FabricLakehouse!.EvidenceRoot;
     }
 
     public async Task<string> ReadDocumentAsync(string caseId, EvidenceCategory category, string fileName, CancellationToken cancellationToken = default)
@@ -53,7 +48,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
-            return [];
+            throw new KeyNotFoundException($"Case category directory not found: {categoryPath}", ex);
         }
 
         return all
@@ -67,7 +62,7 @@ public sealed class FabricCaseDataStore : ICaseDataStore
     }
 
     private string CategoryPath(string caseId, EvidenceCategory category) =>
-        $"{_evidenceRoot}/{_datasetOptions.CasesRelativePath}/{caseId.Trim()}/{_datasetOptions.FabricPrerequisiteSubfolder}/{EvidenceCategoryFolders.For(category)}";
+        $"{_evidenceRoot}/cases/{caseId.Trim()}/fabric-pre-requisite-data/{EvidenceCategoryFolders.For(category)}";
 
     private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
         $"{CategoryPath(caseId, category)}/{fileName}";

@@ -5,13 +5,11 @@ namespace LoanWorkflow.Mcp.Adapters;
 
 public sealed class LocalCaseDataStore : ICaseDataStore
 {
-    private readonly string _datasetRootPath;
-    private readonly DatasetOptions _datasetOptions;
+    private readonly string _rootPath;
 
     public LocalCaseDataStore(IOptions<DatasetOptions> options, IHostEnvironment environment)
     {
-        _datasetOptions = options.Value;
-        _datasetRootPath = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
+        _rootPath = ResolveContentPath(environment.ContentRootPath, options.Value.RootPath);
     }
 
     public async Task<string> ReadDocumentAsync(string caseId, EvidenceCategory category, string fileName, CancellationToken cancellationToken = default)
@@ -37,7 +35,7 @@ public sealed class LocalCaseDataStore : ICaseDataStore
         var dir = CategoryDirectory(caseId, category);
         if (!Directory.Exists(dir))
         {
-            return Task.FromResult<IReadOnlyList<string>>([]);
+            throw new KeyNotFoundException($"Case category directory not found: {dir}");
         }
 
         var files = Directory.EnumerateFiles(dir, "*.json", SearchOption.TopDirectoryOnly)
@@ -46,12 +44,11 @@ public sealed class LocalCaseDataStore : ICaseDataStore
             .Cast<string>()
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
-
         return Task.FromResult<IReadOnlyList<string>>(files);
     }
 
     private string CategoryDirectory(string caseId, EvidenceCategory category) =>
-        CasePathResolver.GetCategoryDirectory(_datasetRootPath, _datasetOptions, caseId, category);
+        Path.Combine(_rootPath, "cases", caseId.Trim(), "fabric-pre-requisite-data", EvidenceCategoryFolders.For(category));
 
     private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
         Path.Combine(CategoryDirectory(caseId, category), fileName);
@@ -62,5 +59,17 @@ public sealed class LocalCaseDataStore : ICaseDataStore
         {
             throw new ArgumentException("Case id must be provided.", nameof(caseId));
         }
+    }
+
+    private static string ResolveContentPath(string contentRootPath, string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return path;
+        }
+
+        return Path.GetFullPath(Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(contentRootPath, path));
     }
 }

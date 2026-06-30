@@ -111,7 +111,7 @@ public sealed class LocalCaseDocumentService
         }
 
         var documents = Directory
-            .EnumerateFiles(caseDirectory, "*.txt", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(caseDirectory, "*.*", SearchOption.TopDirectoryOnly)
             .Where(path => !string.IsNullOrWhiteSpace(Path.GetFileName(path)))
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .Select(path => LoadDocumentFromFile(path, caseId.Trim()))
@@ -140,7 +140,7 @@ public sealed class LocalCaseDocumentService
         }
 
         var documents = Directory
-            .EnumerateFiles(caseDirectory, "*.txt", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(caseDirectory, "*.*", SearchOption.TopDirectoryOnly)
             .Where(path => !string.IsNullOrWhiteSpace(Path.GetFileName(path)))
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .Select(path => CreateDocumentInfo(path, caseId.Trim()))
@@ -212,10 +212,19 @@ public sealed class LocalCaseDocumentService
     private static string BuildSourcePath(string caseId, string fileName) =>
         $"{GetCaseDirectory(caseId)}/{fileName}";
 
-    private static string ResolveContentType(string fileName) =>
-        Path.GetExtension(fileName).Equals(".txt", StringComparison.OrdinalIgnoreCase)
-            ? "text/plain"
-            : "application/octet-stream";
+    private static string ResolveContentType(string fileName)
+    {
+        string extension = Path.GetExtension(fileName).ToLowerInvariant();
+
+        return extension switch
+        {
+            ".txt" => "text/plain",
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream"
+        };
+    }
 
     internal static string ResolveDatasetRoot(string contentRootPath, string? configuredRoot)
     {
