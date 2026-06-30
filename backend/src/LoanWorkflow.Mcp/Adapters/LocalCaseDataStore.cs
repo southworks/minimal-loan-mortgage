@@ -5,11 +5,18 @@ namespace LoanWorkflow.Mcp.Adapters;
 
 public sealed class LocalCaseDataStore : ICaseDataStore
 {
-    private readonly string _rootPath;
+    private readonly string _datasetRootPath;
+    private readonly DatasetOptions _datasetOptions;
+    private readonly CaseCatalog _caseCatalog;
 
-    public LocalCaseDataStore(IOptions<DatasetOptions> options, IHostEnvironment environment)
+    public LocalCaseDataStore(
+        IOptions<DatasetOptions> options,
+        IHostEnvironment environment,
+        CaseCatalog caseCatalog)
     {
-        _rootPath = ResolveContentPath(environment.ContentRootPath, options.Value.RootPath);
+        _datasetOptions = options.Value;
+        _caseCatalog = caseCatalog;
+        _datasetRootPath = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, _datasetOptions.RootPath);
     }
 
     public async Task<string> ReadDocumentAsync(string caseId, EvidenceCategory category, string fileName, CancellationToken cancellationToken = default)
@@ -20,8 +27,9 @@ public sealed class LocalCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        var path = FilePath(category, fileName);
-        if (!File.Exists(path) || !fileName.StartsWith($"{caseId}_", StringComparison.Ordinal))
+        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        var path = FilePath(normalizedCaseId, category, fileName);
+        if (!File.Exists(path))
         {
             throw new FileNotFoundException($"Case document not found: {path}", path);
         }
@@ -32,27 +40,28 @@ public sealed class LocalCaseDataStore : ICaseDataStore
     public Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        var dir = CategoryDirectory(category);
+        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        var dir = CategoryDirectory(normalizedCaseId, category);
         if (!Directory.Exists(dir))
         {
-            throw new KeyNotFoundException($"Case category directory not found: {dir}");
+            return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
-        var prefix = $"{caseId}_";
-        var files = Directory.EnumerateFiles(dir, $"{prefix}*", SearchOption.TopDirectoryOnly)
+        var files = Directory.EnumerateFiles(dir, "*.json", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
             .Where(name => name is not null && !name.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
             .Cast<string>()
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
+
         return Task.FromResult<IReadOnlyList<string>>(files);
     }
 
-    private string CategoryDirectory(EvidenceCategory category) =>
-        Path.Combine(_rootPath, EvidenceCategoryFolders.For(category));
+    private string CategoryDirectory(string caseId, EvidenceCategory category) =>
+        CasePathResolver.GetCategoryDirectory(_datasetRootPath, _datasetOptions, caseId, category);
 
-    private string FilePath(EvidenceCategory category, string fileName) =>
-        Path.Combine(CategoryDirectory(category), fileName);
+    private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
+        Path.Combine(CategoryDirectory(caseId, category), fileName);
 
     private static void ValidateCaseId(string caseId)
     {
@@ -60,17 +69,5 @@ public sealed class LocalCaseDataStore : ICaseDataStore
         {
             throw new ArgumentException("Case id must be provided.", nameof(caseId));
         }
-    }
-
-    private static string ResolveContentPath(string contentRootPath, string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return path;
-        }
-
-        return Path.GetFullPath(Path.IsPathRooted(path)
-            ? path
-            : Path.Combine(contentRootPath, path));
     }
 }

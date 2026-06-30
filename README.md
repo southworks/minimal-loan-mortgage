@@ -62,7 +62,7 @@ Make the GHCR packages public after the first workflow run so Azure Container Ap
 
 ### After deployment
 
-Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `APP-001`, `APP-017`, and `APP-015` work when their documents are present in the bundled `dataset-seed/00_raw/txt/{caseId}/` assets inside the API container.
+Open the `apiUrl` output from the deployment and use the API endpoints below. Seeded demo cases such as `case-01`, `case-17`, and `case-15` work when their documents are present in the bundled `dataset-seed/cases/{caseId}/ingest/` assets inside the API container.
 
 The MCP reads supporting case data from the Fabric Lakehouse created during deployment. The deployment outputs `fabricWorkspaceName` and `fabricLakehouseName`. The MCP container app reads through `DataSource:Mode=Fabric` against `Files/raw/`, `Files/bronze/`, and `Files/policies/` in that lakehouse. Use the Fabric portal to inspect or upload additional cases.
 
@@ -99,7 +99,7 @@ The start endpoint returns an `executionId`. Use that value for status polling a
 ```json
 {
   "executionId": "abc123...",
-  "caseId": "APP-001",
+  "caseId": "case-01",
   "status": "Running",
   "agentOutputs": {
     "documentProcessing": null,
@@ -116,7 +116,7 @@ Possible `status` values: `Pending`, `Running`, `AwaitingHumanApproval`, `Comple
 
 ## UI Integration Pattern
 
-1. Pick a seeded demo case such as `APP-001`, `APP-017`, or `APP-015`.
+1. Pick a seeded demo case such as `case-01`, `case-17`, or `case-15`.
 2. Start the workflow with `POST /api/loan-mortgage/applications/{caseId}/workflow/basic/start`.
 3. Save the returned `executionId`.
 4. Poll `GET /api/loan-mortgage/executions/{executionId}/basic/status`.

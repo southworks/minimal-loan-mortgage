@@ -17,6 +17,13 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddLoanWorkflowMcpServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<DatasetOptions>(configuration.GetSection(DatasetOptions.SectionName));
+        services.AddSingleton<CaseCatalog>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<DatasetOptions>>().Value;
+            var environment = sp.GetRequiredService<IHostEnvironment>();
+            string datasetRoot = CasePathResolver.ResolveDatasetRoot(environment.ContentRootPath, options.RootPath);
+            return CaseCatalog.Load(datasetRoot, options);
+        });
         services.Configure<AzureSearchOptions>(configuration.GetSection(AzureSearchOptions.SectionName));
         services.Configure<AzureFoundryModelsOptions>(configuration.GetSection(AzureFoundryModelsOptions.SectionName));
         services.Configure<McpStartupOptions>(configuration.GetSection(McpStartupOptions.SectionName));

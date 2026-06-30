@@ -67,29 +67,43 @@ Write-Host "LakehouseId: $LakehouseId"
 Write-Host "OneLake endpoint: $OneLakeEndpoint"
 
 $seedRoot = Resolve-DatasetSeedPath -Candidate $DatasetSeedPath
+$casesRoot = Join-Path $seedRoot 'cases'
+if (-not (Test-Path -LiteralPath $casesRoot)) {
+    throw "Cases folder not found: $casesRoot"
+}
+
 $folders = @('02_identity', '03_income', '04_employment', '05_banking', '06_credit', '07_collateral')
 
 $allFiles = @()
-foreach ($folder in $folders) {
-    $sourceFolder = Join-Path $seedRoot $folder
-    if (-not (Test-Path -LiteralPath $sourceFolder)) {
-        Write-Warning "Skipping missing folder: $sourceFolder"
-        continue
+Get-ChildItem -Path $casesRoot -Directory | Sort-Object -Property Name | ForEach-Object {
+    $caseId = $_.Name
+    $prerequisiteRoot = Join-Path $_.FullName 'fabric-pre-requisite-data'
+    if (-not (Test-Path -LiteralPath $prerequisiteRoot)) {
+        Write-Warning "Skipping case without fabric-pre-requisite-data: $caseId"
+        return
     }
 
-    $jsonFiles = Get-ChildItem -Path $sourceFolder -Filter '*.json' -File | Sort-Object -Property Name
-    foreach ($file in $jsonFiles) {
-        $allFiles += [pscustomobject]@{
-            FullName = $file.FullName
-            Name = $file.Name
-            Folder = $folder
-            RelativePath = "$folder/$($file.Name)"
+    foreach ($folder in $folders) {
+        $sourceFolder = Join-Path $prerequisiteRoot $folder
+        if (-not (Test-Path -LiteralPath $sourceFolder)) {
+            Write-Warning "Skipping missing folder: $sourceFolder"
+            continue
+        }
+
+        $jsonFiles = Get-ChildItem -Path $sourceFolder -Filter '*.json' -File | Sort-Object -Property Name
+        foreach ($file in $jsonFiles) {
+            $allFiles += [pscustomobject]@{
+                FullName = $file.FullName
+                Name = $file.Name
+                Folder = $folder
+                RelativePath = "cases/$caseId/fabric-pre-requisite-data/$folder/$($file.Name)"
+            }
         }
     }
 }
 
 if ($allFiles.Count -eq 0) {
-    throw "No .json structured files found in $seedRoot"
+    throw "No .json structured files found under $casesRoot/*/fabric-pre-requisite-data"
 }
 
 Write-Host "Found $($allFiles.Count) JSON files across $($folders.Count) folders."

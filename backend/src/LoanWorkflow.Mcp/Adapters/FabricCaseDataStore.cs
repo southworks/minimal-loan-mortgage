@@ -7,14 +7,22 @@ namespace LoanWorkflow.Mcp.Adapters;
 public sealed class FabricCaseDataStore : ICaseDataStore
 {
     private readonly IFabricLakehouseClient _client;
+    private readonly DatasetOptions _datasetOptions;
+    private readonly CaseCatalog _caseCatalog;
     private readonly string _evidenceRoot;
 
-    public FabricCaseDataStore(IFabricLakehouseClient client, IOptions<DataSourceOptions> options)
+    public FabricCaseDataStore(
+        IFabricLakehouseClient client,
+        IOptions<DataSourceOptions> dataSourceOptions,
+        IOptions<DatasetOptions> datasetOptions,
+        CaseCatalog caseCatalog)
     {
         _client = client;
-        _evidenceRoot = string.IsNullOrWhiteSpace(options.Value.FabricLakehouse?.EvidenceRoot)
+        _datasetOptions = datasetOptions.Value;
+        _caseCatalog = caseCatalog;
+        _evidenceRoot = string.IsNullOrWhiteSpace(dataSourceOptions.Value.FabricLakehouse?.EvidenceRoot)
             ? "Files/bronze"
-            : options.Value.FabricLakehouse!.EvidenceRoot;
+            : dataSourceOptions.Value.FabricLakehouse!.EvidenceRoot;
     }
 
     public async Task<string> ReadDocumentAsync(string caseId, EvidenceCategory category, string fileName, CancellationToken cancellationToken = default)
@@ -25,14 +33,8 @@ public sealed class FabricCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        if (!fileName.StartsWith($"{caseId}_", StringComparison.Ordinal))
-        {
-            throw new FileNotFoundException(
-                $"Case document not found: file '{fileName}' does not belong to case '{caseId}'.",
-                fileName);
-        }
-
-        var path = FilePath(category, fileName);
+        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        var path = FilePath(normalizedCaseId, category, fileName);
         try
         {
             return await _client.ReadFileAsync(path, cancellationToken).ConfigureAwait(false);
@@ -46,63 +48,42 @@ public sealed class FabricCaseDataStore : ICaseDataStore
     public async Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        var categoryFolder = EvidenceCategoryFolders.For(category);
+        string normalizedCaseId = _caseCatalog.NormalizeCaseId(caseId);
+        var categoryPath = CategoryPath(normalizedCaseId, category);
 
         IReadOnlyList<string> all;
         try
         {
-            all = await _client.ListFilesAsync(_evidenceRoot, cancellationToken).ConfigureAwait(false);
+            all = await _client.ListFilesAsync(categoryPath, cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
-            throw new KeyNotFoundException($"Case evidence root not found: {_evidenceRoot}", ex);
+            return [];
         }
 
-        var prefix = $"{caseId}_";
         return all
-            .Where(path => PathBelongsToCategory(path, categoryFolder)
-                        && IsCaseDocument(path, prefix))
             .Select(ExtractFileName)
-            .Where(name => name is not null)
+            .Where(name => name is not null
+                           && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                           && !name.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
             .Select(name => name!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
     }
 
-    private string FilePath(EvidenceCategory category, string fileName) =>
-        $"{_evidenceRoot}/{EvidenceCategoryFolders.For(category)}/{fileName}";
-
-    private static bool PathBelongsToCategory(string fullPath, string categoryFolder)
+    private string CategoryPath(string caseId, EvidenceCategory category)
     {
-        var lastSlash = fullPath.LastIndexOf('/');
-        if (lastSlash < 0)
-        {
-            return false;
-        }
-        var parent = fullPath[..lastSlash];
-        var parentLastSlash = parent.LastIndexOf('/');
-        var parentFolder = parentLastSlash >= 0 ? parent[(parentLastSlash + 1)..] : parent;
-        return string.Equals(parentFolder, categoryFolder, StringComparison.Ordinal);
+        string normalizedCaseId = CasePathResolver.NormalizeCaseId(caseId);
+        return $"{_evidenceRoot}/{_datasetOptions.CasesRelativePath}/{normalizedCaseId}/{_datasetOptions.FabricPrerequisiteSubfolder}/{EvidenceCategoryFolders.For(category)}";
     }
+
+    private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
+        $"{CategoryPath(caseId, category)}/{fileName}";
 
     private static string? ExtractFileName(string blobPath)
     {
         var lastSlash = blobPath.LastIndexOf('/');
         return lastSlash >= 0 ? blobPath[(lastSlash + 1)..] : blobPath;
-    }
-
-    private static bool IsCaseDocument(string fullPath, string caseIdPrefix)
-    {
-        var fileName = ExtractFileName(fullPath);
-        if (fileName is null)
-        {
-            return false;
-        }
-        if (fileName.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-        return fileName.StartsWith(caseIdPrefix, StringComparison.Ordinal);
     }
 
     private static void ValidateCaseId(string caseId)
