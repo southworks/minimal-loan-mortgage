@@ -192,6 +192,7 @@ module containerApps 'modules/container-apps.bicep' = {
     apiIdentityClientId: security.outputs.apiIdentityClientId
     mcpIdentityId: security.outputs.mcpIdentityId
     mcpIdentityClientId: security.outputs.mcpIdentityClientId
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
     foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
     searchServiceEndpoint: dataServices.outputs.searchServiceEndpoint
     documentIntelligenceEndpoint: dataServices.outputs.documentIntelligenceEndpoint
@@ -210,6 +211,20 @@ module containerApps 'modules/container-apps.bicep' = {
   ] : []
 }
 
+module foundryAppInsightsConnection 'modules/foundry-appinsights-connection.bicep' = {
+  name: 'foundry-app-insights-connection'
+  params: {
+    foundryAccountName: foundry.outputs.foundryAccountName
+    foundryProjectName: foundry.outputs.foundryProjectName
+    connectionName: 'applicationinsights'
+    applicationInsightsResourceId: platform.outputs.applicationInsightsResourceId
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
+  }
+  dependsOn: [
+    security
+  ]
+}
+
 module containerJobs 'modules/container-jobs.bicep' = {
   name: 'container-jobs'
   params: {
@@ -225,6 +240,7 @@ module containerJobs 'modules/container-jobs.bicep' = {
     provisioningIdentityClientId: security.outputs.provisioningIdentityClientId
     mcpUrl: containerApps.outputs.mcpUrl
     mcpContainerEnv: containerApps.outputs.mcpContainerEnv
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
     foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
     modelDeploymentName: foundry.outputs.modelDeploymentName
   }
@@ -252,6 +268,7 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
   }
   dependsOn: [
     containerJobs
+    foundryAppInsightsConnection
   ]
 }
 
@@ -279,3 +296,6 @@ output fabricLakehouseName string = enableFabric ? fabricProvision!.outputs.lake
 output fabricSqlServer string = enableFabric ? fabricProvision!.outputs.sqlServer : ''
 output fabricSqlDatabase string = enableFabric ? fabricProvision!.outputs.sqlDatabase : ''
 output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName
+output applicationInsightsName string = platform.outputs.applicationInsightsName
+@secure()
+output applicationInsightsConnectionString string = platform.outputs.applicationInsightsConnectionString

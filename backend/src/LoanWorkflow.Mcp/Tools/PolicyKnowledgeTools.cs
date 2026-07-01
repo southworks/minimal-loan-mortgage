@@ -2,6 +2,7 @@ using System.ComponentModel;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Builders;
 using LoanWorkflow.Mcp.Models;
+using LoanWorkflow.Mcp.Observability;
 using ModelContextProtocol.Server;
 
 namespace LoanWorkflow.Mcp.Tools;
@@ -29,7 +30,13 @@ public sealed class PolicyKnowledgeTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
-        return _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken);
+        return McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.policy_knowledge.get_relevant_policies",
+            caseId: caseContext ?? "n/a",
+            executionId: "n/a",
+            agentRole: "responsible-ai",
+            agentName: "responsible-ai-agent",
+            action: () => _policyIndexAdapter.GetRelevantPoliciesAsync(query, caseContext, topK, cancellationToken));
     }
 
     [McpServerTool]
@@ -40,7 +47,13 @@ public sealed class PolicyKnowledgeTools
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(policyRefs);
-        return _policyIndexAdapter.GetPoliciesByRefsAsync(policyRefs, cancellationToken);
+        return McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.policy_knowledge.get_policies_by_refs",
+            caseId: "n/a",
+            executionId: "n/a",
+            agentRole: "responsible-ai",
+            agentName: "responsible-ai-agent",
+            action: () => _policyIndexAdapter.GetPoliciesByRefsAsync(policyRefs, cancellationToken));
     }
 
     [McpServerTool]
@@ -52,12 +65,18 @@ public sealed class PolicyKnowledgeTools
         string underwritingDecision,
         string? reviewerComment = null,
         CancellationToken cancellationToken = default)
-        => _humanDecisionValidator.ValidateAsync(
-            caseId,
-            executionId,
-            humanDecision,
-            underwritingDecision,
-            reviewerComment,
-            _policyIndexAdapter,
-            cancellationToken);
+        => McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.policy_knowledge.validate_human_decision",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "responsible-ai",
+            agentName: "responsible-ai-agent",
+            action: () => _humanDecisionValidator.ValidateAsync(
+                caseId,
+                executionId,
+                humanDecision,
+                underwritingDecision,
+                reviewerComment,
+                _policyIndexAdapter,
+                cancellationToken));
 }

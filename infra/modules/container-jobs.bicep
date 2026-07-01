@@ -10,10 +10,13 @@ param provisioningIdentityId string
 param provisioningIdentityClientId string
 param mcpUrl string
 param mcpContainerEnv array
+@secure()
+param applicationInsightsConnectionString string
 param foundryProjectEndpoint string
 param modelDeploymentName string
 
 var policySeedContainerEnv = concat(mcpContainerEnv, [
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: applicationInsightsConnectionString }
   { name: 'AzureFoundryModels__MaxRetryAttempts', value: '10' }
   { name: 'AzureFoundryModels__MaxDelaySeconds', value: '60' }
 ])

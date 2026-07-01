@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using LoanWorkflow.Mcp.Builders;
 using LoanWorkflow.Mcp.Models;
+using LoanWorkflow.Mcp.Observability;
 using ModelContextProtocol.Server;
 
 namespace LoanWorkflow.Mcp.Tools;
@@ -30,14 +31,20 @@ public sealed class LoanSetupTools
         string humanDecision,
         [Description("JSON object with responsible-ai-agent output.")]
         string responsibleAiResult)
-        => _accountSetupBuilder.Build(
-            caseId,
-            executionId,
-            ParseRequiredJson(applicationData, nameof(applicationData)),
-            ParseRequiredJson(documentProcessingResult, nameof(documentProcessingResult)),
-            ParseRequiredJson(underwritingResult, nameof(underwritingResult)),
-            ParseRequiredJson(humanDecision, nameof(humanDecision)),
-            ParseRequiredJson(responsibleAiResult, nameof(responsibleAiResult)));
+        => McpToolInstrumentation.Execute(
+            operationName: "mcp.loan_setup.build_account_setup_draft",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "loan-setup",
+            agentName: "loan-setup-agent",
+            action: () => _accountSetupBuilder.Build(
+                caseId,
+                executionId,
+                ParseRequiredJson(applicationData, nameof(applicationData)),
+                ParseRequiredJson(documentProcessingResult, nameof(documentProcessingResult)),
+                ParseRequiredJson(underwritingResult, nameof(underwritingResult)),
+                ParseRequiredJson(humanDecision, nameof(humanDecision)),
+                ParseRequiredJson(responsibleAiResult, nameof(responsibleAiResult))));
 
     private static JsonElement ParseRequiredJson(string json, string parameterName)
     {

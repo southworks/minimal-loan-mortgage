@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Models;
+using LoanWorkflow.Mcp.Observability;
 using ModelContextProtocol.Server;
 
 namespace LoanWorkflow.Mcp.Tools;
@@ -25,7 +26,13 @@ public sealed class DocumentRetrievalTools
         string caseId,
         string executionId,
         CancellationToken cancellationToken)
-        => _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
+        => McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.document_retrieval.get_case_documents",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "document-processing",
+            agentName: "document-processing-agent",
+            action: () => _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken));
 
     [McpServerTool]
     [Description("Loads customer context for a discovered caseId, ensures it is indexed for retrieval, and returns compact facts for document comparison.")]
@@ -34,33 +41,42 @@ public sealed class DocumentRetrievalTools
         string executionId,
         CancellationToken cancellationToken)
     {
-        var context = await _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
-        var indexing = await _evidenceIndexAdapter.IndexDocumentsAsync(
-            caseId,
-            executionId,
-            context.Documents,
-            EvidenceIndexAdapter.CustomerContextSourceType,
-            sourceKey: EvidenceIndexAdapter.CreateCustomerContextSourceKey(caseId),
-            cancellationToken);
+        return await McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.document_retrieval.enrich_customer_context",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "document-processing",
+            agentName: "document-processing-agent",
+            action: async () =>
+            {
+                var context = await _caseDataAdapter.GetCaseDocumentsAsync(caseId, executionId, cancellationToken);
+                var indexing = await _evidenceIndexAdapter.IndexDocumentsAsync(
+                    caseId,
+                    executionId,
+                    context.Documents,
+                    EvidenceIndexAdapter.CustomerContextSourceType,
+                    sourceKey: EvidenceIndexAdapter.CreateCustomerContextSourceKey(caseId),
+                    cancellationToken);
 
-        return new EnrichCustomerContextResponse
-        {
-            CaseId = caseId,
-            ExecutionId = executionId,
-            Source = context.Source,
-            Indexing = indexing,
-            Facts = context.Documents
-                .Select(document => new CustomerContextFact
+                return new EnrichCustomerContextResponse
                 {
-                    Category = document.Category,
-                    DocumentId = document.DocumentId,
-                    DocumentType = document.DocumentType,
-                    SummaryText = TruncatePreview(document.SummaryText)
-                })
-                .ToArray(),
-            AvailableCategories = context.AvailableCategories,
-            MissingCategories = context.MissingCategories
-        };
+                    CaseId = caseId,
+                    ExecutionId = executionId,
+                    Source = context.Source,
+                    Indexing = indexing,
+                    Facts = context.Documents
+                        .Select(document => new CustomerContextFact
+                        {
+                            Category = document.Category,
+                            DocumentId = document.DocumentId,
+                            DocumentType = document.DocumentType,
+                            SummaryText = TruncatePreview(document.SummaryText)
+                        })
+                        .ToArray(),
+                    AvailableCategories = context.AvailableCategories,
+                    MissingCategories = context.MissingCategories
+                };
+            });
     }
 
     [McpServerTool]
@@ -72,17 +88,26 @@ public sealed class DocumentRetrievalTools
         string documentsJson = "[]",
         CancellationToken cancellationToken = default)
     {
-        var normalizedDocuments = IsEmptyDocumentsJson(documentsJson)
-            ? []
-            : NormalizeDocuments(ParseJson(documentsJson));
+        return await McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.document_retrieval.index_case_documents",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "document-processing",
+            agentName: "document-processing-agent",
+            action: async () =>
+            {
+                var normalizedDocuments = IsEmptyDocumentsJson(documentsJson)
+                    ? []
+                    : NormalizeDocuments(ParseJson(documentsJson));
 
-        return await _evidenceIndexAdapter.IndexDocumentsAsync(
-            caseId,
-            executionId,
-            normalizedDocuments,
-            EvidenceIndexAdapter.WorkflowPayloadSourceType,
-            sourceKey: EvidenceIndexAdapter.CreateCaseSourceKey(caseId),
-            cancellationToken: cancellationToken);
+                return await _evidenceIndexAdapter.IndexDocumentsAsync(
+                    caseId,
+                    executionId,
+                    normalizedDocuments,
+                    EvidenceIndexAdapter.WorkflowPayloadSourceType,
+                    sourceKey: EvidenceIndexAdapter.CreateCaseSourceKey(caseId),
+                    cancellationToken: cancellationToken);
+            });
     }
 
     [McpServerTool]
@@ -99,21 +124,30 @@ public sealed class DocumentRetrievalTools
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query, nameof(query));
 
-        var matches = await _evidenceIndexAdapter.SearchAsync(
-            caseId,
-            executionId,
-            query,
-            topK,
-            sourceType,
-            cancellationToken);
+        return await McpToolInstrumentation.ExecuteAsync(
+            operationName: "mcp.document_retrieval.search_case_evidence",
+            caseId: caseId,
+            executionId: executionId,
+            agentRole: "document-processing",
+            agentName: "document-processing-agent",
+            action: async () =>
+            {
+                var matches = await _evidenceIndexAdapter.SearchAsync(
+                    caseId,
+                    executionId,
+                    query,
+                    topK,
+                    sourceType,
+                    cancellationToken);
 
-        return new SearchCaseEvidenceResponse
-        {
-            CaseId = caseId,
-            ExecutionId = executionId,
-            Query = query,
-            Matches = matches
-        };
+                return new SearchCaseEvidenceResponse
+                {
+                    CaseId = caseId,
+                    ExecutionId = executionId,
+                    Query = query,
+                    Matches = matches
+                };
+            });
     }
 
     private static JsonElement ParseJson(string json)

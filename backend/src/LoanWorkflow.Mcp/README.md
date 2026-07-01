@@ -51,6 +51,7 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
 
 ```json
 {
+  "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
   "McpStartup": {
     "EnsureSearchIndexesOnStartup": true,
     "SeedPoliciesOnStartup": false
@@ -84,6 +85,12 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
   }
 }
 ```
+
+Telemetry policy:
+
+- Cloud-first: when `APPLICATIONINSIGHTS_CONNECTION_STRING` is present, traces/metrics/logs are exported to Azure Monitor.
+- Local fallback: in `Development` without connection string, exporters fall back to console.
+- In non-Development environments without connection string, console fallback is disabled.
 
 Leave `ApiKey` empty in Azure to use managed identity with scope `https://ai.azure.com/.default`.
 

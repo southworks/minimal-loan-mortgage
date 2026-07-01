@@ -11,6 +11,8 @@ param apiIdentityId string
 param apiIdentityClientId string
 param mcpIdentityId string
 param mcpIdentityClientId string
+@secure()
+param applicationInsightsConnectionString string
 param foundryProjectEndpoint string
 param searchServiceEndpoint string
 param documentIntelligenceEndpoint string
@@ -46,7 +48,7 @@ var mcpFoundryModelEnv = [
   { name: 'AzureFoundryModels__MaxConcurrentRerankRequests', value: '2' }
 ]
 
-var mcpContainerEnv = concat([
+var mcpSharedContainerEnv = concat([
   { name: 'AzureSearch__Endpoint', value: searchServiceEndpoint }
   { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
   { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
@@ -56,6 +58,10 @@ var mcpContainerEnv = concat([
   { name: 'DataSource__Mode', value: dataSourceMode }
   { name: 'AZURE_CLIENT_ID', value: mcpIdentityClientId }
 ], mcpFabricEnv, mcpFoundryModelEnv)
+
+var mcpContainerEnv = concat([
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: applicationInsightsConnectionString }
+], mcpSharedContainerEnv)
 
 resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: mcpAppName
@@ -139,6 +145,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             memory: '1Gi'
           }
           env: [
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: applicationInsightsConnectionString }
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
             { name: 'AzureSearch__Endpoint', value: searchServiceEndpoint }
             { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
@@ -252,4 +259,4 @@ output apiUrl string = 'https://${apiApp.properties.configuration.ingress.fqdn}'
 output frontendUrl string = 'https://${frontendApp.properties.configuration.ingress.fqdn}'
 output mcpUrl string = mcpBaseUrl
 output mcpFqdn string = mcpApp.properties.configuration.ingress.fqdn
-output mcpContainerEnv array = mcpContainerEnv
+output mcpContainerEnv array = mcpSharedContainerEnv

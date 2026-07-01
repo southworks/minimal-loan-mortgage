@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Agents.AI.Workflows;
 
@@ -37,14 +38,24 @@ public sealed class BasicWorkflowExecution
 
     public string? FailureReason { get; set; }
 
+    public DateTimeOffset? StartedAtUtc { get; set; }
+
+    public DateTimeOffset? AwaitingHumanApprovalAtUtc { get; set; }
+
+    public Dictionary<string, Activity> AgentActivities { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public DateTimeOffset LastUpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class AgentExecutionState
 {
-    public string AgentName { get; init; }
+    public required string AgentName { get; init; }
 
     public BasicWorkflowStatus Status { get; set; }
+
+    public DateTimeOffset? StartedAtUtc { get; set; }
+
+    public DateTimeOffset? CompletedAtUtc { get; set; }
 
     public string? Output { get; set; }
 }
