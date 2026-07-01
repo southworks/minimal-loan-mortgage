@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "8835570788454522462"
+      "templateHash": "16218774453130165794"
     }
   },
   "parameters": {
@@ -14,13 +14,6 @@
       "defaultValue": "cohereloan",
       "metadata": {
         "description": "Base name used for deployed resources."
-      }
-    },
-    "foundryProjectName": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Foundry project name. Leave empty to default to {baseName}-project. Must be a plain string, not an ARM expression."
       }
     },
     "modelDeploymentName": {
@@ -204,7 +197,7 @@
   },
   "variables": {
     "location": "[resourceGroup().location]",
-    "resolvedFoundryProjectName": "[if(empty(parameters('foundryProjectName')), format('{0}-project', parameters('baseName')), parameters('foundryProjectName'))]",
+    "resolvedFoundryProjectName": "[format('{0}-project', parameters('baseName'))]",
     "resourceTags": {
       "project": "inesite"
     }
