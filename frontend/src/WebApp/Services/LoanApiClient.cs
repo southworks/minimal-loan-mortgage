@@ -29,6 +29,10 @@ public sealed class LoanApiClient(
 
     public async Task<CaseDetailResponse?> CreateCaseAsync(string scenarioId, CancellationToken cancellationToken = default)
     {
+        SeedCaseDefinition seedCase = catalog.TryGetCase(scenarioId)
+            ?? throw new InvalidOperationException($"Case '{scenarioId}' was not found in the dataset seed catalog.");
+
+        sessions.Reset(seedCase);
         CaseSession session = await OpenCaseSessionAsync(scenarioId, cancellationToken);
         return BackendWorkflowMapper.ToDetail(session);
     }

@@ -26,6 +26,13 @@ public sealed class CaseSessionStore
         return session;
     }
 
+    public CaseSession Reset(SeedCaseDefinition seedCase)
+    {
+        var session = CaseSession.Create(seedCase);
+        _sessions[seedCase.CaseId] = session;
+        return session;
+    }
+
     public CaseSession? TryGet(string caseId) =>
         _sessions.TryGetValue(caseId, out CaseSession? session) ? session : null;
 
