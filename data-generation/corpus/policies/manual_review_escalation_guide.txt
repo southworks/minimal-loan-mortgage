@@ -1,0 +1,5 @@
+﻿Policy Ref: MR-001
+Rule: files that are plausible but contain unresolved discrepancies or borderline metrics should be escalated instead of auto-approved or auto-denied.
+Threshold: address mismatch with otherwise strong identity evidence, isolated unexplained deposits, short but not disqualifying employment tenure, score or debt-to-income close to policy limits with compensating factors.
+Action: manual_review when one or more escalation triggers are present and no hard deny threshold is breached.
+Exception: none.

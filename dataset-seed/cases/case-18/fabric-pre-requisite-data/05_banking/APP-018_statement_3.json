@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-018",
+    "document_id":  "APP-018-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-01-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-01",
+    "owner_name":  "William Cooper",
+    "beginning_balance":  25200.00,
+    "ending_balance":  30666.67,
+    "average_balance":  27933.34,
+    "total_deposits":  11166.67,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-01-06",
+                             "description":  "Payroll",
+                             "amount":  5583.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-18",
+                             "description":  "Payroll",
+                             "amount":  5583.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-14",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-01-15",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

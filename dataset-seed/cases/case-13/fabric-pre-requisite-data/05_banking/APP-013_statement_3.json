@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-12-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-12",
+    "owner_name":  "Emily Reed",
+    "beginning_balance":  22575.00,
+    "ending_balance":  26908.33,
+    "average_balance":  24741.66,
+    "total_deposits":  9833.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-12-14",
+                             "description":  "Payroll",
+                             "amount":  4916.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-26",
+                             "description":  "Payroll",
+                             "amount":  4916.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-22",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-12-23",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

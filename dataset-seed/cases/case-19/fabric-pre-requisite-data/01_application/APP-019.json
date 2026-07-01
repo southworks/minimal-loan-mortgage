@@ -1,0 +1,32 @@
+﻿{
+    "application_id":  "APP-019",
+    "document_id":  "APP-019-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-03-23",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  341250,
+    "purchase_price":  455000,
+    "down_payment":  113750,
+    "interest_rate_estimate":  6.4,
+    "borrower":  {
+                     "full_name":  "Evelyn Ross",
+                     "date_of_birth":  "1989-11-28",
+                     "current_address":  "87 Summit Park, Salt Lake City, UT 84103"
+                 },
+    "co_borrower":  null,
+    "property":  {
+                     "address":  "87 Summit Park, Salt Lake City, UT 84103",
+                     "city":  "Salt Lake City",
+                     "state":  "UT",
+                     "property_type":  "condo"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  10083,
+                                "existing_monthly_debt":  2100,
+                                "liquid_assets":  61425
+                            }
+}

@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-016",
+    "document_id":  "APP-016-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-03-01",
+    "source_system":  "appraisal_report",
+    "property_address":  "330 Riverstone Dr, Columbus, OH 43215",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  620000,
+    "appraised_value":  585000,
+    "calculated_ltv":  95.4,
+    "condition_rating":  "C3"
+}

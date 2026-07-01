@@ -1,0 +1,5 @@
+﻿Policy Ref: BK-410
+Rule: unexplained non-payroll deposits must be evaluated before funds can be relied on for qualification or closing.
+Threshold: a large unexplained deposit is any non-payroll credit above 35 percent of monthly gross income, one unresolved large deposit triggers manual review, repeated unresolved large deposits may justify denial when funds are needed to close.
+Action: use manual_review for isolated unexplained deposits, deny when repeated unexplained deposits undermine source-of-funds confidence in the MVP.
+Exception: documented transfers between owned accounts are acceptable.

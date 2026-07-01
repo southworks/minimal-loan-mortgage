@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Ethan Carter
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $27,420.00
+  Total Deposits    : $12,833.33
+  Ending Balance    : $34,453.33
+  Average Balance   : $30,936.66
+
+TRANSACTIONS
+  2025-12-01  Payroll                          +$6,416.66
+  2025-12-13  Payroll                          +$6,416.66
+  2025-12-09  Housing expense                  $-2,200.00
+  2025-12-10  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

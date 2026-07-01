@@ -1,0 +1,5 @@
+﻿Policy Ref: ID-150
+Rule: borrower identity attributes must match across the application and the identity document before the file can be considered clean.
+Threshold: name and date of birth must match across application and identity evidence, address mismatches require investigation, expired identity documents are out of policy.
+Action: approve identity when core attributes align, use manual_review when address discrepancies remain unresolved, deny when the identity document is expired or materially inconsistent.
+Exception: recent move explanations may justify manual review instead of denial.

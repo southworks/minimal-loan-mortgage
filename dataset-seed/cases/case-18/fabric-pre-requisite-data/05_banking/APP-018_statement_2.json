@@ -1,0 +1,53 @@
+﻿{
+    "application_id":  "APP-018",
+    "document_id":  "APP-018-BNK-002",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-02-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-02",
+    "owner_name":  "William Cooper",
+    "beginning_balance":  21600.00,
+    "ending_balance":  36266.67,
+    "average_balance":  28933.34,
+    "total_deposits":  20366.67,
+    "large_deposits":  [
+                           {
+                               "transaction_date":  "2026-02-11",
+                               "amount":  9200,
+                               "description":  "External transfer"
+                           }
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-02-06",
+                             "description":  "Payroll",
+                             "amount":  5583.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-18",
+                             "description":  "Payroll",
+                             "amount":  5583.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-14",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-02-15",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         },
+                         {
+                             "transaction_date":  "2026-02-11",
+                             "description":  "External transfer",
+                             "amount":  9200,
+                             "category":  "external_transfer"
+                         }
+                     ]
+}

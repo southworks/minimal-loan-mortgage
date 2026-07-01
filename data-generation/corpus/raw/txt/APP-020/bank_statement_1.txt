@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-03
+========================
+Account Holder : Alexander Ward
+Statement Date : March 28, 2026
+Period         : 2026-03
+
+SUMMARY
+  Beginning Balance : $21,525.00
+  Total Deposits    : $11,416.67
+  Ending Balance    : $25,241.67
+  Average Balance   : $23,383.34
+
+TRANSACTIONS
+  2026-03-14  Payroll                          +$5,708.34
+  2026-03-26  Payroll                          +$5,708.34
+  2026-03-22  Housing expense                  $-2,200.00
+  2026-03-23  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

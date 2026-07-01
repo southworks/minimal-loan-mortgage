@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Olivia Bennett
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $19,500.00
+  Total Deposits    : $11,500.00
+  Ending Balance    : $25,500.00
+  Average Balance   : $22,500.00
+
+TRANSACTIONS
+  2025-12-28  Payroll                          +$5,750.00
+  2026-01-09  Payroll                          +$5,750.00
+  2026-01-05  Housing expense                  $-2,200.00
+  2026-01-06  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

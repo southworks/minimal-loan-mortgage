@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-007",
+    "document_id":  "APP-007-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-12-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-12",
+    "owner_name":  "Isabella Nguyen",
+    "beginning_balance":  37800.00,
+    "ending_balance":  46166.67,
+    "average_balance":  41983.34,
+    "total_deposits":  14666.67,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-20",
+                             "description":  "Payroll",
+                             "amount":  7333.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-02",
+                             "description":  "Payroll",
+                             "amount":  7333.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-28",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-11-29",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

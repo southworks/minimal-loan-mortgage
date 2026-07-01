@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-009",
+    "document_id":  "APP-009-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-28",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Charlotte Morgan",
+    "employer":  "Harbor Advisory Partners",
+    "pay_date":  "2026-01-28",
+    "gross_pay":  5916.67,
+    "net_pay":  4260.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-15",
+    "pay_period_end":  "2026-01-28",
+    "ytd_gross":  23666.68
+}

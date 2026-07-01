@@ -1,0 +1,15 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-EMP-001",
+    "document_type":  "employment_verification",
+    "document_date":  "2026-02-27",
+    "source_system":  "employer_verification",
+    "party_role":  "borrower",
+    "employee_name":  "Emily Reed",
+    "employer":  "Peachtree Media Group",
+    "employment_status":  "full_time",
+    "hire_date":  "2020-06-01",
+    "base_salary_annual":  118000,
+    "job_title":  "Marketing Director",
+    "bonus_annual":  8000
+}

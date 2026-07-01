@@ -1,0 +1,5 @@
+﻿Policy Ref: UW-100
+Rule: approve when credit, debt-to-income, collateral, identity, and income evidence are consistent and within standard limits; deny when any hard threshold is breached; otherwise route to manual review.
+Threshold: credit score at least 700 for standard approval, debt-to-income below 43 for standard approval, loan-to-value at or below 80 for standard approval, debt-to-income above 50 is out of policy, loan-to-value above 90 is out of policy, income variance above 10 percent is out of policy when income cannot be verified.
+Action: approve when all standard thresholds are met, deny when any hard threshold is breached, manual_review when the file is borderline or contains non-fatal inconsistencies.
+Exception: borderline files with plausible explanations can be escalated to manual review.

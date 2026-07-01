@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-004
+Application Date : January 22, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $510,000.00
+  Purchase Price   : $680,000.00
+  Down Payment     : $170,000.00
+  Est. Interest    : 6.4%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Noah Rivera
+  Date of Birth  : November 19, 1985
+  Current Address: 300 East 61st St, Austin, TX 78751
+
+PROPERTY
+  Address        : 908 Sabal Ridge, Austin, TX 78757
+  City / State   : Austin, TX
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $14,000.00
+  Monthly Debt   : $2,600.00
+  Liquid Assets  : $91,800.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

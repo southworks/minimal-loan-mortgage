@@ -1,0 +1,32 @@
+﻿{
+    "application_id":  "APP-017",
+    "document_id":  "APP-017-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-03-15",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  375000,
+    "purchase_price":  500000,
+    "down_payment":  125000,
+    "interest_rate_estimate":  6.2,
+    "borrower":  {
+                     "full_name":  "Amelia Price",
+                     "date_of_birth":  "1992-09-18",
+                     "current_address":  "604 Birch Terrace, Raleigh, NC 27608"
+                 },
+    "co_borrower":  null,
+    "property":  {
+                     "address":  "604 Birch Terrace, Raleigh, NC 27608",
+                     "city":  "Raleigh",
+                     "state":  "NC",
+                     "property_type":  "townhome"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  10750,
+                                "existing_monthly_debt":  2000,
+                                "liquid_assets":  67500
+                            }
+}

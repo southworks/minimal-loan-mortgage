@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-010",
+    "document_id":  "APP-010-BNK-001",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-02-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-02",
+    "owner_name":  "Benjamin Flores",
+    "beginning_balance":  19875.00,
+    "ending_balance":  26841.67,
+    "average_balance":  23358.34,
+    "total_deposits":  12666.67,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-02-02",
+                             "description":  "Payroll",
+                             "amount":  6333.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-14",
+                             "description":  "Payroll",
+                             "amount":  6333.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-10",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-02-11",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Charlotte Morgan
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $29,400.00
+  Total Deposits    : $11,833.33
+  Ending Balance    : $35,733.33
+  Average Balance   : $32,566.66
+
+TRANSACTIONS
+  2025-11-28  Payroll                          +$5,916.66
+  2025-12-10  Payroll                          +$5,916.66
+  2025-12-06  Housing expense                  $-2,200.00
+  2025-12-07  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

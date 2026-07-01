@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-002",
+    "document_id":  "APP-002-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-11-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-11",
+    "owner_name":  "Ethan Carter",
+    "beginning_balance":  31990.00,
+    "ending_balance":  39023.33,
+    "average_balance":  35506.66,
+    "total_deposits":  12833.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-01",
+                             "description":  "Payroll",
+                             "amount":  6416.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-13",
+                             "description":  "Payroll",
+                             "amount":  6416.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-09",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-11-10",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

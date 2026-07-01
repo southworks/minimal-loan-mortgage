@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-015",
+    "document_id":  "APP-015-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-02-21",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Sofia Alvarez",
+    "employer":  "Pacific Horizon Labs",
+    "pay_date":  "2026-02-21",
+    "gross_pay":  5166.67,
+    "net_pay":  3720.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-02-08",
+    "pay_period_end":  "2026-02-21",
+    "ytd_gross":  20666.68
+}

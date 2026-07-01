@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-001",
+    "document_id":  "APP-001-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2025-12-31",
+    "source_system":  "appraisal_report",
+    "property_address":  "2211 Birch Court, Denver, CO 80211",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  520000,
+    "appraised_value":  535000,
+    "calculated_ltv":  72.9,
+    "condition_rating":  "C3"
+}

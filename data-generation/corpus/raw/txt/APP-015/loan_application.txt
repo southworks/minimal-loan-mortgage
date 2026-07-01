@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-015
+Application Date : March 07, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $405,000.00
+  Purchase Price   : $540,000.00
+  Down Payment     : $135,000.00
+  Est. Interest    : 6.5%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Sofia Alvarez
+  Date of Birth  : December 11, 1991
+  Current Address: 22 Del Mar Ave, San Diego, CA 92107
+
+PROPERTY
+  Address        : 22 Del Mar Ave, San Diego, CA 92107
+  City / State   : San Diego, CA
+  Property Type  : Condo
+
+DECLARED FINANCIALS
+  Monthly Income : $10,333.00
+  Monthly Debt   : $1,900.00
+  Liquid Assets  : $72,900.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

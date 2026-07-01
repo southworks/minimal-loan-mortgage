@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Ethan Carter
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $22,850.00
+  Total Deposits    : $12,833.33
+  Ending Balance    : $29,883.33
+  Average Balance   : $26,366.66
+
+TRANSACTIONS
+  2026-01-01  Payroll                          +$6,416.66
+  2026-01-13  Payroll                          +$6,416.66
+  2026-01-09  Housing expense                  $-2,200.00
+  2026-01-10  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

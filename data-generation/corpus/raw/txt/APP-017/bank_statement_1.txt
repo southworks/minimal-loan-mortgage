@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-03
+========================
+Account Holder : Amelia Price
+Statement Date : March 28, 2026
+Period         : 2026-03
+
+SUMMARY
+  Beginning Balance : $18,750.00
+  Total Deposits    : $10,750.00
+  Ending Balance    : $24,100.00
+  Average Balance   : $21,425.00
+
+TRANSACTIONS
+  2026-03-02  Payroll                          +$5,375.00
+  2026-03-14  Payroll                          +$5,375.00
+  2026-03-10  Housing expense                  $-2,200.00
+  2026-03-11  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

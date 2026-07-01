@@ -1,0 +1,13 @@
+﻿{
+    "application_id":  "APP-012",
+    "document_id":  "APP-012-ID-001",
+    "document_type":  "drivers_license",
+    "document_date":  "2026-01-15",
+    "source_system":  "identity_document",
+    "party_role":  "borrower",
+    "full_name":  "Daniel Kim",
+    "date_of_birth":  "1988-08-16",
+    "address":  "380 Willow Bend, Portland, OR 97212",
+    "document_number":  "D100245",
+    "expiry_date":  "2030-01-15"
+}

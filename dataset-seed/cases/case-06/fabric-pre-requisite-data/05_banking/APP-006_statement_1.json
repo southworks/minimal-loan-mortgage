@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-006",
+    "document_id":  "APP-006-BNK-001",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-01-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-01",
+    "owner_name":  "Liam Brooks",
+    "beginning_balance":  21375.00,
+    "ending_balance":  28108.33,
+    "average_balance":  24741.66,
+    "total_deposits":  12333.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-01-17",
+                             "description":  "Payroll",
+                             "amount":  6166.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-29",
+                             "description":  "Payroll",
+                             "amount":  6166.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-25",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-01-26",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

@@ -1,0 +1,41 @@
+Policy Ref: UW-100
+Rule: approve when credit, debt-to-income, collateral, identity, and income evidence are consistent and within standard limits; deny when any hard threshold is breached; otherwise route to manual review.
+Threshold: credit score at least 700 for standard approval, debt-to-income below 43 for standard approval, loan-to-value at or below 80 for standard approval, debt-to-income above 50 is out of policy, loan-to-value above 90 is out of policy, income variance above 10 percent is out of policy when income cannot be verified.
+Action: approve when all standard thresholds are met, deny when any hard threshold is breached, manual_review when the file is borderline or contains non-fatal inconsistencies.
+Exception: borderline files with plausible explanations can be escalated to manual review.
+
+Policy Ref: IN-330
+Rule: declared income must align with verified payroll evidence and employment verification before it can be used for qualification.
+Threshold: declared base income must align with verified paystubs within 10 percent, two recent paystubs are required for salaried borrowers, unverified bonuses or commissions are excluded from qualifying income.
+Action: use verified income for qualification, deny when income cannot be verified and variance exceeds policy tolerance, manual_review when the variance is explainable but unresolved.
+Exception: none.
+
+Policy Ref: ID-150
+Rule: borrower identity attributes must match across the application and the identity document before the file can be considered clean.
+Threshold: name and date of birth must match across application and identity evidence, address mismatches require investigation, expired identity documents are out of policy.
+Action: approve identity when core attributes align, use manual_review when address discrepancies remain unresolved, deny when the identity document is expired or materially inconsistent.
+Exception: recent move explanations may justify manual review instead of denial.
+
+Policy Ref: CR-210
+Rule: use the prime approval band for stronger credit files, use the caution band when compensating factors may be required, and treat very weak credit as outside standard policy.
+Threshold: prime approval band starts at 700, caution band spans 620 to 699, below 620 is outside standard approval, credit utilization above 55 percent is a negative factor, more than 3 recent inquiries in 90 days requires analyst review.
+Action: approve strong files, use manual_review for caution-band files with compensating factors, deny files below the standard floor when no compensating path exists in the MVP.
+Exception: exception committee overrides are out of scope for this MVP.
+
+Policy Ref: CL-125
+Rule: collateral adequacy is based on appraised value and resulting loan-to-value, not only on purchase price.
+Threshold: standard maximum loan-to-value is 80 for owner-occupied purchase, loan-to-value between 80 and 90 is elevated risk, above 90 is outside policy for this MVP.
+Action: approve within the standard range, use manual_review for elevated-risk files, deny files above the maximum threshold.
+Exception: none.
+
+Policy Ref: BK-410
+Rule: unexplained non-payroll deposits must be evaluated before funds can be relied on for qualification or closing.
+Threshold: a large unexplained deposit is any non-payroll credit above 35 percent of monthly gross income, one unresolved large deposit triggers manual review, repeated unresolved large deposits may justify denial when funds are needed to close.
+Action: use manual_review for isolated unexplained deposits, deny when repeated unexplained deposits undermine source-of-funds confidence in the MVP.
+Exception: documented transfers between owned accounts are acceptable.
+
+Policy Ref: MR-001
+Rule: files that are plausible but contain unresolved discrepancies or borderline metrics should be escalated instead of auto-approved or auto-denied.
+Threshold: address mismatch with otherwise strong identity evidence, isolated unexplained deposits, short but not disqualifying employment tenure, score or debt-to-income close to policy limits with compensating factors.
+Action: manual_review when one or more escalation triggers are present and no hard deny threshold is breached.
+Exception: none.

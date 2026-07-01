@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-016",
+    "document_id":  "APP-016-INC-001",
+    "document_type":  "paystub",
+    "document_date":  "2026-02-11",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Jacob Miller",
+    "employer":  "Midwest Telecom Partners",
+    "pay_date":  "2026-02-11",
+    "gross_pay":  6041.67,
+    "net_pay":  4350.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-29",
+    "pay_period_end":  "2026-02-11",
+    "ytd_gross":  18125.01
+}

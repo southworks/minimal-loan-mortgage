@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-020",
+    "document_id":  "APP-020-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-01-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-01",
+    "owner_name":  "Alexander Ward",
+    "beginning_balance":  30135.00,
+    "ending_balance":  33851.67,
+    "average_balance":  31993.34,
+    "total_deposits":  11416.67,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-01-14",
+                             "description":  "Payroll",
+                             "amount":  5708.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-26",
+                             "description":  "Payroll",
+                             "amount":  5708.34,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-01-22",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-01-23",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

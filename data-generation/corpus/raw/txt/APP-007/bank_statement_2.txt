@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Isabella Nguyen
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $32,400.00
+  Total Deposits    : $14,666.67
+  Ending Balance    : $40,766.67
+  Average Balance   : $36,583.34
+
+TRANSACTIONS
+  2025-12-21  Payroll                          +$7,333.34
+  2026-01-02  Payroll                          +$7,333.34
+  2025-12-29  Housing expense                  $-2,200.00
+  2025-12-30  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

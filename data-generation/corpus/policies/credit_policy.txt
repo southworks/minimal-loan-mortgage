@@ -1,0 +1,5 @@
+﻿Policy Ref: CR-210
+Rule: use the prime approval band for stronger credit files, use the caution band when compensating factors may be required, and treat very weak credit as outside standard policy.
+Threshold: prime approval band starts at 700, caution band spans 620 to 699, below 620 is outside standard approval, credit utilization above 55 percent is a negative factor, more than 3 recent inquiries in 90 days requires analyst review.
+Action: approve strong files, use manual_review for caution-band files with compensating factors, deny files below the standard floor when no compensating path exists in the MVP.
+Exception: exception committee overrides are out of scope for this MVP.

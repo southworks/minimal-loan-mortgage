@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-016",
+    "document_id":  "APP-016-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-03-11",
+    "source_system":  "property_record",
+    "property_address":  "330 Riverstone Dr, Columbus, OH 43215",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  620000
+}

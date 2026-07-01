@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : James Sullivan
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $33,600.00
+  Total Deposits    : $13,333.33
+  Ending Balance    : $41,033.33
+  Average Balance   : $37,316.66
+
+TRANSACTIONS
+  2025-11-24  Payroll                          +$6,666.66
+  2025-12-06  Payroll                          +$6,666.66
+  2025-12-02  Housing expense                  $-2,200.00
+  2025-12-03  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-008
+Application Date : February 07, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $480,000.00
+  Purchase Price   : $640,000.00
+  Down Payment     : $160,000.00
+  Est. Interest    : 6.3%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : James Sullivan
+  Date of Birth  : December 01, 1984
+  Current Address: 209 Crescent Way, Nashville, TN 37212
+
+PROPERTY
+  Address        : 6203 Cedar Glen, Nashville, TN 37205
+  City / State   : Nashville, TN
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $13,333.00
+  Monthly Debt   : $2,500.00
+  Liquid Assets  : $86,400.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

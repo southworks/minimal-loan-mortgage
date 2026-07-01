@@ -1,0 +1,32 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-02-27",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  322500,
+    "purchase_price":  430000,
+    "down_payment":  107500,
+    "interest_rate_estimate":  6.3,
+    "borrower":  {
+                     "full_name":  "Emily Reed",
+                     "date_of_birth":  "1990-10-26",
+                     "current_address":  "95 Oak Crossing, Atlanta, GA 30309"
+                 },
+    "co_borrower":  null,
+    "property":  {
+                     "address":  "95 Oak Crossing, Atlanta, GA 30309",
+                     "city":  "Atlanta",
+                     "state":  "GA",
+                     "property_type":  "townhome"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  9833,
+                                "existing_monthly_debt":  2100,
+                                "liquid_assets":  58050
+                            }
+}

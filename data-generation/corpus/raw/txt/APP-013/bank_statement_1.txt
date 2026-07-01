@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Emily Reed
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $16,125.00
+  Total Deposits    : $9,833.33
+  Ending Balance    : $20,458.33
+  Average Balance   : $18,291.66
+
+TRANSACTIONS
+  2026-02-14  Payroll                          +$4,916.66
+  2026-02-26  Payroll                          +$4,916.66
+  2026-02-22  Housing expense                  $-2,200.00
+  2026-02-23  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

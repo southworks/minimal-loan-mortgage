@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-02-17",
+    "source_system":  "appraisal_report",
+    "property_address":  "95 Oak Crossing, Atlanta, GA 30309",
+    "property_type":  "townhome",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  430000,
+    "appraised_value":  438000,
+    "calculated_ltv":  73.6,
+    "condition_rating":  "C3"
+}
