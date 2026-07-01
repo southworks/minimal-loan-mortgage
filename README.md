@@ -4,7 +4,7 @@ The main purpose of this repository is to show a real world use cases of Loan & 
 You can find in the directory the dataset-seed, infrastructure, code and deployment for a real world use cases of Loan & Mortgage.
 
 - **Demo inputs:** [`dataset-seed/README.md`](dataset-seed/README.md) — runtime case data for API, MCP, and Fabric
-- **Reference / rebuild:** [`data-generation/README.md`](data-generation/README.md) — corpus, scripts, ground truth
+- **Reference / rebuild:** [`data-generation/README.md`](data-generation/README.md) — corpus, scripts, ground truth; [how runtime discovers scenarios](data-generation/README.md#how-runtime-discovers-scenarios)
 
 Click on "Deploy to azure" button and see how it works into your Azure Subcription.
 

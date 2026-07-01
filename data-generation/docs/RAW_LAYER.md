@@ -257,29 +257,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 
 ## How to add a scenario
 
-Follow these steps to add a new application (for example, `APP-021` / `case-21`). New scenarios are not injected into a running app. They become available only after rebuilding the generated dataset assets, rebuilding the affected container images, and redeploying.
-
-1. **Create Bronze JSON files** for all applicable folders under `data-generation/corpus/bronze/` (`01_application/`, `02_identity/`, `03_income/`, `04_employment/`, `05_banking/`, `06_credit/`, `07_collateral/`). Use an existing application as the template.
-
-2. **Embed the inconsistency in the Bronze JSON.** The Raw layer is derived from it — the inconsistency must exist in the JSON first (e.g., set a low `gross_pay` in `_paystub_1.json` to reproduce an income mismatch).
-
-3. **Add the scenario definition** to `data-generation/scripts/scenarios.py`: create the `SCENARIOS` entry, update `CASE_FOLDERS` so the legacy id maps to the new `case-XX`, and set the expected outcome, flags, stages, gates, and policy references.
-
-4. **Regenerate the derived assets:**
-   ```bash
-   cd data-generation/scripts
-   python3 generate_raw_layer.py
-   pip install -r requirements.txt
-   python3 generate_agent_documents.py
-   python3 build_case_folders.py
-   python3 generate_normalized_layers.py
-   ```
-
-5. **Review the generated output** in `dataset-seed/cases/{caseId}/`: confirm `ingest/`, `fabric-pre-requisite-data/`, `README.md`, `cases/catalog.json`, `data-generation/ground-truth/`, and `data-generation/scripts/dataset_summary.json`.
-
-6. **Update this documentation** with the new scenario log entry, including the borrower, intended outcome, deliberate signal, and files that carry the signal.
-
-7. **Rebuild and redeploy** any image or deployment package that embeds `dataset-seed/`. For Azure, publish the new images or repository archive, then redeploy so the API bundled documents and the Fabric seed step receive the new case.
+See [`../README.md`](../README.md#how-to-add-a-scenario). After adding a scenario, document it in this file (borrower, outcome, deliberate signal, files that carry the signal).
 
 ### Extending a document type
 
