@@ -1,5 +1,5 @@
 @description('Azure region for all resources.')
-param location string = resourceGroup().location
+param location string = 'westus3'
 
 @description('Base name used for deployed resources.')
 param baseName string = 'cohereloan'
@@ -8,17 +8,17 @@ param baseName string = 'cohereloan'
 param foundryProjectName string = ''
 
 @description('Foundry model deployment name used by all agents.')
-param modelDeploymentName string = 'cohere-command-a'
+param modelDeploymentName string = 'cohere-command-a-plus'
 
 @description('SKU used by the Foundry model deployment for the agents. Use GlobalStandard for serverless deployments; use a provisioned SKU only if it is available for the model and region.')
 param modelDeploymentSkuName string = 'GlobalStandard'
 
 @minValue(1)
 @description('Capacity units for the Foundry model deployment used by the agents. Increase this when agents fail with no_capacity during peak load.')
-param modelDeploymentCapacity int = 10
+param modelDeploymentCapacity int = 100
 
 @description('Cohere Command A model name in Foundry catalog.')
-param cohereModelName string = 'cohere-command-a'
+param cohereModelName string = 'Cohere-command-a-plus-05-2026'
 
 @description('Cohere Command A model version.')
 param cohereModelVersion string = '1'
@@ -34,7 +34,7 @@ param embedModelVersion string = '1'
 
 @minValue(1)
 @description('Capacity units for the Cohere embed deployment. Increase this for faster case evidence indexing and fewer throttling failures.')
-param embedDeploymentCapacity int = 10
+param embedDeploymentCapacity int = 1000
 
 @description('Foundry deployment name for Cohere-rerank-v4.0-pro.')
 param rerankDeploymentName string = 'cohere-rerank-v4-pro'
@@ -67,9 +67,6 @@ param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-web:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
-@description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
-param nameSuffix string = ''
-
 @description('Fabric workspace name. Required. Must be capacity-backed and accessible to the operator.')
 param fabricWorkspaceName string
 
@@ -84,10 +81,6 @@ param enableFabricSeed bool = true
 
 @description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
 param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
-
-@description('Optional GitHub PAT for private repos or higher rate limits.')
-@secure()
-param fabricGithubToken string = ''
 
 var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
@@ -106,7 +99,6 @@ module naming 'modules/naming.bicep' = {
   name: 'naming'
   params: {
     baseName: baseName
-    nameSuffix: nameSuffix
   }
 }
 
@@ -159,7 +151,6 @@ module security 'modules/security.bicep' = {
   params: {
     location: location
     resourceTags: resourceTags
-    nameSuffix: nameSuffix
     apiIdentityName: naming.outputs.apiIdentityName
     provisioningIdentityName: naming.outputs.provisioningIdentityName
     foundryAccountName: foundry.outputs.foundryAccountName
@@ -241,7 +232,6 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     location: location
     resourceTags: resourceTags
     deploymentSuffix: naming.outputs.deploymentSuffix
-    nameSuffix: nameSuffix
     deploymentScriptIdentityName: naming.outputs.deploymentScriptIdentityName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
@@ -254,7 +244,6 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     fabricLakehouseId: fabricProvision.outputs.lakehouseId
     fabricLakehouseName: fabricProvision.outputs.lakehouseName
     fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
-    fabricGithubToken: fabricGithubToken
   }
   dependsOn: [
     containerJobs

@@ -8,6 +8,7 @@
         "name": "location",
         "type": "Microsoft.Common.Location",
         "label": "Region",
+        "defaultValue": "westus3",
         "toolTip": "Azure region for the demo environment."
       },
       {
@@ -16,13 +17,6 @@
         "label": "Base name",
         "defaultValue": "cohereloan",
         "toolTip": "Short prefix used for deployed resource names."
-      },
-      {
-        "name": "nameSuffix",
-        "type": "Microsoft.Common.TextBox",
-        "label": "Name suffix (retry only)",
-        "defaultValue": "",
-        "toolTip": "Leave empty on first deploy. If redeploying after a partial failure, enter a short value such as 2 or 3 to avoid name conflicts with resources stuck in deletion."
       }
     ],
     "steps": [
@@ -75,7 +69,6 @@
     "outputs": {
       "location": "[location()]",
       "baseName": "[basics('baseName')]",
-      "nameSuffix": "[basics('nameSuffix')]",
       "fabricWorkspaceName": "[steps('fabricPrerequisites').fabricWorkspaceName]",
       "fabricLakehouseName": "[steps('fabricPrerequisites').fabricLakehouseName]",
       "fabricUamiResourceId": "[steps('fabricPrerequisites').fabricUamiResourceId]"
