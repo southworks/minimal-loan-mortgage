@@ -10,16 +10,50 @@ public sealed class LoanMortgageController : ControllerBase
 {
     private readonly BasicLoanWorkflowService _basicWorkflowService;
     private readonly LocalCaseDocumentService _documentStorageService;
+    private readonly ScenarioCatalogService _scenarioCatalogService;
     private readonly ILogger<LoanMortgageController> _logger;
 
     public LoanMortgageController(
         BasicLoanWorkflowService basicWorkflowService,
         LocalCaseDocumentService documentStorageService,
+        ScenarioCatalogService scenarioCatalogService,
         ILogger<LoanMortgageController> logger)
     {
         _basicWorkflowService = basicWorkflowService;
         _documentStorageService = documentStorageService;
+        _scenarioCatalogService = scenarioCatalogService;
         _logger = logger;
+    }
+
+    [HttpGet("scenarios")]
+    public async Task<ActionResult<IReadOnlyList<ScenarioSummaryResponse>>> GetScenariosAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            IReadOnlyList<ScenarioSummaryResponse> scenarios = await _scenarioCatalogService.GetScenariosAsync(
+                cancellationToken);
+
+            return Ok(scenarios);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            _logger.LogError(ex, "Dataset seed folder was not found while listing scenarios.");
+
+            return Problem(
+                detail: ex.Message,
+                title: "Scenario catalog is unavailable.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list scenarios.");
+
+            return Problem(
+                detail: ex.Message,
+                title: "Failed to list scenarios.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
     }
 
     [HttpPost("applications/{caseId}/workflow/basic/start")]

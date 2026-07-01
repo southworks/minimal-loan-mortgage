@@ -30,6 +30,7 @@ StartupConfigurationValidator.Validate(builder.Configuration);
 builder.Services.AddSingleton<FoundryAgentProvider>();
 builder.Services.AddSingleton<LoanMortgageBasicWorkflowFactory>();
 builder.Services.AddSingleton<LocalCaseDocumentService>();
+builder.Services.AddSingleton<ScenarioCatalogService>();
 builder.Services.AddSingleton<DocumentTextExtractionService>();
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);
 builder.Services.AddSingleton<CaseEvidenceIndexingService>();
