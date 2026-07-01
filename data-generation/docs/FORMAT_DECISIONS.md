@@ -27,7 +27,7 @@ Analysis and rationale for which formats each document type receives. Bronze JSO
 | PDF | Banks issue monthly e-statements as PDF downloads — most common digital format. |
 | PNG | Borrowers often photograph a printed statement or upload a mobile screenshot. Exercises vision models on tabular transactions. |
 
-**Output path:** `00_raw/{pdf,png}/APP-XXX/banking/bank_statement_{1,2,3}.{pdf,png}`
+**Output path:** `corpus/raw/{pdf,png}/APP-XXX/banking/bank_statement_{1,2,3}.{pdf,png}`
 
 **Not generated:** Credit-side only data stays out of borrower uploads.
 
@@ -43,7 +43,7 @@ Analysis and rationale for which formats each document type receives. Bronze JSO
 | PDF | Standard delivered format from licensed appraisers (USPAP report). |
 | PNG | Summary / cover page photo — common when only the valuation section is uploaded from a phone. |
 
-**Output path:** `00_raw/{pdf,png}/APP-XXX/collateral/appraisal.{pdf,png}`
+**Output path:** `corpus/raw/{pdf,png}/APP-XXX/collateral/appraisal.{pdf,png}`
 
 **Not generated for `property_details.json`:** Address and purchase price already appear in loan application and appraisal; a separate property record PDF would duplicate data without a distinct ingestion scenario.
 
@@ -57,7 +57,7 @@ Analysis and rationale for which formats each document type receives. Bronze JSO
 |--------|-----|
 | PNG | Employers often return a signed letter via fax or email scan; PNG is the typical artifact before PDF normalization in legacy workflows. |
 
-**Output path:** `00_raw/png/APP-XXX/employment/employment_verification.png`
+**Output path:** `corpus/raw/png/APP-XXX/employment/employment_verification.png`
 
 ---
 

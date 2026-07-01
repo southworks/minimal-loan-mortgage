@@ -31,4 +31,4 @@ Full scenario definitions: [`../data-generation/scripts/scenarios.py`](../data-g
 
 ## Reference / rebuild
 
-Generation scripts, corpus, and ground truth live in [`../data-generation/`](../data-generation/). Regenerate this folder with `build_case_folders.py` (see that README).
+Generation scripts, corpus, and ground truth live in [`../data-generation/`](../data-generation/). See [`../data-generation/README.md`](../data-generation/README.md#how-runtime-discovers-scenarios) to regenerate this folder or add a scenario.
