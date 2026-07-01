@@ -1,13 +1,13 @@
 # Raw Layer — FSI Loan & Mortgage Dataset Seed
 
-This document tracks the structure, generation logic, and scenario coverage of the Raw layer (`00_raw/`). Update this file whenever a new scenario or document type is added.
+This document tracks the structure, generation logic, and scenario coverage of the Raw layer (`data-generation/corpus/raw/`). Update this file whenever a new scenario or document type is added.
 
 ## What is the Raw layer?
 
 The Raw layer contains unstructured documents in **txt**, **pdf**, and **png** formats that simulate materials submitted to or pulled for a loan file. They are inputs to **Document Processing** and downstream agents in the FSI agentic pipeline.
 
 ```
-Bronze (JSON)  →  generate scripts  →  00_raw/{txt,pdf,png}  →  Agents  →  decisions
+Bronze (JSON)  ->  generate scripts  ->  corpus/raw/{txt,pdf,png}  ->  dataset-seed/cases/{caseId}/ingest  ->  Agents  ->  decisions
 ```
 
 The Bronze JSON files (`01_application/`, `02_identity/`, etc.) represent what agents **should extract** from the Raw documents. For deny and manual_review cases, deliberate inconsistencies are embedded in the source JSON so generated Raw docs preserve them.
@@ -53,7 +53,7 @@ See [AGENT_INPUTS.md](AGENT_INPUTS.md) for pdf/png category mapping, [FORMAT_DEC
 
 Each document type is emitted in one or more formats to exercise different agent ingestion paths. All formats are derived from the same Bronze JSON and carry the same field values (including deliberate inconsistencies).
 
-| Document type | TXT (`00_raw/txt/`) | PDF (`00_raw/pdf/`) | PNG (`00_raw/png/`) | Bronze source | Rationale |
+| Document type | TXT (`corpus/raw/txt/`) | PDF (`corpus/raw/pdf/`) | PNG (`corpus/raw/png/`) | Bronze source | Rationale |
 |---------------|:-------------------:|:-------------------:|:-------------------:|---------------|-----------|
 | Loan application (URLA / request) | `loan_application.txt` | `loan_amount/loan_application_summary.pdf` | — | `01_application/` | **TXT** — fast baseline for text-only agents and unit tests. **PDF** — structured form layout, typical of e-signed application packages. |
 | Personal information (borrower profile) | *(fields in `loan_application.txt`)* | `personal_details/personal_information.pdf` | — | `01_application/` + `02_identity/` | **PDF** — tabular borrower summary; separates “form data” from the ID scan. |
@@ -84,7 +84,7 @@ When adding a new document type, choose format(s) based on how a real borrower o
 
 ## Version control
 
-Generated raw documents under `data-generation/corpus/raw/` and the built `dataset-seed/00_raw/` package are **committed** (same pattern as `inesite-agentic-inventory-planning` and `insesite-hls-agentic-rd-knowledge`).
+Generated raw documents under `data-generation/corpus/raw/` and the built `dataset-seed/cases/` package are **committed**.
 
 **Source of truth:** Bronze JSON in `corpus/bronze/` plus `generate_raw_layer.py` and `generate_agent_documents.py`.
 
@@ -129,7 +129,7 @@ python3 build_case_folders.py                    # dataset-seed/cases/
 
 `loan_application.txt` is the customer-facing representation of `01_application/APP-XXX.json`. The JSON is the ground truth the agent must be able to extract from it. The backend previously read `01_application/` JSON directly; that flow migrates to reading via `IRawDocumentStore` (tracked in US 128596).
 
-Credit reports (`06_credit/`) are not part of the TXT Raw layer — they are pulled directly from the credit bureau by the lender. A **PDF** credit report is generated under `00_raw/pdf/` for agent demos; see [Format strategy](#format-strategy).
+Credit reports (`06_credit/`) are not part of the TXT Raw layer — they are pulled directly from the credit bureau by the lender. A **PDF** credit report is generated under `corpus/raw/pdf/` for agent demos; see [Format strategy](#format-strategy).
 
 ---
 
@@ -190,7 +190,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 - **paystub_2 gross pay:** $5,166.67/period → annualized $124,000 ← consistent with VOE
 - **Raw signal:** `paystub_1.txt` shows $4,236.67 current period gross; `paystub_2.txt` shows $5,166.67. The two paystubs disagree with each other and paystub_1 disagrees with the VOE and declared income.
 - **How agent detects it:** Compares gross pay across both paystubs and against VOE `base_salary_annual`. Discrepancy of ~$22,320/yr between the two paystubs triggers the mismatch flag.
-- **Files with inconsistency:** `00_raw/txt/APP-015/paystub_1.txt`, `00_raw/txt/APP-015/paystub_2.txt`
+- **Files with inconsistency:** `corpus/raw/txt/APP-015/paystub_1.txt`, `corpus/raw/txt/APP-015/paystub_2.txt`
 
 ---
 
@@ -202,7 +202,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 - **LTV:** $558,000 / $585,000 = **95.4%** (policy limit: 80%)
 - **Raw signal:** `appraisal.txt` shows Appraised Value $585,000 < Purchase Price $620,000, with Calculated LTV explicitly stated as 95.4%.
 - **How agent detects it:** Reads appraised value from appraisal, computes LTV against loan amount, compares to policy threshold.
-- **Files with inconsistency:** `00_raw/txt/APP-016/appraisal.txt`
+- **Files with inconsistency:** `corpus/raw/txt/APP-016/appraisal.txt`
 
 ---
 
@@ -216,7 +216,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 - **Inconsistency:** The loan application omits the apartment unit. Same street and ZIP, but the ID document includes "Apt 2" which the application form does not.
 - **Raw signal:** `loan_application.txt` → `Current Address: 604 Birch Terrace, Raleigh, NC 27608`; `identity.txt` → `Address: 604 Birch Terrace Apt 2, Raleigh, NC 27608`.
 - **How agent detects it:** Compares borrower address in `loan_application.txt` against the address in `identity.txt`. Unit/apartment discrepancy triggers address mismatch flag.
-- **Files with inconsistency:** `00_raw/txt/APP-017/loan_application.txt`, `00_raw/txt/APP-017/identity.txt`
+- **Files with inconsistency:** `corpus/raw/txt/APP-017/loan_application.txt`, `corpus/raw/txt/APP-017/identity.txt`
 
 ---
 
@@ -226,7 +226,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 - **Large deposit:** $9,200 on 2026-02-11, described as "External transfer" — no source documented
 - **Raw signal:** `bank_statement_2.txt` (February 2026) lists the transaction and marks it as `*** LARGE DEPOSIT — SOURCE UNVERIFIED ***`. The January and March statements are clean.
 - **How agent detects it:** Scans bank statements for deposits ≥ $5,000 with non-payroll descriptions. Flags transfers without documented source for underwriter review.
-- **Files with inconsistency:** `00_raw/txt/APP-018/bank_statement_2.txt`
+- **Files with inconsistency:** `corpus/raw/txt/APP-018/bank_statement_2.txt`
 
 ---
 
@@ -238,7 +238,7 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 - **Secondary signal:** Driver's license address (`604 Birch Terrace Apt 2, Raleigh, NC 27608`) differs from application address (`87 Summit Park, Salt Lake City, UT 84103`) — different states, suggesting a recent relocation that aligns with the short tenure.
 - **Raw signal:** `employment_verification.txt` shows `Hire Date: September 15, 2025`. `identity.txt` shows an NC address while the application declares UT.
 - **How agent detects it:** Computes months between hire date and application date. Flags if < 24 months; also flags state mismatch between ID and application address.
-- **Files with inconsistency:** `00_raw/txt/APP-019/employment_verification.txt`, `00_raw/txt/APP-019/identity.txt`
+- **Files with inconsistency:** `corpus/raw/txt/APP-019/employment_verification.txt`, `corpus/raw/txt/APP-019/identity.txt`
 
 ---
 
@@ -255,25 +255,31 @@ All approve cases have clean, consistent Raw documents. No deliberate inconsiste
 
 ---
 
-## Adding a new scenario
+## How to add a scenario
 
-Follow these steps to add a new application (e.g., APP-021):
+Follow these steps to add a new application (for example, `APP-021` / `case-21`). New scenarios are not injected into a running app. They become available only after rebuilding the generated dataset assets, rebuilding the affected container images, and redeploying.
 
-1. **Create Bronze JSON files** for all applicable folders (`01_application/`, `02_identity/`, `03_income/`, `04_employment/`, `05_banking/`, `06_credit/`, `07_collateral/`, `09_decision_ground_truth/`). Use existing files as templates.
+1. **Create Bronze JSON files** for all applicable folders under `data-generation/corpus/bronze/` (`01_application/`, `02_identity/`, `03_income/`, `04_employment/`, `05_banking/`, `06_credit/`, `07_collateral/`). Use an existing application as the template.
 
 2. **Embed the inconsistency in the Bronze JSON.** The Raw layer is derived from it — the inconsistency must exist in the JSON first (e.g., set a low `gross_pay` in `_paystub_1.json` to reproduce an income mismatch).
 
-3. **Re-run the generation script:**
+3. **Add the scenario definition** to `data-generation/scripts/scenarios.py`: create the `SCENARIOS` entry, update `CASE_FOLDERS` so the legacy id maps to the new `case-XX`, and set the expected outcome, flags, stages, gates, and policy references.
+
+4. **Regenerate the derived assets:**
    ```bash
    cd data-generation/scripts
    python3 generate_raw_layer.py
+   pip install -r requirements.txt
+   python3 generate_agent_documents.py
+   python3 build_case_folders.py
+   python3 generate_normalized_layers.py
    ```
 
-4. **Update `dataset_summary.json`** — increment `application_count`, update `document_counts`, and add the new case to `decision_distribution` and `inconsistency_coverage`.
+5. **Review the generated output** in `dataset-seed/cases/{caseId}/`: confirm `ingest/`, `fabric-pre-requisite-data/`, `README.md`, `cases/catalog.json`, `data-generation/ground-truth/`, and `data-generation/scripts/dataset_summary.json`.
 
-5. **Update `ground_truth.csv`** with the new row (application_id, expected_decision, primary_reason, required_human_review, summary_explanation).
+6. **Update this documentation** with the new scenario log entry, including the borrower, intended outcome, deliberate signal, and files that carry the signal.
 
-6. **Add a new entry to this file** under the appropriate section (Approve / Deny / Manual review), documenting the borrower, the embedded inconsistency, and which Raw files carry the signal.
+7. **Rebuild and redeploy** any image or deployment package that embeds `dataset-seed/`. For Azure, publish the new images or repository archive, then redeploy so the API bundled documents and the Fabric seed step receive the new case.
 
 ### Extending a document type
 

@@ -80,7 +80,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-001",
-            "raw_document_root": "00_raw/txt/APP-001",
+            "raw_document_root": "corpus/raw/txt/APP-001",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -134,7 +134,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-002",
-            "raw_document_root": "00_raw/txt/APP-002",
+            "raw_document_root": "corpus/raw/txt/APP-002",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -188,7 +188,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-003",
-            "raw_document_root": "00_raw/txt/APP-003",
+            "raw_document_root": "corpus/raw/txt/APP-003",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -242,7 +242,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-004",
-            "raw_document_root": "00_raw/txt/APP-004",
+            "raw_document_root": "corpus/raw/txt/APP-004",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -296,7 +296,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-005",
-            "raw_document_root": "00_raw/txt/APP-005",
+            "raw_document_root": "corpus/raw/txt/APP-005",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -350,7 +350,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-006",
-            "raw_document_root": "00_raw/txt/APP-006",
+            "raw_document_root": "corpus/raw/txt/APP-006",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -404,7 +404,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-007",
-            "raw_document_root": "00_raw/txt/APP-007",
+            "raw_document_root": "corpus/raw/txt/APP-007",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -458,7 +458,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-008",
-            "raw_document_root": "00_raw/txt/APP-008",
+            "raw_document_root": "corpus/raw/txt/APP-008",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -512,7 +512,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-009",
-            "raw_document_root": "00_raw/txt/APP-009",
+            "raw_document_root": "corpus/raw/txt/APP-009",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -566,7 +566,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-010",
-            "raw_document_root": "00_raw/txt/APP-010",
+            "raw_document_root": "corpus/raw/txt/APP-010",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -620,7 +620,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-011",
-            "raw_document_root": "00_raw/txt/APP-011",
+            "raw_document_root": "corpus/raw/txt/APP-011",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -674,7 +674,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-012",
-            "raw_document_root": "00_raw/txt/APP-012",
+            "raw_document_root": "corpus/raw/txt/APP-012",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -728,7 +728,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-013",
-            "raw_document_root": "00_raw/txt/APP-013",
+            "raw_document_root": "corpus/raw/txt/APP-013",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -782,7 +782,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-014",
-            "raw_document_root": "00_raw/txt/APP-014",
+            "raw_document_root": "corpus/raw/txt/APP-014",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -836,7 +836,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-015",
-            "raw_document_root": "00_raw/txt/APP-015",
+            "raw_document_root": "corpus/raw/txt/APP-015",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -890,7 +890,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-016",
-            "raw_document_root": "00_raw/txt/APP-016",
+            "raw_document_root": "corpus/raw/txt/APP-016",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -944,7 +944,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-017",
-            "raw_document_root": "00_raw/txt/APP-017",
+            "raw_document_root": "corpus/raw/txt/APP-017",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -998,7 +998,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-018",
-            "raw_document_root": "00_raw/txt/APP-018",
+            "raw_document_root": "corpus/raw/txt/APP-018",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -1052,7 +1052,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-019",
-            "raw_document_root": "00_raw/txt/APP-019",
+            "raw_document_root": "corpus/raw/txt/APP-019",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],
@@ -1106,7 +1106,7 @@ SCENARIOS = [
         "agent_input": {
             "task": "extract_and_normalize_loan_documents",
             "application_id": "APP-020",
-            "raw_document_root": "00_raw/txt/APP-020",
+            "raw_document_root": "corpus/raw/txt/APP-020",
         },
         "gate": None,
         "policy_refs": ["ID-150", "IN-330"],

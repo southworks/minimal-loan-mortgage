@@ -31,6 +31,16 @@ Optional:
 python3 generate_normalized_layers.py      # validate + refresh ground_truth.csv
 ```
 
+## How to add a scenario
+
+New scenarios are generated into `dataset-seed/` and only affect the running app after the generated assets are rebuilt, container images or deployment packages are republished, and Azure is redeployed.
+
+1. Add the new legacy application (`APP-XXX`) under `corpus/bronze/`.
+2. Add the scenario entry and `APP-XXX` -> `case-XX` mapping in `scripts/scenarios.py`.
+3. Run the generation commands above.
+4. Review `../dataset-seed/cases/{caseId}/`, `../dataset-seed/cases/catalog.json`, `ground-truth/`, and `scripts/dataset_summary.json`.
+5. Update [`docs/RAW_LAYER.md`](docs/RAW_LAYER.md) with the scenario log and then rebuild/redeploy the app assets that embed `dataset-seed/`.
+
 ## Key docs
 
 - [`docs/RAW_LAYER.md`](docs/RAW_LAYER.md) — raw document types and scenario log

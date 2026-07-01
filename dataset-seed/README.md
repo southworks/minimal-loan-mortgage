@@ -32,3 +32,7 @@ Full scenario definitions: [`../data-generation/scripts/scenarios.py`](../data-g
 ## Reference / rebuild
 
 Generation scripts, corpus, and ground truth live in [`../data-generation/`](../data-generation/). Regenerate this folder with `build_case_folders.py` (see that README).
+
+## How to add a scenario
+
+Add or modify scenarios in [`../data-generation/`](../data-generation/), not directly in this runtime package. After updating Bronze JSON and `data-generation/scripts/scenarios.py`, regenerate `dataset-seed/`, rebuild the images or deployment package that embeds it, and redeploy. The API does not dynamically ingest new cases from this folder at runtime.

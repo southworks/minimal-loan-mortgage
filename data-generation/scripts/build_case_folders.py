@@ -40,7 +40,6 @@ SEED = REPO / "dataset-seed"
 CASES_DIR = SEED / "cases"
 
 LEGACY_FLAT_DIRS = [
-    "00_raw",
     *BRONZE_LAYERS,
     "case_matrix.json",
 ]
