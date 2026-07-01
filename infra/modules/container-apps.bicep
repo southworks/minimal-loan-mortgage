@@ -82,8 +82,8 @@ resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'mcp'
           image: mcpContainerImage
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1')
+            memory: '2Gi'
           }
           env: concat(mcpContainerEnv, [
             { name: 'McpStartup__EnsureSearchIndexesOnStartup', value: 'true' }
@@ -135,8 +135,8 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'api'
           image: apiContainerImage
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1')
+            memory: '2Gi'
           }
           env: [
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
@@ -209,8 +209,8 @@ resource frontendApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'frontend'
           image: frontendContainerImage
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1')
+            memory: '2Gi'
           }
           env: [
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
