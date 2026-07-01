@@ -5,13 +5,6 @@
   "parameters": {
     "basics": [
       {
-        "name": "location",
-        "type": "Microsoft.Common.Location",
-        "label": "Region",
-        "defaultValue": "westus3",
-        "toolTip": "Azure region for the demo environment."
-      },
-      {
         "name": "baseName",
         "type": "Microsoft.Common.TextBox",
         "label": "Base name",
@@ -77,7 +70,6 @@
       }
     ],
     "outputs": {
-      "location": "[location()]",
       "baseName": "[basics('baseName')]",
       "enableFabric": "[steps('fabricPrerequisites').enableFabric]",
       "fabricWorkspaceName": "[steps('fabricPrerequisites').fabricWorkspaceName]",

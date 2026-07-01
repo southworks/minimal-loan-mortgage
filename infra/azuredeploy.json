@@ -5,17 +5,10 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "15268456964759429864"
+      "templateHash": "1190850533669216175"
     }
   },
   "parameters": {
-    "location": {
-      "type": "string",
-      "defaultValue": "westus3",
-      "metadata": {
-        "description": "Azure region for all resources."
-      }
-    },
     "baseName": {
       "type": "string",
       "defaultValue": "cohereloan",
@@ -210,6 +203,7 @@
     }
   },
   "variables": {
+    "location": "[resourceGroup().location]",
     "resolvedFoundryProjectName": "[if(empty(parameters('foundryProjectName')), format('{0}-project', parameters('baseName')), parameters('foundryProjectName'))]",
     "resourceTags": {
       "project": "inesite"
@@ -333,7 +327,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -456,7 +450,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -737,7 +731,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -834,7 +828,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1123,7 +1117,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1259,7 +1253,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1779,7 +1773,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -2021,7 +2015,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"

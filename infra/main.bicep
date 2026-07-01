@@ -1,6 +1,3 @@
-@description('Azure region for all resources.')
-param location string = 'westus3'
-
 @description('Base name used for deployed resources.')
 param baseName string = 'cohereloan'
 
@@ -85,6 +82,7 @@ param enableFabricSeed bool = true
 @description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
 param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
 
+var location = resourceGroup().location
 var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
 var resourceTags = {
