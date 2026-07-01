@@ -20,8 +20,8 @@ public sealed class LocalCaseDataStore : ICaseDataStore
             throw new ArgumentException("File name must be provided.", nameof(fileName));
         }
 
-        var path = FilePath(category, fileName);
-        if (!File.Exists(path) || !fileName.StartsWith($"{caseId}_", StringComparison.Ordinal))
+        var path = FilePath(caseId, category, fileName);
+        if (!File.Exists(path))
         {
             throw new FileNotFoundException($"Case document not found: {path}", path);
         }
@@ -32,14 +32,13 @@ public sealed class LocalCaseDataStore : ICaseDataStore
     public Task<IReadOnlyList<string>> ListDocumentsAsync(string caseId, EvidenceCategory category, CancellationToken cancellationToken = default)
     {
         ValidateCaseId(caseId);
-        var dir = CategoryDirectory(category);
+        var dir = CategoryDirectory(caseId, category);
         if (!Directory.Exists(dir))
         {
             throw new KeyNotFoundException($"Case category directory not found: {dir}");
         }
 
-        var prefix = $"{caseId}_";
-        var files = Directory.EnumerateFiles(dir, $"{prefix}*", SearchOption.TopDirectoryOnly)
+        var files = Directory.EnumerateFiles(dir, "*.json", SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName)
             .Where(name => name is not null && !name.StartsWith("SCHEMA", StringComparison.OrdinalIgnoreCase))
             .Cast<string>()
@@ -48,11 +47,11 @@ public sealed class LocalCaseDataStore : ICaseDataStore
         return Task.FromResult<IReadOnlyList<string>>(files);
     }
 
-    private string CategoryDirectory(EvidenceCategory category) =>
-        Path.Combine(_rootPath, EvidenceCategoryFolders.For(category));
+    private string CategoryDirectory(string caseId, EvidenceCategory category) =>
+        Path.Combine(_rootPath, "cases", caseId.Trim(), "fabric-pre-requisite-data", EvidenceCategoryFolders.For(category));
 
-    private string FilePath(EvidenceCategory category, string fileName) =>
-        Path.Combine(CategoryDirectory(category), fileName);
+    private string FilePath(string caseId, EvidenceCategory category, string fileName) =>
+        Path.Combine(CategoryDirectory(caseId, category), fileName);
 
     private static void ValidateCaseId(string caseId)
     {

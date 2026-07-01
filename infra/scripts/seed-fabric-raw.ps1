@@ -123,17 +123,30 @@ Write-Host "LakehouseId: $LakehouseId"
 Write-Host "OneLake endpoint: $OneLakeEndpoint"
 
 $seedRoot = Resolve-DatasetSeedPath -Candidate $DatasetSeedPath
-$rawRootPath = Join-Path $seedRoot '00_raw'
-
-$rawFileExtensions = @('.txt', '.pdf', '.png')
-$rawFiles = Get-ChildItem -Path $rawRootPath -File -Recurse |
-    Where-Object { $rawFileExtensions -contains $_.Extension.ToLowerInvariant() } |
-    Sort-Object -Property FullName
-if ($rawFiles.Count -eq 0) {
-    throw "No raw files (.txt, .pdf, .png) found in $rawRootPath"
+$casesRoot = Join-Path $seedRoot 'cases'
+if (-not (Test-Path -LiteralPath $casesRoot)) {
+    throw "Cases folder not found: $casesRoot"
 }
 
-$rawRootNormalized = (Resolve-Path -LiteralPath $rawRootPath).ProviderPath
+$rawFileExtensions = @('.txt', '.pdf', '.png')
+$rawFiles = @()
+Get-ChildItem -Path $casesRoot -Directory | Sort-Object -Property Name | ForEach-Object {
+    $ingestPath = Join-Path $_.FullName 'ingest'
+    if (-not (Test-Path -LiteralPath $ingestPath)) {
+        Write-Warning "Skipping case without ingest folder: $($_.Name)"
+        return
+    }
+
+    Get-ChildItem -Path $ingestPath -File -Recurse |
+        Where-Object { $rawFileExtensions -contains $_.Extension.ToLowerInvariant() } |
+        ForEach-Object { $rawFiles += $_ }
+}
+
+if ($rawFiles.Count -eq 0) {
+    throw "No raw files (.txt, .pdf, .png) found under $casesRoot/*/ingest"
+}
+
+$rawRootNormalized = (Resolve-Path -LiteralPath $casesRoot).ProviderPath
 if (-not $rawRootNormalized.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
     $rawRootNormalized += [System.IO.Path]::DirectorySeparatorChar
 }
@@ -154,7 +167,7 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
             throw "Raw file path '$fullFilePath' is outside expected root '$rawRoot'."
         }
 
-        $relativeTargetPath = $fullFilePath.Substring($rawRoot.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [char]'/' ).Replace('\\', '/')
+        $relativeTargetPath = $fullFilePath.Substring($rawRootNormalized.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [char]'/' ).Replace('\\', '/')
 
         $targetPath = "$lhId/Files/raw/$relativeTargetPath"
         $baseUri = "$endpoint/$wsId/$targetPath"

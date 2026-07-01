@@ -43,7 +43,7 @@ var mcpContainerEnv = concat([
   { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
   { name: 'AzureSearch__VectorDimensions', value: '1024' }
   { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
-  { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
+  { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/policies/general_policy.txt' }
   { name: 'DataSource__Mode', value: 'Fabric' }
   { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
   { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
@@ -139,7 +139,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AzureSearch__PolicyIndexName', value: 'loan-policy-knowledge' }
             { name: 'AzureSearch__VectorDimensions', value: '1024' }
             { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
-            { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/08_policy_rag/general_policy.txt' }
+            { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/policies/general_policy.txt' }
             { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
             { name: 'AzureFoundryModels__RerankDeploymentName', value: rerankDeploymentName }
             { name: 'AzureFoundryModels__EmbedModelName', value: embedModelName }
