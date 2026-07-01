@@ -1,9 +1,6 @@
 @description('Base name used for deployed resources.')
 param baseName string = 'cohereloan'
 
-@description('Foundry project name. Leave empty to default to {baseName}-project. Must be a plain string, not an ARM expression.')
-param foundryProjectName string = ''
-
 @description('Foundry model deployment name used by all agents.')
 param modelDeploymentName string = 'cohere-command-a-plus'
 
@@ -83,7 +80,7 @@ param enableFabricSeed bool = true
 param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
 
 var location = resourceGroup().location
-var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
+var resolvedFoundryProjectName = '${baseName}-project'
 
 var resourceTags = {
   project: 'inesite'
