@@ -450,7 +450,8 @@ public sealed class BasicLoanWorkflowService
                 if (
                     !(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && 
                     !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false) && 
-                    superStepCompletedEvent.StepNumber == 5) {
+                    execution.Agents.TryGetValue(LoanSetupKey, out var loanSetup) &&
+                    loanSetup.Status == BasicWorkflowStatus.Completed) {
                     execution.Status = BasicWorkflowStatus.Completed;
                     execution.CurrentAgent = null;
                 }
