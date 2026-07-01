@@ -1,0 +1,384 @@
+[
+  {
+    "caseId": "case-01",
+    "title": "Olivia Bennett",
+    "description": "Mortgage application APP-001 for Olivia Bennett. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-001",
+    "applicationId": "APP-001",
+    "context": {
+      "borrower": "Olivia Bennett",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-02",
+    "title": "Ethan Carter",
+    "description": "Mortgage application APP-002 for Ethan Carter. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-002",
+    "applicationId": "APP-002",
+    "context": {
+      "borrower": "Ethan Carter",
+      "coBorrower": "Sophia Carter",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-03",
+    "title": "Mia Thompson",
+    "description": "Mortgage application APP-003 for Mia Thompson. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-003",
+    "applicationId": "APP-003",
+    "context": {
+      "borrower": "Mia Thompson",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-04",
+    "title": "Noah Rivera",
+    "description": "Mortgage application APP-004 for Noah Rivera. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-004",
+    "applicationId": "APP-004",
+    "context": {
+      "borrower": "Noah Rivera",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-05",
+    "title": "Ava Patel",
+    "description": "Mortgage application APP-005 for Ava Patel. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-005",
+    "applicationId": "APP-005",
+    "context": {
+      "borrower": "Ava Patel",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-06",
+    "title": "Liam Brooks",
+    "description": "Mortgage application APP-006 for Liam Brooks. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-006",
+    "applicationId": "APP-006",
+    "context": {
+      "borrower": "Liam Brooks",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-07",
+    "title": "Isabella Nguyen",
+    "description": "Mortgage application APP-007 for Isabella Nguyen. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-007",
+    "applicationId": "APP-007",
+    "context": {
+      "borrower": "Isabella Nguyen",
+      "coBorrower": "Lucas Nguyen",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-08",
+    "title": "James Sullivan",
+    "description": "Mortgage application APP-008 for James Sullivan. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-008",
+    "applicationId": "APP-008",
+    "context": {
+      "borrower": "James Sullivan",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-09",
+    "title": "Charlotte Morgan",
+    "description": "Mortgage application APP-009 for Charlotte Morgan. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-009",
+    "applicationId": "APP-009",
+    "context": {
+      "borrower": "Charlotte Morgan",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-10",
+    "title": "Benjamin Flores",
+    "description": "Mortgage application APP-010 for Benjamin Flores. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-010",
+    "applicationId": "APP-010",
+    "context": {
+      "borrower": "Benjamin Flores",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-11",
+    "title": "Harper Scott",
+    "description": "Mortgage application APP-011 for Harper Scott. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-011",
+    "applicationId": "APP-011",
+    "context": {
+      "borrower": "Harper Scott",
+      "coBorrower": "",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-12",
+    "title": "Daniel Kim",
+    "description": "Mortgage application APP-012 for Daniel Kim. Expected outcome: approve (meets_credit_income_collateral_policy).",
+    "outcomeTag": "Approved",
+    "legacyId": "APP-012",
+    "applicationId": "APP-012",
+    "context": {
+      "borrower": "Daniel Kim",
+      "coBorrower": "Grace Kim",
+      "expectedDecision": "approve",
+      "primaryReason": "meets_credit_income_collateral_policy",
+      "requiredHumanReview": false,
+      "riskFlags": [],
+      "inconsistencies": []
+    }
+  },
+  {
+    "caseId": "case-13",
+    "title": "Emily Reed",
+    "description": "Mortgage application APP-013 for Emily Reed. Expected outcome: deny (credit_score_below_threshold).",
+    "outcomeTag": "Denied",
+    "legacyId": "APP-013",
+    "applicationId": "APP-013",
+    "context": {
+      "borrower": "Emily Reed",
+      "coBorrower": "",
+      "expectedDecision": "deny",
+      "primaryReason": "credit_score_below_threshold",
+      "requiredHumanReview": false,
+      "riskFlags": [
+        "low_score_or_high_dti"
+      ],
+      "inconsistencies": [
+        "low_score_or_high_dti"
+      ]
+    }
+  },
+  {
+    "caseId": "case-14",
+    "title": "Michael Torres",
+    "description": "Mortgage application APP-014 for Michael Torres. Expected outcome: deny (dti_above_policy_limit).",
+    "outcomeTag": "Denied",
+    "legacyId": "APP-014",
+    "applicationId": "APP-014",
+    "context": {
+      "borrower": "Michael Torres",
+      "coBorrower": "",
+      "expectedDecision": "deny",
+      "primaryReason": "dti_above_policy_limit",
+      "requiredHumanReview": false,
+      "riskFlags": [
+        "low_score_or_high_dti"
+      ],
+      "inconsistencies": [
+        "low_score_or_high_dti"
+      ]
+    }
+  },
+  {
+    "caseId": "case-15",
+    "title": "Sofia Alvarez",
+    "description": "Mortgage application APP-015 for Sofia Alvarez. Expected outcome: deny (income_document_mismatch).",
+    "outcomeTag": "Denied",
+    "legacyId": "APP-015",
+    "applicationId": "APP-015",
+    "context": {
+      "borrower": "Sofia Alvarez",
+      "coBorrower": "",
+      "expectedDecision": "deny",
+      "primaryReason": "income_document_mismatch",
+      "requiredHumanReview": false,
+      "riskFlags": [
+        "income_mismatch"
+      ],
+      "inconsistencies": [
+        "income_mismatch"
+      ]
+    }
+  },
+  {
+    "caseId": "case-16",
+    "title": "Jacob Miller",
+    "description": "Mortgage application APP-016 for Jacob Miller. Expected outcome: deny (ltv_above_policy_limit).",
+    "outcomeTag": "Denied",
+    "legacyId": "APP-016",
+    "applicationId": "APP-016",
+    "context": {
+      "borrower": "Jacob Miller",
+      "coBorrower": "",
+      "expectedDecision": "deny",
+      "primaryReason": "ltv_above_policy_limit",
+      "requiredHumanReview": false,
+      "riskFlags": [
+        "insufficient_appraisal_for_ltv"
+      ],
+      "inconsistencies": [
+        "insufficient_appraisal_for_ltv"
+      ]
+    }
+  },
+  {
+    "caseId": "case-17",
+    "title": "Amelia Price",
+    "description": "Mortgage application APP-017 for Amelia Price. Expected outcome: manual review (address_mismatch_requires_review).",
+    "outcomeTag": "ManualReview",
+    "legacyId": "APP-017",
+    "applicationId": "APP-017",
+    "context": {
+      "borrower": "Amelia Price",
+      "coBorrower": "",
+      "expectedDecision": "manual_review",
+      "primaryReason": "address_mismatch_requires_review",
+      "requiredHumanReview": true,
+      "riskFlags": [
+        "address_mismatch"
+      ],
+      "inconsistencies": [
+        "address_mismatch"
+      ]
+    }
+  },
+  {
+    "caseId": "case-18",
+    "title": "William Cooper",
+    "description": "Mortgage application APP-018 for William Cooper. Expected outcome: manual review (unexplained_large_deposits).",
+    "outcomeTag": "ManualReview",
+    "legacyId": "APP-018",
+    "applicationId": "APP-018",
+    "context": {
+      "borrower": "William Cooper",
+      "coBorrower": "",
+      "expectedDecision": "manual_review",
+      "primaryReason": "unexplained_large_deposits",
+      "requiredHumanReview": true,
+      "riskFlags": [
+        "unexplained_deposits"
+      ],
+      "inconsistencies": [
+        "unexplained_deposits"
+      ]
+    }
+  },
+  {
+    "caseId": "case-19",
+    "title": "Evelyn Ross",
+    "description": "Mortgage application APP-019 for Evelyn Ross. Expected outcome: manual review (employment_tenure_borderline).",
+    "outcomeTag": "ManualReview",
+    "legacyId": "APP-019",
+    "applicationId": "APP-019",
+    "context": {
+      "borrower": "Evelyn Ross",
+      "coBorrower": "",
+      "expectedDecision": "manual_review",
+      "primaryReason": "employment_tenure_borderline",
+      "requiredHumanReview": true,
+      "riskFlags": [
+        "employment_tenure_short",
+        "income_mismatch",
+        "address_mismatch",
+        "low_score_or_high_dti"
+      ],
+      "inconsistencies": [
+        "employment_tenure_short",
+        "income_mismatch",
+        "address_mismatch",
+        "low_score_or_high_dti"
+      ]
+    }
+  },
+  {
+    "caseId": "case-20",
+    "title": "Alexander Ward",
+    "description": "Mortgage application APP-020 for Alexander Ward. Expected outcome: manual review (borderline_credit_and_affordability).",
+    "outcomeTag": "ManualReview",
+    "legacyId": "APP-020",
+    "applicationId": "APP-020",
+    "context": {
+      "borrower": "Alexander Ward",
+      "coBorrower": "",
+      "expectedDecision": "manual_review",
+      "primaryReason": "borderline_credit_and_affordability",
+      "requiredHumanReview": true,
+      "riskFlags": [
+        "low_score_or_high_dti",
+        "unexplained_deposits",
+        "insufficient_appraisal_for_ltv"
+      ],
+      "inconsistencies": [
+        "low_score_or_high_dti",
+        "unexplained_deposits",
+        "insufficient_appraisal_for_ltv"
+      ]
+    }
+  }
+]

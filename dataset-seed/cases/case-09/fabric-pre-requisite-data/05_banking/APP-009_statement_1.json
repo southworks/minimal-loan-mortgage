@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-009",
+    "document_id":  "APP-009-BNK-001",
+    "document_type":  "bank_statement",
+    "document_date":  "2026-02-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2026-02",
+    "owner_name":  "Charlotte Morgan",
+    "beginning_balance":  21000.00,
+    "ending_balance":  27333.33,
+    "average_balance":  24166.66,
+    "total_deposits":  11833.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2026-01-29",
+                             "description":  "Payroll",
+                             "amount":  5916.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-10",
+                             "description":  "Payroll",
+                             "amount":  5916.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2026-02-06",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2026-02-07",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

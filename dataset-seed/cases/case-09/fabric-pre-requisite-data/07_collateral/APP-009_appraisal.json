@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-009",
+    "document_id":  "APP-009-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-02-01",
+    "source_system":  "appraisal_report",
+    "property_address":  "16 Beacon Hill, Boston, MA 02114",
+    "property_type":  "condo",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  560000,
+    "appraised_value":  570000,
+    "calculated_ltv":  73.7,
+    "condition_rating":  "C3"
+}

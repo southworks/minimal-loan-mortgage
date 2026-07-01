@@ -32,7 +32,7 @@ internal static class Program
                 }
             }
 
-            ProvisioningSettings settings = SettingsLoader.Load(configPath);
+            ProvisioningSettings settings = SettingsLoader.LoadFromEnvironmentVars();
             AgentAssetLoader assetLoader = new(AgentAssetLoader.ResolveAgentsRoot(agentsRoot));
             IReadOnlyList<AgentAssetBundle> bundles = assetLoader.LoadAll();
 
@@ -65,12 +65,10 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  dotnet run --project agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning");
-        Console.WriteLine("    [--config path/to/provisioning.json]");
-        Console.WriteLine("    [--agents path/to/agents]");
         Console.WriteLine();
         Console.WriteLine("Environment variables:");
-        Console.WriteLine("  AZURE_FOUNDRY_PROJECT_ENDPOINT or FOUNDRY_PROJECT_ENDPOINT");
-        Console.WriteLine("  AZURE_AI_MODEL_DEPLOYMENT_NAME or ModelDeploymentName");
+        Console.WriteLine("  AZURE_FOUNDRY_PROJECT_ENDPOINT");
+        Console.WriteLine("  AZURE_AI_MODEL_DEPLOYMENT_NAME");
         Console.WriteLine("  MCP_BASE_URL");
     }
 }

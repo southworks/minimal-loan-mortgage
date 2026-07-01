@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-011",
+    "document_id":  "APP-011-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-02-09",
+    "source_system":  "appraisal_report",
+    "property_address":  "71 Vineyard Row, Sacramento, CA 95818",
+    "property_type":  "townhome",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  510000,
+    "appraised_value":  522000,
+    "calculated_ltv":  73.3,
+    "condition_rating":  "C3"
+}

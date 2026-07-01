@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-005",
+    "document_id":  "APP-005-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-11-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-11",
+    "owner_name":  "Ava Patel",
+    "beginning_balance":  25725.00,
+    "ending_balance":  31525.00,
+    "average_balance":  28625.00,
+    "total_deposits":  11000,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-13",
+                             "description":  "Payroll",
+                             "amount":  5500,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-25",
+                             "description":  "Payroll",
+                             "amount":  5500,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-21",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-11-22",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

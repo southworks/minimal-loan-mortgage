@@ -1,0 +1,5 @@
+﻿Policy Ref: IN-330
+Rule: declared income must align with verified payroll evidence and employment verification before it can be used for qualification.
+Threshold: declared base income must align with verified paystubs within 10 percent, two recent paystubs are required for salaried borrowers, unverified bonuses or commissions are excluded from qualifying income.
+Action: use verified income for qualification, deny when income cannot be verified and variance exceeds policy tolerance, manual_review when the variance is explainable but unresolved.
+Exception: none.

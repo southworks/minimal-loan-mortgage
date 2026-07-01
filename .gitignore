@@ -5,6 +5,8 @@ publish-test/
 .vs/
 *.user
 *.swp
+**/__pycache__/
+*.pyc
 appsettings.*.local.json
 backend/src/Api.Host/.env.local
 backend/src/LoanWorkflow.Mcp/appsettings.Deployment.local.json

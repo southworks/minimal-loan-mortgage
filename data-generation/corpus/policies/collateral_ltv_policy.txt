@@ -1,0 +1,5 @@
+﻿Policy Ref: CL-125
+Rule: collateral adequacy is based on appraised value and resulting loan-to-value, not only on purchase price.
+Threshold: standard maximum loan-to-value is 80 for owner-occupied purchase, loan-to-value between 80 and 90 is elevated risk, above 90 is outside policy for this MVP.
+Action: approve within the standard range, use manual_review for elevated-risk files, deny files above the maximum threshold.
+Exception: none.

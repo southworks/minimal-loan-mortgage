@@ -1,12 +1,6 @@
 param baseName string
-param nameSuffix string
 
-var deploymentSuffix = empty(nameSuffix) ? uniqueString(resourceGroup().id) : uniqueString(resourceGroup().id, nameSuffix)
-var apiAppNameRaw = take('${baseName}-api-${deploymentSuffix}', 32)
-var mcpAppNameRaw = take('${baseName}-mcp-${deploymentSuffix}', 32)
-var frontendAppNameRaw = take('${baseName}-web-${deploymentSuffix}', 32)
-var policySeedJobNameRaw = take('${baseName}-policyseed-${deploymentSuffix}', 32)
-var provisioningJobNameRaw = take('${baseName}-provision-${deploymentSuffix}', 32)
+var deploymentSuffix = uniqueString(resourceGroup().id)
 
 output deploymentSuffix string = deploymentSuffix
 output foundryAccountName string = toLower(take(replace('${baseName}foundry${deploymentSuffix}', '-', ''), 24))

@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-020",
+    "document_id":  "APP-020-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-03-17",
+    "source_system":  "appraisal_report",
+    "property_address":  "2103 Fairview Rd, Richmond, VA 23221",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  525000,
+    "appraised_value":  515000,
+    "calculated_ltv":  83.6,
+    "condition_rating":  "C3"
+}

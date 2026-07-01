@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-008",
+    "document_id":  "APP-008-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-12-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-12",
+    "owner_name":  "James Sullivan",
+    "beginning_balance":  33600.00,
+    "ending_balance":  41033.33,
+    "average_balance":  37316.66,
+    "total_deposits":  13333.33,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-24",
+                             "description":  "Payroll",
+                             "amount":  6666.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-06",
+                             "description":  "Payroll",
+                             "amount":  6666.66,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-02",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-12-03",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

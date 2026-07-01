@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : January 12, 2026
+Property Type  : Single Family
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  908 Sabal Ridge, Austin, TX 78757
+
+VALUATION
+  Purchase Price   : $680,000.00
+  Appraised Value  : $695,000.00
+  Calculated LTV   : 73.4%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

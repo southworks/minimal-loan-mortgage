@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-010",
+    "document_id":  "APP-010-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-02-05",
+    "source_system":  "appraisal_report",
+    "property_address":  "901 Lakeview Road, Minneapolis, MN 55416",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  530000,
+    "appraised_value":  545000,
+    "calculated_ltv":  72.9,
+    "condition_rating":  "C3"
+}

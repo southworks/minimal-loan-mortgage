@@ -1,0 +1,34 @@
+﻿{
+    "application_id":  "APP-007",
+    "document_id":  "APP-007-APP-001",
+    "document_type":  "application",
+    "document_date":  "2026-02-03",
+    "source_system":  "loan_origination_system",
+    "loan_purpose":  "purchase",
+    "occupancy_type":  "primary_residence",
+    "loan_product":  "fixed_rate_mortgage",
+    "loan_term_months":  360,
+    "requested_loan_amount":  540000,
+    "purchase_price":  720000,
+    "down_payment":  180000,
+    "interest_rate_estimate":  6.2,
+    "borrower":  {
+                     "full_name":  "Isabella Nguyen",
+                     "date_of_birth":  "1989-02-14",
+                     "current_address":  "52 Elm Point, Seattle, WA 98109"
+                 },
+    "co_borrower":  {
+                        "full_name":  "Lucas Nguyen"
+                    },
+    "property":  {
+                     "address":  "9924 Aurora Heights, Seattle, WA 98115",
+                     "city":  "Seattle",
+                     "state":  "WA",
+                     "property_type":  "single_family"
+                 },
+    "declared_financials":  {
+                                "declared_monthly_income":  14667,
+                                "existing_monthly_debt":  2900,
+                                "liquid_assets":  97200
+                            }
+}

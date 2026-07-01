@@ -1,0 +1,32 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-003
+Application Date : January 18, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $345,000.00
+  Purchase Price   : $460,000.00
+  Down Payment     : $115,000.00
+  Est. Interest    : 6.3%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Mia Thompson
+  Date of Birth  : January 27, 1990
+  Current Address: 46 Harbor Street, Tampa, FL 33602
+
+PROPERTY
+  Address        : 1209 Palm View Dr, Tampa, FL 33609
+  City / State   : Tampa, FL
+  Property Type  : Condo
+
+DECLARED FINANCIALS
+  Monthly Income : $10,500.00
+  Monthly Debt   : $1,750.00
+  Liquid Assets  : $62,100.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

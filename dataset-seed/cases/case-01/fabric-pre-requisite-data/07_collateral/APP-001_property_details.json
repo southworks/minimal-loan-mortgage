@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-001",
+    "document_id":  "APP-001-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-01-10",
+    "source_system":  "property_record",
+    "property_address":  "2211 Birch Court, Denver, CO 80211",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  520000
+}

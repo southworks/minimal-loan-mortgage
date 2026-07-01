@@ -1,0 +1,13 @@
+﻿{
+    "application_id":  "APP-003",
+    "document_id":  "APP-003-ID-001",
+    "document_type":  "drivers_license",
+    "document_date":  "2026-01-15",
+    "source_system":  "identity_document",
+    "party_role":  "borrower",
+    "full_name":  "Mia Thompson",
+    "date_of_birth":  "1990-01-27",
+    "address":  "46 Harbor Street, Tampa, FL 33602",
+    "document_number":  "D100236",
+    "expiry_date":  "2030-01-15"
+}

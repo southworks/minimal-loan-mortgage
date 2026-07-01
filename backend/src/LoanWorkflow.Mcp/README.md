@@ -19,7 +19,7 @@ In the standard Azure deployment flow, this host runs as an Azure Container App.
 - Enrich customer context from local assets today, with the same adapter boundary intended for Fabric later
 - Ensure case and customer-context evidence are indexed idempotently into the shared Azure AI Search evidence index using Azure AI Foundry `embed-v-4-0`
 - Retrieve evidence and policies from Azure AI Search using Azure AI Foundry `Cohere-rerank-v4.0-pro`
-- Seed the policy index from `dataset-seed/08_policy_rag/general_policy.txt` during deploy-time seeding
+- Seed the policy index from `dataset-seed/policies/general_policy.txt` during deploy-time seeding
 - Reindex policies only when the policy source hash changes
 - Batch embedding inputs, limit Foundry concurrency, and retry transient throttling/server errors
 
@@ -58,7 +58,7 @@ The MCP image is built from [Dockerfile](Dockerfile). It includes:
   },
   "Dataset": {
     "RootPath": "/app/dataset-seed",
-    "PolicyFilePath": "/app/dataset-seed/08_policy_rag/general_policy.txt"
+    "PolicyFilePath": "/app/dataset-seed/policies/general_policy.txt"
   },
   "AzureSearch": {
     "Endpoint": "https://{search-service}.search.windows.net",
@@ -120,9 +120,9 @@ For local runs, the default dataset paths in [appsettings.json](appsettings.json
 
 ## Demo Validation Cases
 
-- `APP-001` — clearly approvable
-- `APP-017` — borderline/manual review style case
-- `APP-015` — clearly rejectable
+- `case-01` — clearly approvable
+- `case-17` — borderline/manual review style case
+- `case-15` — clearly rejectable
 
 When the API workflow starts, normalized case documents may be pre-indexed under `sourceType=workflow-payload` and `sourceKey=case:{caseId}`. During document processing, the agent calls `index_case_documents` with the same identity so idempotency avoids duplicate embedding work, then calls `enrich_customer_context` to index supporting evidence under `sourceType=customer-context` and `sourceKey=assets:{caseId}`. The agent uses `search_case_evidence` with optional `sourceType` filters to compare submitted documents against supporting context with Cohere rerank. Policies are still indexed by deploy-time seed.
 

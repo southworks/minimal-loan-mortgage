@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Harper Scott
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $26,775.00
+  Total Deposits    : $11,333.33
+  Ending Balance    : $32,908.33
+  Average Balance   : $29,841.66
+
+TRANSACTIONS
+  2025-12-06  Payroll                          +$5,666.66
+  2025-12-18  Payroll                          +$5,666.66
+  2025-12-14  Housing expense                  $-2,200.00
+  2025-12-15  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

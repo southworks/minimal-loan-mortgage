@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : March 09, 2026
+Property Type  : Single Family
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  1451 Garden Loop, Orlando, FL 32804
+
+VALUATION
+  Purchase Price   : $480,000.00
+  Appraised Value  : $490,000.00
+  Calculated LTV   : 73.5%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

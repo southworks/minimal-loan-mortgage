@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-004",
+    "document_id":  "APP-004-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-11-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-11",
+    "owner_name":  "Noah Rivera",
+    "beginning_balance":  35700.00,
+    "ending_balance":  43700.00,
+    "average_balance":  39700.00,
+    "total_deposits":  14000,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-09",
+                             "description":  "Payroll",
+                             "amount":  7000,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-21",
+                             "description":  "Payroll",
+                             "amount":  7000,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-17",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-11-18",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

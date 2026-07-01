@@ -1,0 +1,33 @@
+﻿{
+    "application_id":  "APP-015",
+    "document_id":  "APP-015-CRD-001",
+    "document_type":  "credit_report",
+    "document_date":  "2026-03-07",
+    "source_system":  "credit_bureau",
+    "party_role":  "borrower",
+    "borrower_name":  "Sofia Alvarez",
+    "credit_score":  709,
+    "credit_utilization":  27,
+    "monthly_debt_obligations":  1900,
+    "delinquencies_12m":  0,
+    "recent_inquiries":  1,
+    "tradelines":  [
+                       {
+                           "type":  "auto_loan",
+                           "status":  "current",
+                           "balance":  12400
+                       },
+                       {
+                           "type":  "credit_card",
+                           "status":  "current",
+                           "balance":  7600
+                       },
+                       {
+                           "type":  "student_loan",
+                           "status":  "current",
+                           "balance":  18400
+                       }
+                   ],
+    "collections_flag":  false,
+    "bankruptcy_flag":  false
+}

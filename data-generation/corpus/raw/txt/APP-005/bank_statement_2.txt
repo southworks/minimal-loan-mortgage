@@ -1,0 +1,19 @@
+BANK STATEMENT — 2025-12
+========================
+Account Holder : Ava Patel
+Statement Date : December 28, 2025
+Period         : 2025-12
+
+SUMMARY
+  Beginning Balance : $22,050.00
+  Total Deposits    : $11,000.00
+  Ending Balance    : $27,850.00
+  Average Balance   : $24,950.00
+
+TRANSACTIONS
+  2025-12-13  Payroll                          +$5,500.00
+  2025-12-25  Payroll                          +$5,500.00
+  2025-12-21  Housing expense                  $-2,200.00
+  2025-12-22  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

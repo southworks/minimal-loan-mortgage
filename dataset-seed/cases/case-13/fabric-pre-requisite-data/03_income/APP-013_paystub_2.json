@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-02-13",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Emily Reed",
+    "employer":  "Peachtree Media Group",
+    "pay_date":  "2026-02-13",
+    "gross_pay":  4916.67,
+    "net_pay":  3540.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-01-31",
+    "pay_period_end":  "2026-02-13",
+    "ytd_gross":  19666.68
+}

@@ -7,7 +7,7 @@ param(
 
     [string]$DatasetSeedPath = '',
 
-    [string]$PolicyTargetFolder = 'policy_rag',
+    [string]$PolicyTargetFolder = 'policies',
 
     [string]$OneLakeEndpoint = 'https://onelake.dfs.fabric.microsoft.com',
 
@@ -72,7 +72,7 @@ Write-Host "Policy target folder: $PolicyTargetFolder"
 Write-Host "OneLake endpoint: $OneLakeEndpoint"
 
 $seedRoot = Resolve-DatasetSeedPath -Candidate $DatasetSeedPath
-$policyRoot = Join-Path $seedRoot '08_policy_rag'
+$policyRoot = Join-Path $seedRoot 'policies'
 if (-not (Test-Path -LiteralPath $policyRoot)) {
     throw "Policy folder not found: $policyRoot"
 }

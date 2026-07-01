@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-01
+========================
+Account Holder : Benjamin Flores
+Statement Date : January 28, 2026
+Period         : 2026-01
+
+SUMMARY
+  Beginning Balance : $23,850.00
+  Total Deposits    : $12,666.67
+  Ending Balance    : $30,816.67
+  Average Balance   : $27,333.34
+
+TRANSACTIONS
+  2026-01-02  Payroll                          +$6,333.34
+  2026-01-14  Payroll                          +$6,333.34
+  2026-01-10  Housing expense                  $-2,200.00
+  2026-01-11  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

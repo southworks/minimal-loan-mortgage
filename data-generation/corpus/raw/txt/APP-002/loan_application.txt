@@ -1,0 +1,35 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (FORM 1003)
+=================================================
+Application ID   : APP-002
+Application Date : January 14, 2026
+Source System    : loan_origination_system
+
+LOAN REQUEST
+  Purpose          : Purchase
+  Product          : Fixed Rate Mortgage
+  Term             : 360 months
+  Requested Amount : $457,000.00
+  Purchase Price   : $610,000.00
+  Down Payment     : $153,000.00
+  Est. Interest    : 6.2%
+  Occupancy Type   : Primary Residence
+
+BORROWER INFORMATION
+  Full Name      : Ethan Carter
+  Date of Birth  : September 03, 1986
+  Current Address: 827 Magnolia Ave, Phoenix, AZ 85016
+
+CO-BORROWER INFORMATION
+  Full Name      : Sophia Carter
+
+PROPERTY
+  Address        : 827 Magnolia Ave, Phoenix, AZ 85016
+  City / State   : Phoenix, AZ
+  Property Type  : Single Family
+
+DECLARED FINANCIALS
+  Monthly Income : $12,833.00
+  Monthly Debt   : $2,400.00
+  Liquid Assets  : $82,260.00
+
+[BORROWER DECLARATION — SUBMITTED VIA LOAN ORIGINATION SYSTEM]

@@ -483,6 +483,13 @@ public sealed class BasicLoanWorkflowService
             case SuperStepCompletedEvent superStepCompletedEvent
                 when superStepCompletedEvent.CompletionInfo?.Checkpoint is not null:
                 execution.PendingCheckpoint = superStepCompletedEvent.CompletionInfo.Checkpoint;
+                if (
+                    !(superStepCompletedEvent.CompletionInfo?.HasPendingMessages ?? false) && 
+                    !(superStepCompletedEvent.CompletionInfo?.HasPendingRequests ?? false) && 
+                    superStepCompletedEvent.StepNumber == 5) {
+                    execution.Status = BasicWorkflowStatus.Completed;
+                    execution.CurrentAgent = null;
+                }
                 Touch(execution);
                 break;
         }

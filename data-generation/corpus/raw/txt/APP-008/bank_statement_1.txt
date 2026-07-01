@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : James Sullivan
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $24,000.00
+  Total Deposits    : $13,333.33
+  Ending Balance    : $31,433.33
+  Average Balance   : $27,716.66
+
+TRANSACTIONS
+  2026-01-25  Payroll                          +$6,666.66
+  2026-02-06  Payroll                          +$6,666.66
+  2026-02-02  Housing expense                  $-2,200.00
+  2026-02-03  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

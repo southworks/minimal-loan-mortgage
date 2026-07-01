@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-003",
+    "document_id":  "APP-003-BNK-003",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-11-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-11",
+    "owner_name":  "Mia Thompson",
+    "beginning_balance":  24150.00,
+    "ending_balance":  29500.00,
+    "average_balance":  26825.00,
+    "total_deposits":  10500,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-05",
+                             "description":  "Payroll",
+                             "amount":  5250,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-17",
+                             "description":  "Payroll",
+                             "amount":  5250,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-11-13",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-11-14",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

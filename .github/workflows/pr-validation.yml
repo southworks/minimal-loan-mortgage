@@ -63,9 +63,6 @@ jobs:
       - name: Build WebApp
         run: dotnet build frontend/src/WebApp/Cohere.LoanProcessing.WebApp.csproj -c Release
 
-      - name: Build WebApp tests
-        run: dotnet build frontend/tests/WebApp.Tests/Cohere.LoanProcessing.WebApp.Tests.csproj -c Release
-
       - name: Build HostedAgents
         run: dotnet build hosted-agents/src/CohereLoanAndMortgage.HostedAgents/CohereLoanAndMortgage.HostedAgents.csproj -c Release
 

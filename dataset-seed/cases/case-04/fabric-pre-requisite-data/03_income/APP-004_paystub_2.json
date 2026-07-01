@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-004",
+    "document_id":  "APP-004-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-01-08",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Noah Rivera",
+    "employer":  "Lone Star DataWorks",
+    "pay_date":  "2026-01-08",
+    "gross_pay":  7000,
+    "net_pay":  5040.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2025-12-26",
+    "pay_period_end":  "2026-01-08",
+    "ytd_gross":  28000
+}

@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-013",
+    "document_id":  "APP-013-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-02-27",
+    "source_system":  "property_record",
+    "property_address":  "95 Oak Crossing, Atlanta, GA 30309",
+    "property_type":  "townhome",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  430000
+}

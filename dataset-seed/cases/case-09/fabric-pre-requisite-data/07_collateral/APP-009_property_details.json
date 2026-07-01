@@ -1,0 +1,11 @@
+﻿{
+    "application_id":  "APP-009",
+    "document_id":  "APP-009-COL-PRP-001",
+    "document_type":  "property_details",
+    "document_date":  "2026-02-11",
+    "source_system":  "property_record",
+    "property_address":  "16 Beacon Hill, Boston, MA 02114",
+    "property_type":  "condo",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  560000
+}

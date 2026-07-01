@@ -1,0 +1,19 @@
+BANK STATEMENT — 2026-02
+========================
+Account Holder : Jacob Miller
+Statement Date : February 28, 2026
+Period         : 2026-02
+
+SUMMARY
+  Beginning Balance : $33,480.00
+  Total Deposits    : $12,083.33
+  Ending Balance    : $39,563.33
+  Average Balance   : $36,521.66
+
+TRANSACTIONS
+  2026-01-29  Payroll                          +$6,041.66
+  2026-02-10  Payroll                          +$6,041.66
+  2026-02-06  Housing expense                  $-2,200.00
+  2026-02-07  Utilities                        $-380.00
+
+[OFFICIAL BANK STATEMENT — SUBMITTED BY BORROWER]

@@ -1,0 +1,43 @@
+﻿{
+    "application_id":  "APP-001",
+    "document_id":  "APP-001-BNK-002",
+    "document_type":  "bank_statement",
+    "document_date":  "2025-12-28",
+    "source_system":  "bank_statement",
+    "party_role":  "borrower",
+    "statement_month":  "2025-12",
+    "owner_name":  "Olivia Bennett",
+    "beginning_balance":  23400.00,
+    "ending_balance":  29400.00,
+    "average_balance":  26400.00,
+    "total_deposits":  11500,
+    "large_deposits":  [
+
+                       ],
+    "transactions":  [
+                         {
+                             "transaction_date":  "2025-11-27",
+                             "description":  "Payroll",
+                             "amount":  5750,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-09",
+                             "description":  "Payroll",
+                             "amount":  5750,
+                             "category":  "payroll"
+                         },
+                         {
+                             "transaction_date":  "2025-12-05",
+                             "description":  "Housing expense",
+                             "amount":  -2200,
+                             "category":  "housing"
+                         },
+                         {
+                             "transaction_date":  "2025-12-06",
+                             "description":  "Utilities",
+                             "amount":  -380,
+                             "category":  "utilities"
+                         }
+                     ]
+}

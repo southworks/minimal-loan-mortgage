@@ -1,23 +1,21 @@
 param location string
 param resourceTags object
 param deploymentSuffix string
-param nameSuffix string
 param deploymentScriptIdentityName string
 param foundryAccountName string
 param foundryProjectName string
 param policySeedJobName string
 param provisioningJobName string
+param enableFabric bool
 param enableFabricSeed bool
-param fabricUamiResourceId string
+param fabricUamiResourceId string = ''
 param fabricWorkspaceId string
 param fabricWorkspaceName string
 param fabricLakehouseId string
 param fabricLakehouseName string
 param fabricRepositoryArchiveUrl string
-@secure()
-param fabricGithubToken string
 
-resource fabricUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+resource fabricUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (enableFabric) {
   name: last(split(fabricUamiResourceId, '/'))
 }
 
@@ -37,7 +35,7 @@ resource deploymentScriptIdentity 'Microsoft.ManagedIdentity/userAssignedIdentit
 }
 
 resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor', nameSuffix)
+  name: guid(resourceGroup().id, deploymentScriptIdentity.id, 'Contributor')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
@@ -47,7 +45,7 @@ resource deploymentScriptContributorRole 'Microsoft.Authorization/roleAssignment
 }
 
 resource deploymentScriptFoundryContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'CognitiveServicesContributor', nameSuffix)
+  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'CognitiveServicesContributor')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
@@ -60,7 +58,7 @@ resource deploymentScriptFoundryContributorRole 'Microsoft.Authorization/roleAss
 }
 
 resource deploymentScriptFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'FoundryUser', nameSuffix)
+  name: guid(foundryAccount.id, deploymentScriptIdentity.id, 'FoundryUser')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
@@ -219,7 +217,7 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
   ]
 }
 
-resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabricSeed) {
+resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabric && enableFabricSeed) {
   name: 'run-fabric-seed-${deploymentSuffix}'
   location: location
   tags: resourceTags
@@ -227,7 +225,7 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${fabricUami.id}': {}
+      '${fabricUami!.id}': {}
     }
   }
   properties: {
@@ -238,14 +236,13 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
     forceUpdateTag: deploymentSuffix
     scriptContent: loadTextContent('../scripts/seed-fabric-data.ps1')
     environmentVariables: [
-      { name: 'AZURE_CLIENT_ID',         value: fabricUami.properties.clientId }
+      { name: 'AZURE_CLIENT_ID',         value: fabricUami!.properties.clientId }
       { name: 'FABRIC_WORKSPACE_ID',     value: fabricWorkspaceId }
       { name: 'FABRIC_WORKSPACE_NAME',   value: fabricWorkspaceName }
       { name: 'FABRIC_LAKEHOUSE_ID',     value: fabricLakehouseId }
       { name: 'FABRIC_LAKEHOUSE_NAME',   value: fabricLakehouseName }
       { name: 'RESOURCE_GROUP_NAME',     value: resourceGroup().name }
       { name: 'REPOSITORY_ARCHIVE_URL',  value: fabricRepositoryArchiveUrl }
-      { name: 'GITHUB_TOKEN',            secureValue: fabricGithubToken }
       { name: 'SKIP_RAW',                value: 'false' }
       { name: 'SKIP_STRUCTURED',         value: 'false' }
       { name: 'SKIP_POLICY',             value: 'false' }
@@ -255,4 +252,4 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
   ]
 }
 
-output fabricSeedDeploymentScriptName string = enableFabricSeed ? runFabricSeed.name : ''
+output fabricSeedDeploymentScriptName string = (enableFabric && enableFabricSeed) ? runFabricSeed.name : ''

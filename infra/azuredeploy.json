@@ -6,17 +6,10 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "8273036962313063448"
+      "templateHash": "1190850533669216175"
     }
   },
   "parameters": {
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Azure region for all resources."
-      }
-    },
     "baseName": {
       "type": "string",
       "defaultValue": "cohereloan",
@@ -33,7 +26,7 @@
     },
     "modelDeploymentName": {
       "type": "string",
-      "defaultValue": "cohere-command-a",
+      "defaultValue": "cohere-command-a-plus",
       "metadata": {
         "description": "Foundry model deployment name used by all agents."
       }
@@ -47,7 +40,7 @@
     },
     "modelDeploymentCapacity": {
       "type": "int",
-      "defaultValue": 10,
+      "defaultValue": 100,
       "minValue": 1,
       "metadata": {
         "description": "Capacity units for the Foundry model deployment used by the agents. Increase this when agents fail with no_capacity during peak load."
@@ -55,7 +48,7 @@
     },
     "cohereModelName": {
       "type": "string",
-      "defaultValue": "cohere-command-a",
+      "defaultValue": "Cohere-command-a-plus-05-2026",
       "metadata": {
         "description": "Cohere Command A model name in Foundry catalog."
       }
@@ -90,7 +83,7 @@
     },
     "embedDeploymentCapacity": {
       "type": "int",
-      "defaultValue": 10,
+      "defaultValue": 1000,
       "minValue": 1,
       "metadata": {
         "description": "Capacity units for the Cohere embed deployment. Increase this for faster case evidence indexing and fewer throttling failures."
@@ -167,37 +160,39 @@
         "description": "Full container image URI for the agent provisioning job."
       }
     },
-    "nameSuffix": {
-      "type": "string",
-      "defaultValue": "",
+    "enableFabric": {
+      "type": "bool",
+      "defaultValue": false,
       "metadata": {
-        "description": "Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved."
+        "description": "When true, provisions Fabric lakehouse, seeds lakehouse data, and configures MCP to read case context from Fabric. Requires fabricWorkspaceName and fabricUamiResourceId."
       }
     },
     "fabricWorkspaceName": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "description": "Fabric workspace name. Required. Must be capacity-backed and accessible to the operator."
+        "description": "Fabric workspace name. Required when enableFabric is true. Must be capacity-backed and accessible to the operator."
       }
     },
     "fabricLakehouseName": {
       "type": "string",
       "defaultValue": "LoanProcessingLakehouse",
       "metadata": {
-        "description": "Fabric lakehouse name. Created at deploy time if missing."
+        "description": "Fabric lakehouse name. Used only when enableFabric is true. Created at deploy time if missing."
       }
     },
     "fabricUamiResourceId": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "description": "UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment."
+        "description": "UAMI resource ID. Required when enableFabric is true. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment."
       }
     },
     "enableFabricSeed": {
       "type": "bool",
       "defaultValue": true,
       "metadata": {
-        "description": "When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime."
+        "description": "When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime. Ignored when enableFabric is false."
       }
     },
     "fabricRepositoryArchiveUrl": {
@@ -206,16 +201,10 @@
       "metadata": {
         "description": "Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/."
       }
-    },
-    "fabricGithubToken": {
-      "type": "securestring",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Optional GitHub PAT for private repos or higher rate limits."
-      }
     }
   },
   "variables": {
+    "location": "[resourceGroup().location]",
     "resolvedFoundryProjectName": "[if(empty(parameters('foundryProjectName')), format('{0}-project', parameters('baseName')), parameters('foundryProjectName'))]",
     "resourceTags": {
       "project": "inesite"
@@ -242,9 +231,6 @@
         "parameters": {
           "baseName": {
             "value": "[parameters('baseName')]"
-          },
-          "nameSuffix": {
-            "value": "[parameters('nameSuffix')]"
           }
         },
         "template": {
@@ -254,24 +240,16 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "3886048614764266717"
+              "templateHash": "11856194584488201885"
             }
           },
           "parameters": {
             "baseName": {
               "type": "string"
-            },
-            "nameSuffix": {
-              "type": "string"
             }
           },
           "variables": {
-            "deploymentSuffix": "[if(empty(parameters('nameSuffix')), uniqueString(resourceGroup().id), uniqueString(resourceGroup().id, parameters('nameSuffix')))]",
-            "apiAppNameRaw": "[take(format('{0}-api-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-            "mcpAppNameRaw": "[take(format('{0}-mcp-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-            "frontendAppNameRaw": "[take(format('{0}-web-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-            "policySeedJobNameRaw": "[take(format('{0}-policyseed-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]",
-            "provisioningJobNameRaw": "[take(format('{0}-provision-{1}', parameters('baseName'), variables('deploymentSuffix')), 32)]"
+            "deploymentSuffix": "[uniqueString(resourceGroup().id)]"
           },
           "resources": [],
           "outputs": {
@@ -350,7 +328,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -473,7 +451,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -987,7 +965,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1115,13 +1093,10 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
-          },
-          "nameSuffix": {
-            "value": "[parameters('nameSuffix')]"
           },
           "apiIdentityName": {
             "value": "[reference('naming').outputs.apiIdentityName.value]"
@@ -1141,8 +1116,14 @@
           "documentIntelligenceAccountName": {
             "value": "[reference('dataServices').outputs.documentIntelligenceAccountName.value]"
           },
+          "enableFabric": {
+            "value": "[parameters('enableFabric')]"
+          },
           "fabricUamiResourceId": {
             "value": "[parameters('fabricUamiResourceId')]"
+          },
+          "mcpIdentityName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'naming'), '2025-04-01').outputs.mcpIdentityName.value]"
           }
         },
         "template": {
@@ -1152,7 +1133,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "245562855113630628"
+              "templateHash": "1729577213465665132"
             }
           },
           "parameters": {
@@ -1161,9 +1142,6 @@
             },
             "resourceTags": {
               "type": "object"
-            },
-            "nameSuffix": {
-              "type": "string"
             },
             "apiIdentityName": {
               "type": "string"
@@ -1183,11 +1161,29 @@
             "documentIntelligenceAccountName": {
               "type": "string"
             },
+            "enableFabric": {
+              "type": "bool"
+            },
             "fabricUamiResourceId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "mcpIdentityName": {
               "type": "string"
             }
           },
+          "variables": {
+            "resolvedMcpIdentityId": "[if(parameters('enableFabric'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')))]"
+          },
           "resources": [
+            {
+              "condition": "[not(parameters('enableFabric'))]",
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('mcpIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('resourceTags')]"
+            },
             {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
               "apiVersion": "2023-01-31",
@@ -1206,7 +1202,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'CognitiveServicesUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
@@ -1220,7 +1216,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('foundryAccountName'), parameters('foundryProjectName')), 'FoundryUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('foundryAccountName'), parameters('foundryProjectName')), 'FoundryUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
                 "principalId": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('foundryAccountName'), parameters('foundryProjectName')), '2025-06-01', 'full').identity.principalId]",
@@ -1231,7 +1227,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'SearchServiceContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'SearchServiceContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
@@ -1245,7 +1241,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'SearchIndexDataContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
@@ -1259,7 +1255,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('documentIntelligenceAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('documentIntelligenceAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('documentIntelligenceAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), 'CognitiveServicesUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('apiIdentityName')), '2023-01-31').principalId]",
@@ -1273,40 +1269,49 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchServiceContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), variables('resolvedMcpIdentityId'), 'SearchServiceContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId)]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.Search/searchServices', parameters('searchServiceName'))]",
-              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'SearchIndexDataContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.Search/searchServices', parameters('searchServiceName')), variables('resolvedMcpIdentityId'), 'SearchIndexDataContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId)]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), 'CognitiveServicesUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), variables('resolvedMcpIdentityId'), 'CognitiveServicesUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId]",
+                "principalId": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').principalId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').principalId)]",
                 "principalType": "ServicePrincipal"
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), 'CognitiveServicesContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), 'CognitiveServicesContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), '2023-01-31').principalId]",
@@ -1320,7 +1325,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), 'FoundryUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), 'FoundryUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('provisioningIdentityName')), '2023-01-31').principalId]",
@@ -1342,11 +1347,11 @@
             },
             "mcpIdentityId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/')))]"
+              "value": "[variables('resolvedMcpIdentityId')]"
             },
             "mcpIdentityClientId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId]"
+              "value": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', last(split(parameters('fabricUamiResourceId'), '/'))), '2023-01-31').clientId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('mcpIdentityName')), '2023-01-31').clientId)]"
             },
             "provisioningIdentityId": {
               "type": "string",
@@ -1366,6 +1371,7 @@
       ]
     },
     "fabricProvision": {
+      "condition": "[parameters('enableFabric')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "fabric-provision",
@@ -1376,7 +1382,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1512,7 +1518,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -1580,6 +1586,9 @@
           "rerankEndpoint": {
             "value": "[reference('foundry').outputs.rerankEndpoint.value]"
           },
+          "enableFabric": {
+            "value": "[parameters('enableFabric')]"
+          },
           "fabricWorkspaceName": {
             "value": "[parameters('fabricWorkspaceName')]"
           },
@@ -1594,7 +1603,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "2417762088847040814"
+              "templateHash": "15370355203324626462"
             }
           },
           "parameters": {
@@ -1667,6 +1676,10 @@
             "rerankEndpoint": {
               "type": "string"
             },
+            "enableFabric": {
+              "type": "bool",
+              "defaultValue": false
+            },
             "fabricWorkspaceName": {
               "type": "string",
               "defaultValue": ""
@@ -1681,6 +1694,8 @@
             }
           },
           "variables": {
+            "dataSourceMode": "[if(parameters('enableFabric'), 'Fabric', 'Local')]",
+            "mcpFabricEnv": "[if(parameters('enableFabric'), createArray(createObject('name', 'FabricLakehouse__WorkspaceName', 'value', parameters('fabricWorkspaceName')), createObject('name', 'FabricLakehouse__LakehouseName', 'value', parameters('fabricLakehouseName')), createObject('name', 'FabricLakehouse__TimeoutSeconds', 'value', string(parameters('fabricLakehouseTimeoutSeconds')))), createArray())]",
             "mcpFoundryModelEnv": [
               {
                 "name": "AzureFoundryModels__EmbedDeploymentName",
@@ -1839,7 +1854,7 @@
                         },
                         {
                           "name": "Dataset__PolicyFilePath",
-                          "value": "/app/dataset-seed/08_policy_rag/general_policy.txt"
+                          "value": "/app/dataset-seed/policies/general_policy.txt"
                         },
                         {
                           "name": "AzureFoundryModels__EmbedDeploymentName",
@@ -2140,7 +2155,7 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
@@ -2388,16 +2403,13 @@
         "mode": "Incremental",
         "parameters": {
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[variables('location')]"
           },
           "resourceTags": {
             "value": "[variables('resourceTags')]"
           },
           "deploymentSuffix": {
             "value": "[reference('naming').outputs.deploymentSuffix.value]"
-          },
-          "nameSuffix": {
-            "value": "[parameters('nameSuffix')]"
           },
           "deploymentScriptIdentityName": {
             "value": "[reference('naming').outputs.deploymentScriptIdentityName.value]"
@@ -2414,29 +2426,21 @@
           "provisioningJobName": {
             "value": "[reference('naming').outputs.provisioningJobName.value]"
           },
+          "enableFabric": {
+            "value": "[parameters('enableFabric')]"
+          },
           "enableFabricSeed": {
-            "value": "[parameters('enableFabricSeed')]"
+            "value": "[and(parameters('enableFabric'), parameters('enableFabricSeed'))]"
           },
           "fabricUamiResourceId": {
             "value": "[parameters('fabricUamiResourceId')]"
           },
-          "fabricWorkspaceId": {
-            "value": "[reference('fabricProvision').outputs.workspaceId.value]"
-          },
-          "fabricWorkspaceName": {
-            "value": "[reference('fabricProvision').outputs.workspaceName.value]"
-          },
-          "fabricLakehouseId": {
-            "value": "[reference('fabricProvision').outputs.lakehouseId.value]"
-          },
-          "fabricLakehouseName": {
-            "value": "[reference('fabricProvision').outputs.lakehouseName.value]"
-          },
+          "fabricWorkspaceId": "[if(parameters('enableFabric'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.workspaceId.value), createObject('value', ''))]",
+          "fabricWorkspaceName": "[if(parameters('enableFabric'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.workspaceName.value), createObject('value', ''))]",
+          "fabricLakehouseId": "[if(parameters('enableFabric'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.lakehouseId.value), createObject('value', ''))]",
+          "fabricLakehouseName": "[if(parameters('enableFabric'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.lakehouseName.value), createObject('value', ''))]",
           "fabricRepositoryArchiveUrl": {
             "value": "[parameters('fabricRepositoryArchiveUrl')]"
-          },
-          "fabricGithubToken": {
-            "value": "[parameters('fabricGithubToken')]"
           }
         },
         "template": {
@@ -2446,7 +2450,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "6305895441451876585"
+              "templateHash": "712773553229056744"
             }
           },
           "parameters": {
@@ -2457,9 +2461,6 @@
               "type": "object"
             },
             "deploymentSuffix": {
-              "type": "string"
-            },
-            "nameSuffix": {
               "type": "string"
             },
             "deploymentScriptIdentityName": {
@@ -2477,11 +2478,15 @@
             "provisioningJobName": {
               "type": "string"
             },
+            "enableFabric": {
+              "type": "bool"
+            },
             "enableFabricSeed": {
               "type": "bool"
             },
             "fabricUamiResourceId": {
-              "type": "string"
+              "type": "string",
+              "defaultValue": ""
             },
             "fabricWorkspaceId": {
               "type": "string"
@@ -2497,9 +2502,6 @@
             },
             "fabricRepositoryArchiveUrl": {
               "type": "string"
-            },
-            "fabricGithubToken": {
-              "type": "securestring"
             }
           },
           "variables": {
@@ -2516,7 +2518,7 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), '2023-01-31').principalId]",
@@ -2530,7 +2532,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'CognitiveServicesContributor', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'CognitiveServicesContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), '2023-01-31').principalId]",
@@ -2544,7 +2546,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
-              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'FoundryUser', parameters('nameSuffix'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'FoundryUser')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), '2023-01-31').principalId]",
@@ -2586,7 +2588,7 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor', parameters('nameSuffix')))]",
+                "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor'))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]"
               ]
             },
@@ -2622,13 +2624,13 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor', parameters('nameSuffix')))]",
+                "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName')), 'Contributor'))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]",
                 "[resourceId('Microsoft.Resources/deploymentScripts', format('run-policy-seed-{0}', parameters('deploymentSuffix')))]"
               ]
             },
             {
-              "condition": "[parameters('enableFabricSeed')]",
+              "condition": "[and(parameters('enableFabric'), parameters('enableFabricSeed'))]",
               "type": "Microsoft.Resources/deploymentScripts",
               "apiVersion": "2023-08-01",
               "name": "[format('run-fabric-seed-{0}', parameters('deploymentSuffix'))]",
@@ -2678,10 +2680,6 @@
                     "value": "[parameters('fabricRepositoryArchiveUrl')]"
                   },
                   {
-                    "name": "GITHUB_TOKEN",
-                    "secureValue": "[parameters('fabricGithubToken')]"
-                  },
-                  {
                     "name": "SKIP_RAW",
                     "value": "false"
                   },
@@ -2700,7 +2698,7 @@
           "outputs": {
             "fabricSeedDeploymentScriptName": {
               "type": "string",
-              "value": "[if(parameters('enableFabricSeed'), format('run-fabric-seed-{0}', parameters('deploymentSuffix')), '')]"
+              "value": "[if(and(parameters('enableFabric'), parameters('enableFabricSeed')), format('run-fabric-seed-{0}', parameters('deploymentSuffix')), '')]"
             }
           }
         }
@@ -2793,19 +2791,19 @@
     },
     "fabricWorkspaceName": {
       "type": "string",
-      "value": "[reference('fabricProvision').outputs.workspaceName.value]"
+      "value": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.workspaceName.value, '')]"
     },
     "fabricLakehouseName": {
       "type": "string",
-      "value": "[reference('fabricProvision').outputs.lakehouseName.value]"
+      "value": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.lakehouseName.value, '')]"
     },
     "fabricSqlServer": {
       "type": "string",
-      "value": "[reference('fabricProvision').outputs.sqlServer.value]"
+      "value": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.sqlServer.value, '')]"
     },
     "fabricSqlDatabase": {
       "type": "string",
-      "value": "[reference('fabricProvision').outputs.sqlDatabase.value]"
+      "value": "[if(parameters('enableFabric'), reference(resourceId('Microsoft.Resources/deployments', 'fabric-provision'), '2025-04-01').outputs.sqlDatabase.value, '')]"
     },
     "fabricSeedDeploymentScriptName": {
       "type": "string",

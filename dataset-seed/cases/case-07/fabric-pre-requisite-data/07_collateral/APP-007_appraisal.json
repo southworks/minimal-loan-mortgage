@@ -1,0 +1,14 @@
+﻿{
+    "application_id":  "APP-007",
+    "document_id":  "APP-007-COL-APR-001",
+    "document_type":  "appraisal",
+    "document_date":  "2026-01-24",
+    "source_system":  "appraisal_report",
+    "property_address":  "9924 Aurora Heights, Seattle, WA 98115",
+    "property_type":  "single_family",
+    "occupancy_type":  "primary_residence",
+    "purchase_price":  720000,
+    "appraised_value":  738000,
+    "calculated_ltv":  73.2,
+    "condition_rating":  "C3"
+}

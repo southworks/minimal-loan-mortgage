@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : January 08, 2026
+Property Type  : Condo
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  1209 Palm View Dr, Tampa, FL 33609
+
+VALUATION
+  Purchase Price   : $460,000.00
+  Appraised Value  : $472,000.00
+  Calculated LTV   : 73.1%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

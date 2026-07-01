@@ -1,6 +1,3 @@
-@description('Azure region for all resources.')
-param location string = resourceGroup().location
-
 @description('Base name used for deployed resources.')
 param baseName string = 'cohereloan'
 
@@ -8,17 +5,17 @@ param baseName string = 'cohereloan'
 param foundryProjectName string = ''
 
 @description('Foundry model deployment name used by all agents.')
-param modelDeploymentName string = 'cohere-command-a'
+param modelDeploymentName string = 'cohere-command-a-plus'
 
 @description('SKU used by the Foundry model deployment for the agents. Use GlobalStandard for serverless deployments; use a provisioned SKU only if it is available for the model and region.')
 param modelDeploymentSkuName string = 'GlobalStandard'
 
 @minValue(1)
 @description('Capacity units for the Foundry model deployment used by the agents. Increase this when agents fail with no_capacity during peak load.')
-param modelDeploymentCapacity int = 10
+param modelDeploymentCapacity int = 100
 
 @description('Cohere Command A model name in Foundry catalog.')
-param cohereModelName string = 'cohere-command-a'
+param cohereModelName string = 'Cohere-command-a-plus-05-2026'
 
 @description('Cohere Command A model version.')
 param cohereModelVersion string = '1'
@@ -34,7 +31,7 @@ param embedModelVersion string = '1'
 
 @minValue(1)
 @description('Capacity units for the Cohere embed deployment. Increase this for faster case evidence indexing and fewer throttling failures.')
-param embedDeploymentCapacity int = 10
+param embedDeploymentCapacity int = 1000
 
 @description('Foundry deployment name for Cohere-rerank-v4.0-pro.')
 param rerankDeploymentName string = 'cohere-rerank-v4-pro'
@@ -67,28 +64,25 @@ param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-web:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
-@description('Optional suffix for retry deployments. Set when redeploying after a partial failure left names reserved.')
-param nameSuffix string = ''
+@description('When true, provisions Fabric lakehouse, seeds lakehouse data, and configures MCP to read case context from Fabric. Requires fabricWorkspaceName and fabricUamiResourceId.')
+param enableFabric bool = false
 
-@description('Fabric workspace name. Required. Must be capacity-backed and accessible to the operator.')
-param fabricWorkspaceName string
+@description('Fabric workspace name. Required when enableFabric is true. Must be capacity-backed and accessible to the operator.')
+param fabricWorkspaceName string = ''
 
-@description('Fabric lakehouse name. Created at deploy time if missing.')
+@description('Fabric lakehouse name. Used only when enableFabric is true. Created at deploy time if missing.')
 param fabricLakehouseName string = 'LoanProcessingLakehouse'
 
-@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
-param fabricUamiResourceId string
+@description('UAMI resource ID. Required when enableFabric is true. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
+param fabricUamiResourceId string = ''
 
-@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime.')
+@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime. Ignored when enableFabric is false.')
 param enableFabricSeed bool = true
 
 @description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
 param fabricRepositoryArchiveUrl string = 'https://github.com/southworks/minimal-loan-mortgage/archive/refs/heads/main.zip'
 
-@description('Optional GitHub PAT for private repos or higher rate limits.')
-@secure()
-param fabricGithubToken string = ''
-
+var location = resourceGroup().location
 var resolvedFoundryProjectName = empty(foundryProjectName) ? '${baseName}-project' : foundryProjectName
 
 var resourceTags = {
@@ -106,7 +100,6 @@ module naming 'modules/naming.bicep' = {
   name: 'naming'
   params: {
     baseName: baseName
-    nameSuffix: nameSuffix
   }
 }
 
@@ -159,18 +152,19 @@ module security 'modules/security.bicep' = {
   params: {
     location: location
     resourceTags: resourceTags
-    nameSuffix: nameSuffix
     apiIdentityName: naming.outputs.apiIdentityName
     provisioningIdentityName: naming.outputs.provisioningIdentityName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
     searchServiceName: dataServices.outputs.searchServiceName
     documentIntelligenceAccountName: dataServices.outputs.documentIntelligenceAccountName
+    enableFabric: enableFabric
     fabricUamiResourceId: fabricUamiResourceId
+    mcpIdentityName: naming.outputs.mcpIdentityName
   }
 }
 
-module fabricProvision 'modules/fabric-provision.bicep' = {
+module fabricProvision 'modules/fabric-provision.bicep' = if (enableFabric) {
   name: 'fabric-provision'
   params: {
     location: location
@@ -208,12 +202,13 @@ module containerApps 'modules/container-apps.bicep' = {
     rerankModelName: foundry.outputs.rerankModelName
     embedEndpoint: foundry.outputs.embedEndpoint
     rerankEndpoint: foundry.outputs.rerankEndpoint
+    enableFabric: enableFabric
     fabricWorkspaceName: fabricWorkspaceName
     fabricLakehouseName: fabricLakehouseName
   }
-  dependsOn: [
+  dependsOn: enableFabric ? [
     fabricProvision
-  ]
+  ] : []
 }
 
 module foundryAppInsightsConnection 'modules/foundry-appinsights-connection.bicep' = {
@@ -257,20 +252,19 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     location: location
     resourceTags: resourceTags
     deploymentSuffix: naming.outputs.deploymentSuffix
-    nameSuffix: nameSuffix
     deploymentScriptIdentityName: naming.outputs.deploymentScriptIdentityName
     foundryAccountName: foundry.outputs.foundryAccountName
     foundryProjectName: foundry.outputs.foundryProjectName
     policySeedJobName: naming.outputs.policySeedJobName
     provisioningJobName: naming.outputs.provisioningJobName
-    enableFabricSeed: enableFabricSeed
+    enableFabric: enableFabric
+    enableFabricSeed: enableFabric && enableFabricSeed
     fabricUamiResourceId: fabricUamiResourceId
-    fabricWorkspaceId: fabricProvision.outputs.workspaceId
-    fabricWorkspaceName: fabricProvision.outputs.workspaceName
-    fabricLakehouseId: fabricProvision.outputs.lakehouseId
-    fabricLakehouseName: fabricProvision.outputs.lakehouseName
+    fabricWorkspaceId: enableFabric ? fabricProvision!.outputs.workspaceId : ''
+    fabricWorkspaceName: enableFabric ? fabricProvision!.outputs.workspaceName : ''
+    fabricLakehouseId: enableFabric ? fabricProvision!.outputs.lakehouseId : ''
+    fabricLakehouseName: enableFabric ? fabricProvision!.outputs.lakehouseName : ''
     fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
-    fabricGithubToken: fabricGithubToken
   }
   dependsOn: [
     containerJobs
@@ -297,10 +291,10 @@ output frontendUrl string = containerApps.outputs.frontendUrl
 output mcpUrl string = containerApps.outputs.mcpUrl
 output policySeedJobName string = containerJobs.outputs.policySeedJobName
 output provisioningJobName string = containerJobs.outputs.provisioningJobName
-output fabricWorkspaceName string = fabricProvision.outputs.workspaceName
-output fabricLakehouseName string = fabricProvision.outputs.lakehouseName
-output fabricSqlServer string = fabricProvision.outputs.sqlServer
-output fabricSqlDatabase string = fabricProvision.outputs.sqlDatabase
+output fabricWorkspaceName string = enableFabric ? fabricProvision!.outputs.workspaceName : ''
+output fabricLakehouseName string = enableFabric ? fabricProvision!.outputs.lakehouseName : ''
+output fabricSqlServer string = enableFabric ? fabricProvision!.outputs.sqlServer : ''
+output fabricSqlDatabase string = enableFabric ? fabricProvision!.outputs.sqlDatabase : ''
 output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName
 output applicationInsightsName string = platform.outputs.applicationInsightsName
 @secure()

@@ -1,0 +1,17 @@
+﻿{
+    "application_id":  "APP-020",
+    "document_id":  "APP-020-INC-002",
+    "document_type":  "paystub",
+    "document_date":  "2026-03-13",
+    "source_system":  "payroll_document",
+    "party_role":  "borrower",
+    "employee_name":  "Alexander Ward",
+    "employer":  "Capitol Medical Devices",
+    "pay_date":  "2026-03-13",
+    "gross_pay":  5708.33,
+    "net_pay":  4110.00,
+    "pay_frequency":  "semi_monthly",
+    "pay_period_start":  "2026-02-28",
+    "pay_period_end":  "2026-03-13",
+    "ytd_gross":  22833.32
+}

@@ -1,0 +1,22 @@
+PROPERTY APPRAISAL REPORT
+==========================
+Report Date    : February 05, 2026
+Property Type  : Single Family
+Occupancy Type : Primary Residence
+
+PROPERTY ADDRESS
+  901 Lakeview Road, Minneapolis, MN 55416
+
+VALUATION
+  Purchase Price   : $530,000.00
+  Appraised Value  : $545,000.00
+  Calculated LTV   : 72.9%
+  Condition Rating : C3
+
+APPRAISER'S CERTIFICATION
+The subject property has been inspected and appraised in accordance with
+USPAP guidelines. The appraised value reflects current market conditions
+as of the effective date above.
+
+Appraiser Signature: _________________________
+License No.: APR-PR-001

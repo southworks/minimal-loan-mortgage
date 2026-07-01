@@ -33,7 +33,7 @@ public sealed class CaseDocumentInfo
 
 public sealed class LocalCaseDocumentService
 {
-    private readonly string _rawTxtRoot;
+    private readonly string _datasetRoot;
     private readonly ILogger<LocalCaseDocumentService> _logger;
 
     public LocalCaseDocumentService(
@@ -42,8 +42,7 @@ public sealed class LocalCaseDocumentService
         ILogger<LocalCaseDocumentService> logger)
     {
         _logger = logger;
-        string datasetRoot = ResolveDatasetRoot(environment.ContentRootPath, options.Value.RootPath);
-        _rawTxtRoot = Path.Combine(datasetRoot, "00_raw", "txt");
+        _datasetRoot = ResolveDatasetRoot(environment.ContentRootPath, options.Value.RootPath);
     }
 
     public static string GetCaseDirectory(string caseId) => caseId.Trim();
@@ -157,7 +156,7 @@ public sealed class LocalCaseDocumentService
     }
 
     private string GetCaseDirectoryPath(string caseId) =>
-        Path.Combine(_rawTxtRoot, GetCaseDirectory(caseId));
+        Path.Combine(_datasetRoot, "cases", GetCaseDirectory(caseId), "ingest");
 
     private static CaseDocumentInfo CreateDocumentInfo(string filePath, string caseId)
     {
