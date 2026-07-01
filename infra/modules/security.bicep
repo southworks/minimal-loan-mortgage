@@ -1,6 +1,5 @@
 param location string
 param resourceTags object
-param nameSuffix string
 param apiIdentityName string
 param provisioningIdentityName string
 param foundryAccountName string
@@ -55,7 +54,7 @@ resource provisioningIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@
 }
 
 resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
+  name: guid(foundryAccount.id, apiIdentity.id, 'CognitiveServicesUser')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -68,7 +67,7 @@ resource apiFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource projectFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, foundryProject.id, 'FoundryUser', nameSuffix)
+  name: guid(foundryAccount.id, foundryProject.id, 'FoundryUser')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
@@ -78,7 +77,7 @@ resource projectFoundryUserRole 'Microsoft.Authorization/roleAssignments@2022-04
 }
 
 resource apiSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, apiIdentity.id, 'SearchServiceContributor', nameSuffix)
+  name: guid(searchService.id, apiIdentity.id, 'SearchServiceContributor')
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
@@ -88,7 +87,7 @@ resource apiSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-
 }
 
 resource apiSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, apiIdentity.id, 'SearchIndexDataContributor', nameSuffix)
+  name: guid(searchService.id, apiIdentity.id, 'SearchIndexDataContributor')
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
@@ -98,7 +97,7 @@ resource apiSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 resource apiDocumentIntelligenceRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(documentIntelligenceAccount.id, apiIdentity.id, 'CognitiveServicesUser', nameSuffix)
+  name: guid(documentIntelligenceAccount.id, apiIdentity.id, 'CognitiveServicesUser')
   scope: documentIntelligenceAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -108,7 +107,7 @@ resource apiDocumentIntelligenceRole 'Microsoft.Authorization/roleAssignments@20
 }
 
 resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, resolvedMcpIdentityId, 'SearchServiceContributor', nameSuffix)
+  name: guid(searchService.id, resolvedMcpIdentityId, 'SearchServiceContributor')
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
@@ -118,7 +117,7 @@ resource mcpSearchContributorRole 'Microsoft.Authorization/roleAssignments@2022-
 }
 
 resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(searchService.id, resolvedMcpIdentityId, 'SearchIndexDataContributor', nameSuffix)
+  name: guid(searchService.id, resolvedMcpIdentityId, 'SearchIndexDataContributor')
   scope: searchService
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
@@ -128,7 +127,7 @@ resource mcpSearchDataRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, resolvedMcpIdentityId, 'CognitiveServicesUser', nameSuffix)
+  name: guid(foundryAccount.id, resolvedMcpIdentityId, 'CognitiveServicesUser')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
@@ -141,7 +140,7 @@ resource mcpFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor', nameSuffix)
+  name: guid(foundryAccount.id, provisioningIdentity.id, 'CognitiveServicesContributor')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')
@@ -154,7 +153,7 @@ resource provisioningFoundryRole 'Microsoft.Authorization/roleAssignments@2022-0
 }
 
 resource provisioningFoundryDeveloperRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, provisioningIdentity.id, 'FoundryUser', nameSuffix)
+  name: guid(foundryAccount.id, provisioningIdentity.id, 'FoundryUser')
   scope: foundryAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '53ca6127-db72-4b80-b1b0-d745d6d5456d')
