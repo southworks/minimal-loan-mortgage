@@ -50,8 +50,8 @@ resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
             '--seed-policies'
           ]
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1')
+            memory: '2Gi'
           }
           env: policySeedContainerEnv
         }
@@ -87,8 +87,8 @@ resource provisioningJob 'Microsoft.App/jobs@2024-03-01' = {
           name: 'agent-provisioning'
           image: provisioningContainerImage
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1')
+            memory: '2Gi'
           }
           env: [
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }

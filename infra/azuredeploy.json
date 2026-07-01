@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "1190850533669216175"
+      "templateHash": "8835570788454522462"
     }
   },
   "parameters": {
@@ -1335,7 +1335,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "15370355203324626462"
+              "templateHash": "17833651423386962626"
             }
           },
           "parameters": {
@@ -1497,8 +1497,8 @@
                       "name": "mcp",
                       "image": "[parameters('mcpContainerImage')]",
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
+                        "cpu": "[json('1')]",
+                        "memory": "2Gi"
                       },
                       "env": "[concat(variables('mcpContainerEnv'), createArray(createObject('name', 'McpStartup__EnsureSearchIndexesOnStartup', 'value', 'true'), createObject('name', 'McpStartup__SeedPoliciesOnStartup', 'value', 'false')))]",
                       "probes": [
@@ -1548,8 +1548,8 @@
                       "name": "api",
                       "image": "[parameters('apiContainerImage')]",
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
+                        "cpu": "[json('1')]",
+                        "memory": "2Gi"
                       },
                       "env": [
                         {
@@ -1683,8 +1683,8 @@
                       "name": "frontend",
                       "image": "[parameters('frontendContainerImage')]",
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
+                        "cpu": "[json('1')]",
+                        "memory": "2Gi"
                       },
                       "env": [
                         {
@@ -1822,7 +1822,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "1835220388181386057"
+              "templateHash": "2709551656167286133"
             }
           },
           "parameters": {
@@ -1907,8 +1907,8 @@
                         "--seed-policies"
                       ],
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
+                        "cpu": "[json('1')]",
+                        "memory": "2Gi"
                       },
                       "env": "[variables('policySeedContainerEnv')]"
                     }
@@ -1945,8 +1945,8 @@
                       "name": "agent-provisioning",
                       "image": "[parameters('provisioningContainerImage')]",
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
+                        "cpu": "[json('1')]",
+                        "memory": "2Gi"
                       },
                       "env": [
                         {
