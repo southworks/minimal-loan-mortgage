@@ -53,6 +53,9 @@
     "fabricWorkspaceName": {
       "value": ""
     },
+    "enableFabric": {
+      "value": false
+    },
     "fabricLakehouseName": {
       "value": "LoanProcessingLakehouse"
     },

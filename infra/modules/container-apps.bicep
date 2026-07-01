@@ -20,9 +20,18 @@ param rerankDeploymentName string
 param rerankModelName string
 param embedEndpoint string
 param rerankEndpoint string
+param enableFabric bool = false
 param fabricWorkspaceName string = ''
 param fabricLakehouseName string = ''
 param fabricLakehouseTimeoutSeconds int = 60
+
+var dataSourceMode = enableFabric ? 'Fabric' : 'Local'
+
+var mcpFabricEnv = enableFabric ? [
+  { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
+  { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
+  { name: 'FabricLakehouse__TimeoutSeconds', value: string(fabricLakehouseTimeoutSeconds) }
+] : []
 
 var mcpFoundryModelEnv = [
   { name: 'AzureFoundryModels__EmbedDeploymentName', value: embedDeploymentName }
@@ -44,12 +53,9 @@ var mcpContainerEnv = concat([
   { name: 'AzureSearch__VectorDimensions', value: '1024' }
   { name: 'Dataset__RootPath', value: '/app/dataset-seed' }
   { name: 'Dataset__PolicyFilePath', value: '/app/dataset-seed/policies/general_policy.txt' }
-  { name: 'DataSource__Mode', value: 'Fabric' }
-  { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
-  { name: 'FabricLakehouse__LakehouseName', value: fabricLakehouseName }
-  { name: 'FabricLakehouse__TimeoutSeconds', value: string(fabricLakehouseTimeoutSeconds) }
+  { name: 'DataSource__Mode', value: dataSourceMode }
   { name: 'AZURE_CLIENT_ID', value: mcpIdentityClientId }
-], mcpFoundryModelEnv)
+], mcpFabricEnv, mcpFoundryModelEnv)
 
 resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: mcpAppName
