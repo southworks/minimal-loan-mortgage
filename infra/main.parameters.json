@@ -56,6 +56,9 @@
     "provisioningContainerImage": {
       "value": "ghcr.io/southworks/cohereloan-provisioning:demo"
     },
+    "enableFabric": {
+      "value": false
+    },
     "fabricWorkspaceName": {
       "value": ""
     },

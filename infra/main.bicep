@@ -67,16 +67,19 @@ param frontendContainerImage string = 'ghcr.io/southworks/cohereloan-web:demo'
 @description('Full container image URI for the agent provisioning job.')
 param provisioningContainerImage string = 'ghcr.io/southworks/cohereloan-provisioning:demo'
 
-@description('Fabric workspace name. Required. Must be capacity-backed and accessible to the operator.')
-param fabricWorkspaceName string
+@description('When true, provisions Fabric lakehouse, seeds lakehouse data, and configures MCP to read case context from Fabric. Requires fabricWorkspaceName and fabricUamiResourceId.')
+param enableFabric bool = false
 
-@description('Fabric lakehouse name. Created at deploy time if missing.')
+@description('Fabric workspace name. Required when enableFabric is true. Must be capacity-backed and accessible to the operator.')
+param fabricWorkspaceName string = ''
+
+@description('Fabric lakehouse name. Used only when enableFabric is true. Created at deploy time if missing.')
 param fabricLakehouseName string = 'LoanProcessingLakehouse'
 
-@description('UAMI resource ID. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
-param fabricUamiResourceId string
+@description('UAMI resource ID. Required when enableFabric is true. Must be created by setup-fabric-provision-identity.ps1 with workspace role. Used as the MCP container app identity and as the Fabric seed deployment script identity. Its client ID is auto-derived by the deployment.')
+param fabricUamiResourceId string = ''
 
-@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime.')
+@description('When false, the lakehouse is still provisioned but no data is uploaded. The MCP will see an empty lakehouse and the adapter handles this at runtime. Ignored when enableFabric is false.')
 param enableFabricSeed bool = true
 
 @description('Repository archive URL the seed script downloads to fetch infra/scripts/ and dataset-seed/.')
@@ -157,11 +160,13 @@ module security 'modules/security.bicep' = {
     foundryProjectName: foundry.outputs.foundryProjectName
     searchServiceName: dataServices.outputs.searchServiceName
     documentIntelligenceAccountName: dataServices.outputs.documentIntelligenceAccountName
+    enableFabric: enableFabric
     fabricUamiResourceId: fabricUamiResourceId
+    mcpIdentityName: naming.outputs.mcpIdentityName
   }
 }
 
-module fabricProvision 'modules/fabric-provision.bicep' = {
+module fabricProvision 'modules/fabric-provision.bicep' = if (enableFabric) {
   name: 'fabric-provision'
   params: {
     location: location
@@ -198,12 +203,13 @@ module containerApps 'modules/container-apps.bicep' = {
     rerankModelName: foundry.outputs.rerankModelName
     embedEndpoint: foundry.outputs.embedEndpoint
     rerankEndpoint: foundry.outputs.rerankEndpoint
+    enableFabric: enableFabric
     fabricWorkspaceName: fabricWorkspaceName
     fabricLakehouseName: fabricLakehouseName
   }
-  dependsOn: [
+  dependsOn: enableFabric ? [
     fabricProvision
-  ]
+  ] : []
 }
 
 module containerJobs 'modules/container-jobs.bicep' = {
@@ -237,12 +243,13 @@ module postDeployScripts 'modules/post-deploy-scripts.bicep' = {
     foundryProjectName: foundry.outputs.foundryProjectName
     policySeedJobName: naming.outputs.policySeedJobName
     provisioningJobName: naming.outputs.provisioningJobName
-    enableFabricSeed: enableFabricSeed
+    enableFabric: enableFabric
+    enableFabricSeed: enableFabric && enableFabricSeed
     fabricUamiResourceId: fabricUamiResourceId
-    fabricWorkspaceId: fabricProvision.outputs.workspaceId
-    fabricWorkspaceName: fabricProvision.outputs.workspaceName
-    fabricLakehouseId: fabricProvision.outputs.lakehouseId
-    fabricLakehouseName: fabricProvision.outputs.lakehouseName
+    fabricWorkspaceId: enableFabric ? fabricProvision!.outputs.workspaceId : ''
+    fabricWorkspaceName: enableFabric ? fabricProvision!.outputs.workspaceName : ''
+    fabricLakehouseId: enableFabric ? fabricProvision!.outputs.lakehouseId : ''
+    fabricLakehouseName: enableFabric ? fabricProvision!.outputs.lakehouseName : ''
     fabricRepositoryArchiveUrl: fabricRepositoryArchiveUrl
   }
   dependsOn: [
@@ -269,8 +276,8 @@ output frontendUrl string = containerApps.outputs.frontendUrl
 output mcpUrl string = containerApps.outputs.mcpUrl
 output policySeedJobName string = containerJobs.outputs.policySeedJobName
 output provisioningJobName string = containerJobs.outputs.provisioningJobName
-output fabricWorkspaceName string = fabricProvision.outputs.workspaceName
-output fabricLakehouseName string = fabricProvision.outputs.lakehouseName
-output fabricSqlServer string = fabricProvision.outputs.sqlServer
-output fabricSqlDatabase string = fabricProvision.outputs.sqlDatabase
+output fabricWorkspaceName string = enableFabric ? fabricProvision!.outputs.workspaceName : ''
+output fabricLakehouseName string = enableFabric ? fabricProvision!.outputs.lakehouseName : ''
+output fabricSqlServer string = enableFabric ? fabricProvision!.outputs.sqlServer : ''
+output fabricSqlDatabase string = enableFabric ? fabricProvision!.outputs.sqlDatabase : ''
 output fabricSeedDeploymentScriptName string = postDeployScripts.outputs.fabricSeedDeploymentScriptName

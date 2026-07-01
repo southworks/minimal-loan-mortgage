@@ -6,15 +6,16 @@ param foundryAccountName string
 param foundryProjectName string
 param policySeedJobName string
 param provisioningJobName string
+param enableFabric bool
 param enableFabricSeed bool
-param fabricUamiResourceId string
+param fabricUamiResourceId string = ''
 param fabricWorkspaceId string
 param fabricWorkspaceName string
 param fabricLakehouseId string
 param fabricLakehouseName string
 param fabricRepositoryArchiveUrl string
 
-resource fabricUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+resource fabricUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (enableFabric) {
   name: last(split(fabricUamiResourceId, '/'))
 }
 
@@ -216,7 +217,7 @@ resource runProvisioningScript 'Microsoft.Resources/deploymentScripts@2023-08-01
   ]
 }
 
-resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabricSeed) {
+resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (enableFabric && enableFabricSeed) {
   name: 'run-fabric-seed-${deploymentSuffix}'
   location: location
   tags: resourceTags
@@ -224,7 +225,7 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${fabricUami.id}': {}
+      '${fabricUami!.id}': {}
     }
   }
   properties: {
@@ -235,7 +236,7 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
     forceUpdateTag: deploymentSuffix
     scriptContent: loadTextContent('../scripts/seed-fabric-data.ps1')
     environmentVariables: [
-      { name: 'AZURE_CLIENT_ID',         value: fabricUami.properties.clientId }
+      { name: 'AZURE_CLIENT_ID',         value: fabricUami!.properties.clientId }
       { name: 'FABRIC_WORKSPACE_ID',     value: fabricWorkspaceId }
       { name: 'FABRIC_WORKSPACE_NAME',   value: fabricWorkspaceName }
       { name: 'FABRIC_LAKEHOUSE_ID',     value: fabricLakehouseId }
@@ -251,4 +252,4 @@ resource runFabricSeed 'Microsoft.Resources/deploymentScripts@2023-08-01' = if (
   ]
 }
 
-output fabricSeedDeploymentScriptName string = enableFabricSeed ? runFabricSeed.name : ''
+output fabricSeedDeploymentScriptName string = (enableFabric && enableFabricSeed) ? runFabricSeed.name : ''
