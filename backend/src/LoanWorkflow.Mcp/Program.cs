@@ -6,7 +6,7 @@ using ModelContextProtocol.Server;
 if (args.Contains("--seed-policies", StringComparer.OrdinalIgnoreCase))
 {
     var seedBuilder = WebApplication.CreateBuilder(args);
-    seedBuilder.Services.AddApplicationInsightsTelemetry();
+    seedBuilder.Services.AddAzureMonitorTelemetryIfConfigured(seedBuilder.Configuration);
     seedBuilder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
     seedBuilder.Services.AddLoanWorkflowMcpServices(seedBuilder.Configuration);
 
@@ -22,7 +22,7 @@ if (args.Contains("--seed-policies", StringComparer.OrdinalIgnoreCase))
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApplicationInsightsTelemetry();
+builder.Services.AddAzureMonitorTelemetryIfConfigured(builder.Configuration);
 builder.Configuration.AddJsonFile("appsettings.Deployment.local.json", optional: true, reloadOnChange: true);
 
 builder.Services.AddLoanWorkflowMcpServices(builder.Configuration);

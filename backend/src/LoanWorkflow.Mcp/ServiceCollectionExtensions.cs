@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Azure.Search.Documents;
 using LoanWorkflow.Mcp.Adapters;
 using LoanWorkflow.Mcp.Builders;
@@ -14,6 +15,21 @@ namespace LoanWorkflow.Mcp;
 
 public static class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddAzureMonitorTelemetryIfConfigured(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var connectionString = configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]
+            ?? Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
+
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            services.AddOpenTelemetry().UseAzureMonitor();
+        }
+
+        return services;
+    }
+
     public static IServiceCollection AddLoanWorkflowMcpServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<DatasetOptions>(configuration.GetSection(DatasetOptions.SectionName));
