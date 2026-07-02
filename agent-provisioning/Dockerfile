@@ -12,7 +12,7 @@ RUN dotnet publish "CohereLoanAndMortgage.AgentProvisioning.csproj" -c Release -
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-COPY --from=build /src/agent-provisioning/agents /app/agents
-COPY --from=build /src/agent-provisioning/shared /app/shared
-COPY --from=build /src/agent-provisioning/config/provisioning.json /app/config/provisioning.json
+COPY --from=build /src/agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning/agents /app/agents
+COPY --from=build /src/agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning/shared /app/shared
+COPY --from=build /src/agent-provisioning/src/CohereLoanAndMortgage.AgentProvisioning/config/provisioning.json /app/config/provisioning.json
 ENTRYPOINT ["dotnet", "CohereLoanAndMortgage.AgentProvisioning.dll", "--config", "/app/config/provisioning.json", "--agents", "/app/agents"]
