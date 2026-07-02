@@ -14,9 +14,24 @@ public sealed class LoanApiClient(
 {
     private const string LoanMortgageBase = "api/loan-mortgage";
 
-    public Task<IReadOnlyList<ScenarioSummaryResponse>> GetScenariosAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<ScenarioSummaryResponse>>(
-            catalog.GetAllCases().Select(BackendWorkflowMapper.ToScenario).ToList());
+    public async Task<IReadOnlyList<ScenarioSummaryResponse>> GetScenariosAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync($"{LoanMortgageBase}/scenarios", cancellationToken);
+        await ApiProblemDetails.EnsureSuccessOrThrowAsync(response, cancellationToken);
+
+        IReadOnlyList<BackendScenarioSummaryResponse> backendScenarios =
+            await response.Content.ReadFromJsonAsync<IReadOnlyList<BackendScenarioSummaryResponse>>(cancellationToken)
+            ?? [];
+
+        return backendScenarios
+            .Select(scenario => new ScenarioSummaryResponse(
+                scenario.CaseId,
+                scenario.Title,
+                scenario.Description,
+                scenario.ExpectedOutcome,
+                scenario.DemoTagline))
+            .ToList();
+    }
 
     public Task<IReadOnlyList<CaseSummaryResponse>> GetCasesAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(sessions.GetSummaries());
@@ -29,6 +44,10 @@ public sealed class LoanApiClient(
 
     public async Task<CaseDetailResponse?> CreateCaseAsync(string scenarioId, CancellationToken cancellationToken = default)
     {
+        SeedCaseDefinition seedCase = catalog.TryGetCase(scenarioId)
+            ?? throw new InvalidOperationException($"Case '{scenarioId}' was not found in the dataset seed catalog.");
+
+        sessions.Reset(seedCase);
         CaseSession session = await OpenCaseSessionAsync(scenarioId, cancellationToken);
         return BackendWorkflowMapper.ToDetail(session);
     }

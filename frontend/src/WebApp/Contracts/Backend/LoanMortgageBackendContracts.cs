@@ -52,3 +52,16 @@ public sealed class CaseDocumentResponse
 
     public required DateTimeOffset LastModifiedUtc { get; init; }
 }
+
+public sealed class BackendScenarioSummaryResponse
+{
+    public required string CaseId { get; init; }
+
+    public required string Title { get; init; }
+
+    public required string Description { get; init; }
+
+    public required string ExpectedOutcome { get; init; }
+
+    public string? DemoTagline { get; init; }
+}
