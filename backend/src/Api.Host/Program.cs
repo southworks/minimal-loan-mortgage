@@ -5,6 +5,7 @@ using LoanWorkflow.Mcp;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAzureMonitorTelemetryIfConfigured(builder.Configuration);
 builder.Services.AddControllers();
 
 builder.Services.Configure<AzureFoundryOptions>(options =>

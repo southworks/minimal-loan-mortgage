@@ -111,6 +111,17 @@ module dataServices 'modules/data-services.bicep' = {
   }
 }
 
+module platform 'modules/platform.bicep' = {
+  name: 'platform'
+  params: {
+    location: location
+    resourceTags: resourceTags
+    logAnalyticsName: naming.outputs.logAnalyticsName
+    applicationInsightsName: naming.outputs.applicationInsightsName
+    containerAppsEnvironmentName: naming.outputs.containerAppsEnvironmentName
+  }
+}
+
 module foundry 'modules/foundry.bicep' = {
   name: 'foundry'
   params: {
@@ -131,16 +142,8 @@ module foundry 'modules/foundry.bicep' = {
     rerankModelName: rerankModelName
     rerankModelVersion: rerankModelVersion
     rerankDeploymentCapacity: rerankDeploymentCapacity
-  }
-}
-
-module platform 'modules/platform.bicep' = {
-  name: 'platform'
-  params: {
-    location: location
-    resourceTags: resourceTags
-    logAnalyticsName: naming.outputs.logAnalyticsName
-    containerAppsEnvironmentName: naming.outputs.containerAppsEnvironmentName
+    applicationInsightsId: platform.outputs.applicationInsightsId
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
   }
 }
 
@@ -201,6 +204,7 @@ module containerApps 'modules/container-apps.bicep' = {
     enableFabric: enableFabric
     fabricWorkspaceName: fabricWorkspaceName
     fabricLakehouseName: fabricLakehouseName
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
   }
   dependsOn: enableFabric ? [
     fabricProvision
@@ -224,6 +228,7 @@ module containerJobs 'modules/container-jobs.bicep' = {
     mcpContainerEnv: containerApps.outputs.mcpContainerEnv
     foundryProjectEndpoint: foundry.outputs.foundryProjectEndpoint
     modelDeploymentName: foundry.outputs.modelDeploymentName
+    applicationInsightsConnectionString: platform.outputs.applicationInsightsConnectionString
   }
 }
 

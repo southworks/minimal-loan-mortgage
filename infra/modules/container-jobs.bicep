@@ -12,8 +12,14 @@ param mcpUrl string
 param mcpContainerEnv array
 param foundryProjectEndpoint string
 param modelDeploymentName string
+@secure()
+param applicationInsightsConnectionString string
 
-var policySeedContainerEnv = concat(mcpContainerEnv, [
+var appInsightsEnv = [
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'application-insights-connection-string' }
+]
+
+var policySeedContainerEnv = concat(mcpContainerEnv, appInsightsEnv, [
   { name: 'AzureFoundryModels__MaxRetryAttempts', value: '10' }
   { name: 'AzureFoundryModels__MaxDelaySeconds', value: '60' }
 ])
@@ -31,6 +37,12 @@ resource policySeedJob 'Microsoft.App/jobs@2024-03-01' = {
   properties: {
     environmentId: containerAppsEnvironmentId
     configuration: {
+      secrets: [
+        {
+          name: 'application-insights-connection-string'
+          value: applicationInsightsConnectionString
+        }
+      ]
       triggerType: 'Manual'
       replicaTimeout: 1800
       replicaRetryLimit: 0

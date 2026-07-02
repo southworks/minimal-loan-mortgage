@@ -24,8 +24,14 @@ param enableFabric bool = false
 param fabricWorkspaceName string = ''
 param fabricLakehouseName string = ''
 param fabricLakehouseTimeoutSeconds int = 60
+@secure()
+param applicationInsightsConnectionString string
 
 var dataSourceMode = enableFabric ? 'Fabric' : 'Local'
+
+var appInsightsEnv = [
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', secretRef: 'application-insights-connection-string' }
+]
 
 var mcpFabricEnv = enableFabric ? [
   { name: 'FabricLakehouse__WorkspaceName', value: fabricWorkspaceName }
@@ -75,6 +81,12 @@ resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8080
         transport: 'auto'
       }
+      secrets: [
+        {
+          name: 'application-insights-connection-string'
+          value: applicationInsightsConnectionString
+        }
+      ]
     }
     template: {
       containers: [
@@ -85,7 +97,7 @@ resource mcpApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('1')
             memory: '2Gi'
           }
-          env: concat(mcpContainerEnv, [
+          env: concat(mcpContainerEnv, appInsightsEnv, [
             { name: 'McpStartup__EnsureSearchIndexesOnStartup', value: 'true' }
             { name: 'McpStartup__SeedPoliciesOnStartup', value: 'false' }
           ])
@@ -128,6 +140,12 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8080
         transport: 'auto'
       }
+      secrets: [
+        {
+          name: 'application-insights-connection-string'
+          value: applicationInsightsConnectionString
+        }
+      ]
     }
     template: {
       containers: [
@@ -138,7 +156,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('1')
             memory: '2Gi'
           }
-          env: [
+          env: concat([
             { name: 'AZURE_FOUNDRY_PROJECT_ENDPOINT', value: foundryProjectEndpoint }
             { name: 'AzureSearch__Endpoint', value: searchServiceEndpoint }
             { name: 'AzureSearch__EvidenceIndexName', value: 'loan-case-evidence' }
@@ -159,7 +177,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
             { name: 'AZURE_CLIENT_ID', value: apiIdentityClientId }
             { name: 'DocumentExtraction__Endpoint', value: documentIntelligenceEndpoint }
-          ]
+          ], appInsightsEnv)
           probes: [
             {
               type: 'Liveness'
