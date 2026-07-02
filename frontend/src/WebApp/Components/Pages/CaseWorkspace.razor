@@ -255,6 +255,7 @@ else
             if (!string.IsNullOrWhiteSpace(executionId))
             {
                 Navigation.NavigateTo($"/cases/{CaseId}/{executionId}");
+                _ = Workspace.LoadCaseAsync(CaseId, executionId);
             }
         }
         finally

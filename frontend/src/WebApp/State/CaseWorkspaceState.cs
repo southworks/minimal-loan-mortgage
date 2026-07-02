@@ -78,7 +78,7 @@ public sealed class CaseWorkspaceState
 
         if (CurrentCase is not null && ActiveWorkflowRun is not null && IsInProgressRun(ActiveWorkflowRun.Status))
         {
-            await PollWorkflowRunAsync(caseId, ActiveWorkflowRun.RunId, cancellationToken);
+            _ = PollWorkflowRunAsync(caseId, ActiveWorkflowRun.RunId, cancellationToken);
         }
     }
 
@@ -92,7 +92,6 @@ public sealed class CaseWorkspaceState
         PollingStatusMessage = null;
         NotifyStateChanged();
 
-        string? runId = null;
         try
         {
             var start = await _api.StartWorkflowAsync(CurrentCase.CaseId, cancellationToken);
@@ -102,13 +101,8 @@ public sealed class CaseWorkspaceState
                 return null;
             }
 
-            runId = start.RunId;
-            ActiveWorkflowRun = await _api.GetWorkflowRunAsync(CurrentCase.CaseId, start.RunId, cancellationToken);
-            CurrentCase = start.Case ?? await _api.GetCaseAsync(CurrentCase.CaseId, cancellationToken);
-            if (CurrentCase is not null)
-            {
-                await RefreshCaseDetailsAsync(CurrentCase.CaseId, refreshTrace: true, cancellationToken);
-            }
+            CurrentCase = start.Case ?? CurrentCase;
+            return start.RunId;
         }
         catch (Exception ex)
         {
@@ -120,13 +114,6 @@ public sealed class CaseWorkspaceState
             IsBusy = false;
             NotifyStateChanged();
         }
-
-        if (CurrentCase is not null && ActiveWorkflowRun is not null && IsInProgressRun(ActiveWorkflowRun.Status))
-        {
-            await PollWorkflowRunAsync(CurrentCase.CaseId, ActiveWorkflowRun.RunId, cancellationToken);
-        }
-
-        return runId;
     }
 
     public async Task SubmitDecisionAsync(bool approved, string? notes, CancellationToken cancellationToken = default)
